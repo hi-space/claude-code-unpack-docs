@@ -472,6 +472,12 @@
       color: var(--color-text);
     }
 
+    .callout-security {
+      background: var(--color-accent-red-light);
+      border-color: var(--color-accent-red);
+      color: var(--color-text);
+    }
+
     .callout strong {
       display: block;
       font-size: 13px;
@@ -696,7 +702,7 @@
         <div class="hero-eyebrow">Architecture</div>
         <h1>Architecture Overview</h1>
         <p class="hero-desc">
-          Claude Code의 전체 아키텍처를 분석합니다. TypeScript + Bun + React/Ink로 구축된 터미널 AI 어시스턴트의 핵심 설계와 데이터 흐름을 상세히 살펴봅니다.
+          Claude Code의 핵심 아키텍처를 살펴봅니다. TypeScript, Bun, React/Ink로 구축된 터미널 AI 어시스턴트의 주요 설계 결정과 데이터 흐름을 알아봅니다.
         </p>
         <div class="hero-stats">
           <div class="hero-stat">
@@ -724,8 +730,7 @@
           <div class="section-badge">&#9670; System Diagram</div>
           <h2 class="section-title">High-Level Architecture</h2>
           <p class="section-desc">
-            Claude Code는 7개의 핵심 시스템으로 구성됩니다. 사용자 입력은 CLI를 통해 Query Engine으로 전달되고,
-            API 호출과 Tool 실행의 반복 루프를 통해 응답을 생성합니다.
+            7개 핵심 시스템이 협력합니다. 사용자 입력은 CLI로 Query Engine에 도달하고, API 호출과 도구 실행 루프로 응답을 생성합니다.
           </p>
         </div>
 
@@ -798,7 +803,7 @@ flowchart TB
         <div class="section-header">
           <div class="section-badge">&#9881; Stack</div>
           <h2 class="section-title">Technology Stack</h2>
-          <p class="section-desc">Claude Code를 구성하는 핵심 기술들과 선택 이유</p>
+          <p class="section-desc">Claude Code의 핵심 기술 스택과 선택 근거입니다.</p>
         </div>
 
         <table class="tech-table">
@@ -813,42 +818,42 @@ flowchart TB
             <tr>
               <td>Language</td>
               <td>TypeScript</td>
-              <td>복잡한 도구 스키마 및 API 계약을 위한 타입 안정성</td>
+              <td>도구 스키마와 API 타입 안정성</td>
             </tr>
             <tr>
               <td>Runtime</td>
               <td>Bun</td>
-              <td>1초 미만 콜드 스타트, Client Attestation을 위한 네이티브 Zig HTTP 스택</td>
+              <td>빠른 콜드 스타트, 네이티브 HTTP 스택</td>
             </tr>
             <tr>
               <td>Terminal UI</td>
               <td>React + Ink</td>
-              <td>복잡한 터미널 레이아웃을 위한 선언형 UI 구성</td>
+              <td>선언형 터미널 UI 구성</td>
             </tr>
             <tr>
               <td>Bundler</td>
               <td>Bun (built-in)</td>
-              <td>단일 파일 출력, 소스 맵 (유출의 원인)</td>
+              <td>단일 파일 번들 및 소스 맵 생성</td>
             </tr>
             <tr>
               <td>Native Layer</td>
               <td>Zig</td>
-              <td>HTTP 전송, 클라이언트 증명 DRM을 위한 암호화 해시</td>
+              <td>HTTP 전송과 암호화 해시 처리</td>
             </tr>
             <tr>
               <td>Feature Flags</td>
               <td>GrowthBook</td>
-              <td>재배포 없이 원격 A/B 테스팅 및 킬스위치</td>
+              <td>배포 없이 원격 설정 및 테스트</td>
             </tr>
             <tr>
               <td>Telemetry</td>
               <td>OpenTelemetry</td>
-              <td>도구 호출 지연 시간 및 오류 추적을 위한 분산 추적</td>
+              <td>분산 추적으로 성능과 오류 모니터링</td>
             </tr>
             <tr>
               <td>State</td>
               <td>React Hooks + Context</td>
-              <td>세션 상태, 대화 기록, UI 상태 관리</td>
+              <td>세션 및 UI 상태 관리</td>
             </tr>
           </tbody>
         </table>
@@ -859,59 +864,59 @@ flowchart TB
         <div class="section-header">
           <div class="section-badge">&#128193; Source</div>
           <h2 class="section-title">Source Tree Structure</h2>
-          <p class="section-desc">유출된 소스맵에서 복원된 모듈 구조 (~1,900개 파일)</p>
+          <p class="section-desc">소스맵으로 복원된 모듈 구조입니다. (~1,900개 파일)</p>
         </div>
 
         <ul class="tree-view">
           <li class="dir">src/</li>
           <ul>
-            <li class="dir">cli/ <span class="desc"># CLI 진입점 및 인수 파싱</span></li>
+            <li class="dir">cli/ <span class="desc">CLI 부트스트랩</span></li>
             <li class="dir">core/
               <ul>
-                <li class="highlight">queryEngine.ts <span class="desc"># 핵심 대화 루프</span></li>
-                <li class="file">streamProcessor.ts <span class="desc"># 스트리밍 응답 핸들러</span></li>
-                <li class="file">tokenCounter.ts <span class="desc"># 토큰 계산 및 예산 관리</span></li>
+                <li class="highlight">queryEngine.ts <span class="desc">대화 루프</span></li>
+                <li class="file">streamProcessor.ts <span class="desc">응답 스트리밍</span></li>
+                <li class="file">tokenCounter.ts <span class="desc">토큰 예산</span></li>
               </ul>
             </li>
             <li class="dir">prompt/
               <ul>
-                <li class="file">systemPromptAssembler.ts <span class="desc"># 동적 프롬프트 조립</span></li>
-                <li class="file">instructionBlocks/ <span class="desc"># 110+ 개별 명령어 모듈</span></li>
-                <li class="file">cacheBreakDetector.ts <span class="desc"># 14개 캐시 무효화 벡터</span></li>
+                <li class="file">systemPromptAssembler.ts <span class="desc">동적 프롬프트</span></li>
+                <li class="file">instructionBlocks/ <span class="desc">110+ 명령 모듈</span></li>
+                <li class="file">cacheBreakDetector.ts <span class="desc">캐시 무효화</span></li>
               </ul>
             </li>
-            <li class="dir">tools/ <span class="desc"># 184개 파일, 23+ 빌트인 도구</span>
+            <li class="dir">tools/ <span class="desc">23+ 빌트인 도구</span>
               <ul>
-                <li class="dir">definitions/ <span class="desc"># 개별 도구 구현</span></li>
-                <li class="dir">mcp/ <span class="desc"># MCP 프로토콜 브릿지</span></li>
-                <li class="dir">deferred/ <span class="desc"># 지연 스키마 로딩</span></li>
+                <li class="dir">definitions/ <span class="desc">도구 구현</span></li>
+                <li class="dir">mcp/ <span class="desc">MCP 브릿지</span></li>
+                <li class="dir">deferred/ <span class="desc">지연 로딩</span></li>
               </ul>
             </li>
             <li class="dir">agents/
               <ul>
-                <li class="file">coordinatorMode.ts <span class="desc"># 다중 워커 오케스트레이션</span></li>
-                <li class="highlight">kairos/ <span class="desc"># KAIROS 자율 데몬 (미출시)</span></li>
+                <li class="file">coordinatorMode.ts <span class="desc">워커 오케스트레이션</span></li>
+                <li class="highlight">kairos/ <span class="desc">자율 데몬</span></li>
               </ul>
             </li>
             <li class="dir">security/
               <ul>
-                <li class="file">permissionChecker.ts <span class="desc"># 3계층 권한 평가</span></li>
-                <li class="file">toolUseClassifier.ts <span class="desc"># Sonnet 4.6 보안 분류기</span></li>
-                <li class="file">antiDistillation.ts <span class="desc"># 가짜 도구 주입</span></li>
-                <li class="highlight">clientAttestation.ts <span class="desc"># Zig 레벨 DRM</span></li>
+                <li class="file">permissionChecker.ts <span class="desc">권한 평가</span></li>
+                <li class="file">toolUseClassifier.ts <span class="desc">보안 분류</span></li>
+                <li class="file">antiDistillation.ts <span class="desc">모델 보호</span></li>
+                <li class="highlight">clientAttestation.ts <span class="desc">DRM</span></li>
               </ul>
             </li>
             <li class="dir">memory/
               <ul>
-                <li class="file">memoryMdLoader.ts <span class="desc"># MEMORY.md 파서</span></li>
-                <li class="file">conversationCompressor.ts <span class="desc"># 5-Layer 압축</span></li>
-                <li class="file">tokenBudgetAllocator.ts <span class="desc"># 동적 컨텍스트 할당</span></li>
+                <li class="file">memoryMdLoader.ts <span class="desc">파서</span></li>
+                <li class="file">conversationCompressor.ts <span class="desc">5-계층 압축</span></li>
+                <li class="file">tokenBudgetAllocator.ts <span class="desc">컨텍스트 할당</span></li>
               </ul>
             </li>
-            <li class="dir">config/ <span class="desc"># GrowthBook 피처 플래그</span></li>
-            <li class="dir">ui/ <span class="desc"># React/Ink 터미널 컴포넌트</span></li>
-            <li class="dir">skills/ <span class="desc"># 스킬 시스템</span></li>
-            <li class="dir">telemetry/ <span class="desc"># OpenTelemetry 분산 추적</span></li>
+            <li class="dir">config/ <span class="desc">피처 플래그</span></li>
+            <li class="dir">ui/ <span class="desc">터미널 UI</span></li>
+            <li class="dir">skills/ <span class="desc">스킬 시스템</span></li>
+            <li class="dir">telemetry/ <span class="desc">분산 추적</span></li>
           </ul>
         </ul>
       </section>
@@ -921,16 +926,14 @@ flowchart TB
         <div class="section-header">
           <div class="section-badge" style="background:var(--color-accent-green-light);color:var(--color-accent-green);">&#9733; Insights</div>
           <h2 class="section-title">Key Discoveries</h2>
-          <p class="section-desc">소스 코드 분석에서 발견된 가장 주목할 만한 설계 결정들.</p>
+          <p class="section-desc">소스 분석에서 발견된 주요 설계 결정들입니다.</p>
         </div>
 
         <div class="callout callout-insight">
           <span class="callout-icon">&#128269;</span>
           <div>
             <strong>Prompt-Based Orchestration</strong>
-            Coordinator Mode의 오케스트레이션 로직이 코드가 아닌 시스템 프롬프트에 있습니다.
-            "Do not rubber-stamp weak work" 같은 품질 관리 지시문이 프롬프트에 포함되어 있어,
-            코드 변경 없이 오케스트레이션 전략을 수정할 수 있습니다.
+            에이전트 오케스트레이션이 코드가 아닌 프롬프트로 구현되어 있습니다. 코드 변경 없이 전략을 수정할 수 있도록 설계되었습니다.
           </div>
         </div>
 
@@ -938,9 +941,7 @@ flowchart TB
           <span class="callout-icon">&#9888;&#65039;</span>
           <div>
             <strong>KAIROS: 자율 데몬 모드</strong>
-            완전히 구현되어 있지만 컴파일 타임 플래그로 비활성화된 자율 에이전트 데몬.
-            <code>&lt;tick&gt;</code> 프롬프트 시스템으로 주기적으로 작업 상태를 평가하고,
-            <code>autoDream</code>으로 유휴 시 메모리를 자동 통합합니다.
+            완전히 구현되어 있지만 비활성화된 자율 에이전트 데몬입니다. 주기적으로 작업 상태를 평가하고 유휴 시 메모리를 자동으로 통합합니다.
           </div>
         </div>
 
@@ -948,8 +949,7 @@ flowchart TB
           <span class="callout-icon">&#128274;</span>
           <div>
             <strong>Multi-Layer DRM</strong>
-            Client Attestation(Zig 레벨 해시), Anti-Distillation(가짜 도구 주입),
-            Reasoning Summarization(서버측 추론 요약)의 3중 방어로 경쟁사의 모델 디스틸레이션을 방지합니다.
+            3층 방어로 모델 디스틸레이션을 방지합니다. Zig 레벨 증명, 가짜 도구 주입, 서버측 추론 요약으로 구성됩니다.
           </div>
         </div>
       </section>

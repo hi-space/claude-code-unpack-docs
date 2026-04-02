@@ -972,7 +972,7 @@
         <div class="hero-eyebrow">Tool System</div>
         <h1>Tool System &amp; Dispatch Pipeline</h1>
         <p class="hero-desc">
-          23+ 빌트인 도구, 7단계 디스패치 파이프라인, 동시성 파티셔닝, Deferred Loading, MCP 통합
+          28개 빌트인 도구, 7단계 디스패치 파이프라인, 동시성 파티셔닝, Deferred Loading, MCP 통합
         </p>
         <div class="hero-stats">
           <div class="hero-stat">
@@ -1024,35 +1024,29 @@
               <div class="feature-card">
                 <h4>1. Fail-Closed Defaults</h4>
                 <p>
-                  <code>buildTool()</code> 패턴은 모든 새로운 도구를 기본적으로 <strong>deny/serial 모드</strong>로 생성합니다. 개발자가 명시적으로 권한과 동시성을 opt-in 해야 하며, 권한 설정을 빼먹으면 자동으로 가장 안전한 상태가 됩니다. 이는 보안 사고를 원천 차단하는 핵심 설계 원칙입니다.
+                  모든 새로운 도구는 기본적으로 거부/순차 모드로 생성됩니다. 개발자가 명시적으로 권한과 동시성을 활성화해야 하므로, 설정을 빼먹어도 자동으로 가장 안전한 상태가 됩니다. 이 'fail-closed' 원칙이 보안 사고를 원천 차단하는 핵심 설계 철학입니다.
                 </p>
               </div>
               <div class="feature-card">
                 <h4>2. 3-Layer Permission Check</h4>
-                <p>도구 실행 전 3단계 권한 검증이 수행됩니다:</p>
-                <ul>
-                  <li><code>validateInput()</code> — 입력 스키마 검증 (Zod 파싱)</li>
-                  <li><code>tool.checkPermissions()</code> — 도구별 커스텀 권한 확인</li>
-                  <li><code>hasPermissionsToUseTool()</code> — 전역 권한 정책 적용</li>
-                </ul>
-                <p>각 레이어가 독립적으로 거부할 수 있어 심층 방어(defense-in-depth)를 구현합니다.</p>
+                <p>도구 실행 전 3단계 권한 검증이 수행됩니다: 입력 스키마 검증, 도구별 커스텀 권한 확인, 전역 권한 정책 적용. 각 레이어가 독립적으로 거부할 수 있어 심층 방어(defense-in-depth)를 구현하고, 한 단계의 설정 실수가 전체 시스템을 위협하지 않도록 합니다.</p>
               </div>
               <div class="feature-card">
                 <h4>3. Deferred Tool Loading</h4>
                 <p>
-                  <code>shouldDefer</code> 플래그가 설정된 도구는 초기 프롬프트에 전체 스키마를 포함하지 않습니다. 대신 <strong>이름만 노출</strong>하고, 모델이 해당 도구를 사용하려 할 때 <code>ToolSearch</code>를 통해 동적으로 스키마를 로드합니다. 이 방식으로 초기 프롬프트 크기를 <strong>~3-5K 토큰</strong> 절감하여 응답 속도와 비용 효율을 개선합니다.
+                  자주 사용하지 않는 도구는 초기 프롬프트에 전체 스키마를 포함하지 않고, 이름만 노출합니다. 모델이 해당 도구를 사용하려 할 때 동적으로 스키마를 로드하므로, 초기 프롬프트 크기를 약 3-5K 토큰 절감하여 응답 속도와 비용 효율을 개선합니다.
                 </p>
               </div>
               <div class="feature-card">
                 <h4>4. Result Persistence</h4>
                 <p>
-                  도구 실행 결과가 큰 경우 전체 결과를 컨텍스트에 넣지 않고 <strong>디스크에 저장</strong>합니다. 모델에게는 요약(preview)만 전달하여 컨텍스트 윈도우를 효율적으로 사용합니다. 큰 파일 읽기, 방대한 검색 결과, 긴 셸 출력 등에서 특히 중요한 전략입니다.
+                  도구 실행 결과가 큰 경우 전체 결과를 컨텍스트에 넣지 않고 디스크에 저장합니다. 모델에게는 요약(preview)만 전달하여 컨텍스트 윈도우를 효율적으로 사용합니다. 큰 파일 읽기, 방대한 검색 결과, 긴 셸 출력 등에서 특히 중요한 전략입니다.
                 </p>
               </div>
               <div class="feature-card">
                 <h4>5. Prompt Cache Stability</h4>
                 <p>
-                  도구 목록을 API에 전달할 때 항상 <strong>정렬된 순서</strong>를 유지합니다. Anthropic API의 prompt caching은 도구 목록의 순서가 바뀌면 캐시 키가 달라져 히트율이 떨어지므로, 동일한 도구 세트는 항상 동일한 캐시 키를 생성하도록 보장합니다. 전체 도구 스키마는 약 <strong>14-17K 토큰</strong>을 차지합니다.
+                  도구 목록을 API에 전달할 때 항상 정렬된 순서를 유지합니다. Anthropic API의 prompt caching은 도구 목록의 순서가 바뀌면 캐시 키가 달라져 히트율이 떨어지므로, 동일한 도구 세트는 항상 동일한 캐시 키를 생성하도록 보장합니다. 전체 도구 스키마는 약 14-17K 토큰을 차지합니다.
                 </p>
               </div>
             </div>
@@ -1308,7 +1302,7 @@ flowchart TB
           <section class="section">
             <div class="section-header">
               <h3 class="section-title" style="font-size: 20px;">도구 상세 정보</h3>
-              <p class="section-desc" style="margin-top:8px;">각 카테고리별 상세 속성과 동작 방식을 확인할 수 있습니다.</p>
+              <p class="section-desc" style="margin-top:8px;">각 도구의 세부 사항을 확인하세요.</p>
             </div>
 
             <div class="tool-card">
@@ -1790,12 +1784,12 @@ flowchart TB
             <div class="callout callout-insight">
               <span class="callout-icon">&#128269;</span>
               <div>
-                <strong>도구 선택 규칙</strong>
-                <strong>파일 읽기:</strong> Read (cat/head/tail 사용 금지)<br/>
-                <strong>파일 편집:</strong> Edit (sed/awk 사용 금지)<br/>
-                <strong>파일 생성:</strong> Write (echo/heredoc 사용 금지)<br/>
-                <strong>파일 검색:</strong> Glob (find/ls 사용 금지)<br/>
-                <strong>콘텐츠 검색:</strong> Grep (grep/rg 사용 금지)
+                <strong>도구 선택 규칙</strong><br/>
+                - <strong>파일 읽기:</strong> Read (cat/head/tail 사용 금지)<br/>
+                - <strong>파일 편집:</strong> Edit (sed/awk 사용 금지)<br/>
+                - <strong>파일 생성:</strong> Write (echo/heredoc 사용 금지)<br/>
+                - <strong>파일 검색:</strong> Glob (find/ls 사용 금지)<br/>
+                - <strong>콘텐츠 검색:</strong> Grep (grep/rg 사용 금지)
               </div>
             </div>
           </section>
@@ -1808,7 +1802,7 @@ flowchart TB
               <div class="section-badge" style="background:var(--color-accent-blue-light);color:var(--color-accent-blue);">&#128104;‍&#128187; Code Intelligence</div>
               <h2 class="section-title">코드 인텔리전스 도구</h2>
               <p class="section-desc">
-                Language Server Protocol (LSP)을 통한 고급 코드 분석 및 네비게이션 기능을 제공합니다.
+                코드 정의 찾기, 참조 검색, 타입 정보 확인 등의 고급 코드 기능을 제공합니다.
               </p>
             </div>
 
@@ -1820,7 +1814,7 @@ flowchart TB
               </div>
               <div class="tool-card-body">
                 <div class="tool-card-content">
-                  <p><strong>Language Server Protocol (LSP) 통합으로 고급 코드 인텔리전스 제공:</strong></p>
+                  <p><strong>고급 코드 분석 기능:</strong></p>
                   <table style="margin-top: 12px;">
                     <tr>
                       <th>기능</th>
@@ -1955,14 +1949,10 @@ flowchart TB
                   </table>
                   <p style="margin-top: 12px;"><strong>보안 기능:</strong></p>
                   <ul>
-                    <li>경로 제한 (화이트리스트 디렉토리)</li>
-                    <li>네트워크 격리 (환경 변수 및 방화벽)</li>
-                    <li>작업 디렉터리 지속성</li>
-                    <li>타임아웃 에스컬레이션</li>
-                    <li>stripSafeWrappers - 래퍼 명령 정규화</li>
-                    <li>Output redirection validation - 출력 리다이렉션 검증</li>
-                    <li>Compound command security - 복합 명령 보안</li>
-                    <li>Semantic checks - eval/source 의미론적 검사</li>
+                    <li>접근 권한 경로 제한</li>
+                    <li>네트워크 격리</li>
+                    <li>명령어 타임아웃</li>
+                    <li>위험한 명령어 차단</li>
                   </ul>
                 </div>
               </div>
@@ -1976,7 +1966,7 @@ flowchart TB
               </div>
               <div class="tool-card-body">
                 <div class="tool-card-content">
-                  <p>JSON을 수동으로 파싱하지 않고 셀 수준에서 Jupyter 노트북 (.ipynb) 파일을 편집합니다.</p>
+                  <p>Jupyter 노트북의 개별 셀을 쉽게 추가, 수정, 삭제할 수 있습니다.</p>
                   <table style="margin-top: 12px;">
                     <tr>
                       <th>속성</th>
@@ -2017,7 +2007,7 @@ flowchart TB
               </div>
               <div class="tool-card-body">
                 <div class="tool-card-content">
-                  <p>Windows 동등 실행 도구입니다. Bash와 동일한 보안 모델을 사용합니다.</p>
+                  <p>Windows의 셸 명령어 실행 도구입니다. Bash 도구와 동일한 안전성을 제공합니다.</p>
                   <table style="margin-top: 12px;">
                     <tr>
                       <th>속성</th>
@@ -2052,7 +2042,7 @@ flowchart TB
               </div>
               <div class="tool-card-body">
                 <div class="tool-card-content">
-                  <p>대화형 Python 코드 평가를 위한 내부 전용 실행 도구입니다. 공개 시스템 프롬프트에 노출되지 않습니다.</p>
+                  <p>Python 코드를 실시간으로 실행하고 테스트할 수 있습니다. 이전 명령의 결과가 유지됩니다.</p>
                   <table style="margin-top: 12px;">
                     <tr>
                       <th>속성</th>
@@ -2083,9 +2073,9 @@ flowchart TB
             <div class="callout callout-security">
               <span class="callout-icon">&#128274;</span>
               <div>
-                <strong>동시성 모델</strong>
-                <strong>동시 도구 (isConcurrencySafe: true):</strong> Read, Glob, Grep, WebFetch, WebSearch<br/>
-                <strong>직렬 도구 (isConcurrencySafe: false):</strong> Bash, Edit, Write, NotebookEdit, PowerShell<br/>
+                <strong>동시성 모델</strong><br/>
+                - <strong>동시 도구 (isConcurrencySafe: true):</strong> Read, Glob, Grep, WebFetch, WebSearch<br/>
+                - <strong>직렬 도구 (isConcurrencySafe: false):</strong> Bash, Edit, Write, NotebookEdit, PowerShell<br/>
                 직렬 도구는 경쟁 조건을 방지하기 위해 한 번에 하나씩 실행됩니다.
               </div>
             </div>
@@ -2177,7 +2167,7 @@ flowchart TB
               </div>
               <div class="tool-card-body">
                 <div class="tool-card-content">
-                  <p>웹 페이지에서 읽을 수 있는 콘텐츠를 가져와 HTML을 분석용 구조화된 텍스트로 변환합니다.</p>
+                  <p>URL에서 웹 페이지의 콘텐츠를 가져와 읽을 수 있게 정리합니다.</p>
                   <table style="margin-top: 12px;">
                     <tr>
                       <th>속성</th>
@@ -2200,19 +2190,16 @@ flowchart TB
                       <td>Network-class</td>
                     </tr>
                   </table>
-                  <p style="margin-top: 12px;"><strong>콘텐츠 추출 전략:</strong></p>
+                  <p style="margin-top: 12px;"><strong>추출 방식:</strong></p>
                   <ul>
-                    <li>스크립트, 스타일, 네비게이션 제거</li>
-                    <li>주요 콘텐츠 영역 식별</li>
-                    <li>의미 있는 구조 보존 (제목, 코드, 리스트)</li>
-                    <li>대형 페이지 자르기 (최대 8000-16000 토큰)</li>
+                    <li>주요 콘텐츠만 추출</li>
+                    <li>구조 및 제목 보존</li>
+                    <li>필요시 페이지 자동 정리</li>
                   </ul>
-                  <p style="margin-top: 12px;"><strong>콘텐츠 유형 처리:</strong></p>
+                  <p style="margin-top: 12px;"><strong>지원 형식:</strong></p>
                   <ul>
-                    <li>HTML 페이지 - 표준 추출 파이프라인</li>
-                    <li>JSON API - 정렬 인쇄로 포맷</li>
-                    <li>텍스트 / Markdown - 그대로 반환</li>
-                    <li>PDF - 텍스트로 변환 (약 50KB 제한)</li>
+                    <li>HTML, JSON, 텍스트, Markdown</li>
+                    <li>PDF (텍스트로 변환)</li>
                   </ul>
                 </div>
               </div>
@@ -2221,29 +2208,16 @@ flowchart TB
             <div class="callout callout-security">
               <span class="callout-icon">&#128274;</span>
               <div>
-                <strong>프롬프트 인젝션 탐지</strong>
-                WebSearch와 WebFetch는 외부 콘텐츠가 모델 동작을 조작하지 못하도록 <strong>5가지 패턴 카테고리</strong>를 감시합니다:<br/>
-                1. <strong>Instruction-like text</strong> — "SYSTEM:", "RULE:" 등 시스템 지시사항을 모방하는 텍스트<br/>
-                2. <strong>Role override attempts</strong> — "now you are", "pretend you" 등 모델 정체성 변경 시도<br/>
-                3. <strong>System prompt mimicry</strong> — "ignore original instructions" 등 기존 지시사항 무효화 시도<br/>
-                4. <strong>Tool invocation hijacking</strong> — <code>&lt;tool_use name=&gt;</code> 등 도구 호출 구문 삽입<br/>
-                5. <strong>Escape sequences</strong> — 숨겨진 HTML 주석, 보이지 않는 유니코드 등 컨텍스트 조작<br/><br/>
-                <strong>신뢰도 70% 이상</strong> 시 사용자에게 즉시 플래그 지정하고, 모델은 의심스러운 콘텐츠를 추가 처리하지 않습니다. 코드 예시나 문서에서 프롬프트를 논의하는 정상적인 콘텐츠는 오탐하지 않도록 <strong>정밀도 우선</strong> 설계되었습니다.
+                <strong>악의적 콘텐츠 탐지</strong>
+                웹에서 가져온 콘텐츠가 unsafe하지 않도록 자동으로 검사합니다. 위험한 내용이 감지되면 사용자에게 경고합니다.
               </div>
             </div>
 
             <div class="callout callout-insight">
               <span class="callout-icon">&#128269;</span>
               <div>
-                <strong>네트워크 샌드박스</strong>
-                웹 도구는 Bash 샌드박스와 별도로 분리된 네트워크 보안 경계에서 작동합니다.<br/><br/>
-                <strong>기본 허용 목록:</strong> <code>*.github.com</code>, <code>*.npmjs.org</code>, <code>*.pypi.org</code>, 공식 AWS/Google Cloud/Azure 문서, Stack Overflow<br/>
-                <strong>명시적 차단:</strong> 사설 IP(10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16), Link-local(169.254.0.0/16), 멀티캐스트(224.0.0.0/4), Localhost<br/><br/>
-                <strong>SSRF 방지 4단계:</strong><br/>
-                &nbsp;&nbsp;1) URL 파싱 단계에서 사설 IP/localhost 차단<br/>
-                &nbsp;&nbsp;2) DNS 확인 후 IP를 deny 목록과 재검증<br/>
-                &nbsp;&nbsp;3) 리디렉션이 사설 IP로 향하면 차단<br/>
-                &nbsp;&nbsp;4) 의심스러운 Location 헤더 검증
+                <strong>네트워크 보안</strong>
+                웹 도구는 공식 사이트만 접속할 수 있도록 제한됩니다. 내부 네트워크나 localhost 접속은 차단되고, 악의적인 리디렉션도 감지합니다.
               </div>
             </div>
           </section>
@@ -2256,7 +2230,7 @@ flowchart TB
               <div class="section-badge" style="background:var(--color-accent-purple-light);color:var(--color-accent-purple);">&#9733; Advanced</div>
               <h2 class="section-title">고급 도구</h2>
               <p class="section-desc">
-                에이전트 생성, 작업 관리, MCP 통합을 통한 고급 기능을 제공합니다.
+                복잡한 작업을 자동화하고 외부 서버를 연결하는 도구들입니다.
               </p>
             </div>
 
@@ -2330,7 +2304,7 @@ sequenceDiagram
               </div>
               <div class="tool-card-body">
                 <div class="tool-card-content">
-                  <p>복잡한 작업을 자율적으로 처리하기 위한 특화 서브에이전트 프로세스를 시작합니다.</p>
+                  <p>독립적인 에이전트를 만들어 병렬로 작업을 처리할 수 있습니다.</p>
                   <table style="margin-top: 12px;">
                     <tr>
                       <th>속성</th>
@@ -2367,7 +2341,7 @@ sequenceDiagram
               </div>
               <div class="tool-card-body">
                 <div class="tool-card-content">
-                  <p>지연 정의된 도구의 전체 스키마를 동적으로 로드합니다.</p>
+                  <p>아직 로드되지 않은 도구의 상세 정보를 가져옵니다.</p>
                   <table style="margin-top: 12px;">
                     <tr>
                       <th>속성</th>
@@ -2386,12 +2360,11 @@ sequenceDiagram
                       <td>완전한 JSON Schema 정의</td>
                     </tr>
                   </table>
-                  <p style="margin-top: 12px;"><strong>동작 방식:</strong></p>
+                  <p style="margin-top: 12px;"><strong>사용 방식:</strong></p>
                   <ol style="margin: 8px 0; padding-left: 20px;">
-                    <li>지연 도구가 시스템 리마인더에 이름으로 표시</li>
-                    <li>가져오기 전에는 이름만 알려짐 — 스키마 없음</li>
-                    <li>ToolSearch가 전체 스키마 반환</li>
-                    <li>가져온 후 빌트인 도구처럼 호출 가능</li>
+                    <li>이름으로만 보이는 도구를 찾습니다</li>
+                    <li>상세 정보를 자동으로 불러옵니다</li>
+                    <li>이제 일반 도구처럼 사용할 수 있습니다</li>
                   </ol>
                 </div>
               </div>
@@ -2405,7 +2378,7 @@ sequenceDiagram
               </div>
               <div class="tool-card-body">
                 <div class="tool-card-content">
-                  <p>작업 시스템은 다중 에이전트 운영을 위한 결함 허용 조정 프로토콜입니다.</p>
+                  <p>백그라운드에서 실행되는 작업들을 생성, 추적, 관리합니다.</p>
                   <table style="margin-top: 12px;">
                     <tr>
                       <th>도구</th>
@@ -2440,15 +2413,12 @@ sequenceDiagram
                       <td>실행 중인 에이전트 작업으로 메시지 전송</td>
                     </tr>
                   </table>
-                  <p style="margin-top: 12px;"><strong>일곱 가지 작업 유형:</strong></p>
+                  <p style="margin-top: 12px;"><strong>작업 유형:</strong></p>
                   <ul>
-                    <li>local_bash - 로컬 셸 명령 실행</li>
-                    <li>local_agent - AgentTool을 통해 생성된 부분 에이전트</li>
-                    <li>remote_agent - 원격 에이전트 (API를 통해 배포)</li>
-                    <li>in_process_teammate - 공유 메모리 팀원</li>
-                    <li>local_workflow - 순차 또는 병렬 단계 워크플로우</li>
-                    <li>monitor_mcp - MCP 서버 모니터링</li>
-                    <li>dream - 자동 드림 백그라운드 작업 (KAIROS)</li>
+                    <li>로컬 셸 명령</li>
+                    <li>로컬 또는 원격 에이전트</li>
+                    <li>순차 또는 병렬 워크플로우</li>
+                    <li>모니터링 작업</li>
                   </ul>
                 </div>
               </div>
@@ -2462,7 +2432,7 @@ sequenceDiagram
               </div>
               <div class="tool-card-body">
                 <div class="tool-card-content">
-                  <p>Model Context Protocol (MCP) 서버와 통합하여 도구 기능을 동적으로 확장합니다.</p>
+                  <p>외부 서버를 연결하여 도구를 추가할 수 있습니다.</p>
                   <table style="margin-top: 12px;">
                     <tr>
                       <th>속성</th>
@@ -2489,17 +2459,10 @@ sequenceDiagram
                       <td>계층적 범위: Enterprise > Project > User > ClaudeAI > Dynamic</td>
                     </tr>
                   </table>
-                  <p style="margin-top: 12px;"><strong>인증 방식:</strong></p>
+                  <p style="margin-top: 12px;"><strong>지원:</strong></p>
                   <ul>
-                    <li>RFC 8693 Cross-App Access (XAA) - CLI 브라우저 팝업 없이</li>
-                    <li>OAuth 클라이언트 플로우</li>
-                    <li>API 키, HTTP Basic 인증</li>
-                  </ul>
-                  <p style="margin-top: 12px;"><strong>캐싱 전략:</strong></p>
-                  <ul>
-                    <li>LRU 캐시 - 해시 기반 무효화</li>
-                    <li>서버 상태 변경 감지 자동</li>
-                    <li>반복 요청 지연 시간 감소</li>
+                    <li>OAuth, API 키, 기본 인증</li>
+                    <li>자동 캐싱으로 빠른 응답</li>
                   </ul>
                 </div>
               </div>
@@ -2508,25 +2471,16 @@ sequenceDiagram
             <div class="callout callout-insight">
               <span class="callout-icon">&#128269;</span>
               <div>
-                <strong>MCP 구성 계층</strong>
-                <strong>7개 범위 계층 구조</strong> (우선순위 높은 순):<br/>
-                1. <strong>Enterprise</strong> — 조직 정책, 오버라이드 불가 (관리자 설정)<br/>
-                2. <strong>Project</strong> — <code>.claude/settings.json</code> (프로젝트 루트)<br/>
-                3. <strong>User</strong> — <code>~/.claude/settings.json</code> (사용자 홈)<br/>
-                4. <strong>ClaudeAI</strong> — Claude.ai 워크스페이스 설정<br/>
-                5. <strong>Dynamic</strong> — 런타임 매개변수 (API 호출 시 전달)<br/><br/>
-                상위 범위가 하위를 오버라이드합니다. Enterprise 범위의 deny 규칙은 하위에서 절대 해제할 수 없으며, 이를 통해 조직 차원의 보안 정책을 강제합니다.<br/>
-                <strong>인증 방식:</strong> RFC 8693 Cross-App Access (XAA) 토큰 교환으로 CLI 브라우저 팝업 없이 OAuth 인증을 처리하며, API 키와 HTTP Basic 인증도 지원합니다.
+                <strong>MCP 설정</strong>
+                조직, 프로젝트, 사용자 수준에서 설정할 수 있습니다. 상위 수준의 설정이 우선됩니다. OAuth 또는 API 키로 인증합니다.
               </div>
             </div>
 
             <div class="callout callout-warning">
               <span class="callout-icon">&#9888;&#65039;</span>
               <div>
-                <strong>프롬프트 캐싱 영향</strong>
-                <strong>MCP 도구 스키마는 캐시 가능한 prefix가 아닌 세션 suffix에 배치됩니다.</strong><br/>
-                빌트인 도구(~14-17K 토큰)는 항상 동일하므로 <strong>캐시 가능한 prefix</strong>에 위치하지만, MCP 도구는 서버 연결 상태, 스키마 변경, 사용자별 설정에 따라 달라지므로 suffix에 배치됩니다.<br/>
-                <strong>LRU 캐시 전략:</strong> MCP 서버의 도구 스키마를 해시 기반으로 캐시하여 서버 상태 변경을 자동 감지하고, 반복 요청의 지연 시간을 줄입니다.
+                <strong>성능</strong>
+                MCP 서버의 도구 정보는 캐싱되어 반복 요청이 빠릅니다. 서버 상태 변경은 자동으로 감지합니다.
               </div>
             </div>
           </section>
@@ -2537,10 +2491,9 @@ sequenceDiagram
           <section class="section">
             <div class="section-header">
               <div class="section-badge">&#8984; Command Catalog</div>
-              <h2 class="section-title">명령어 카탈로그 (101 Commands)</h2>
+              <h2 class="section-title">명령어 (101개)</h2>
               <p class="section-desc">
-                Claude Code의 슬래시 명령어는 14개 카테고리에 총 101개의 명령어로 구성되어 있습니다.
-                각 명령어는 특정 워크플로우를 지원하며, 사용자의 작업 맥락에 따라 자동으로 인식됩니다.
+                슬래시(/) 명령어로 Claude Code의 다양한 기능을 빠르게 실행할 수 있습니다.
               </p>
             </div>
 

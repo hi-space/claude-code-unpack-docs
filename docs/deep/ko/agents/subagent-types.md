@@ -275,6 +275,30 @@ Agent를 생성할 때 호출자는 Agent 유형, 프롬프트, 백그라운드 
 
 Subagent는 격리된 git Worktree에서 실행되어 충돌 없이 코드를 안전하게 수정할 수 있습니다. 병렬 파일 수정이 병합 충돌 없이 가능하고, 임시 브랜치가 자동으로 정리되고, 비파괴적 탐색 (변경사항을 버릴 수 있음)이 가능합니다.
 
+### Worktree Strategy
+
+```mermaid
+graph TB
+    Main["Main Worktree<br/>(branch: main)"]
+    
+    Main --> WT1["Worktree 1<br/>(team/feature-a)"]
+    Main --> WT2["Worktree 2<br/>(team/feature-b)"]
+    Main --> WT3["Worktree 3<br/>(team/tests)"]
+    
+    WT1 --> |"git commit<br/>+ git push"| PR1["Pull Request<br/>Feature A"]
+    WT2 --> |"git commit<br/>+ git push"| PR2["Pull Request<br/>Feature B"]
+    WT3 --> |"git commit<br/>+ git push"| PR3["Pull Request<br/>Tests"]
+    
+    PR1 --> Main
+    PR2 --> Main
+    PR3 --> Main
+    
+    style Main fill:#3498db,color:#fff
+    style WT1 fill:#2ecc71,color:#fff
+    style WT2 fill:#2ecc71,color:#fff
+    style WT3 fill:#2ecc71,color:#fff
+```
+
 ### Worktree Lifecycle
 
 부모 Agent가 `isolation: 'worktree'` 옵션과 함께 Agent를 생성하면, 시스템은 자동으로 git Worktree를 설정합니다. Agent가 변경사항을 만들면, 결과는 worktreePath와 브랜치 이름을 포함합니다. 부모는 이 브랜치에서 PR을 생성할 수 있습니다. 변경사항이 없으면 Worktree가 자동으로 정리됩니다.

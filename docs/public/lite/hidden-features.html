@@ -819,7 +819,7 @@
         <div class="hero-eyebrow">Hidden Features</div>
         <h1>Feature Flags &amp; Unreleased Features</h1>
         <p class="hero-desc">
-          44개 피처 플래그, 모델 코드명, 미출시 기능 분석
+          Claude Code의 숨겨진 기능, 모델, 설정을 다룹니다.
         </p>
         <div class="hero-stats">
           <div class="hero-stat">
@@ -865,12 +865,12 @@
               <div class="section-badge" style="background:var(--color-accent-red-light);color:var(--color-accent-red);">&#9873; 기능 플래그</div>
               <h2 class="section-title">Feature Flags (기능 플래그)</h2>
               <p class="section-desc">
-                44개의 피처 플래그는 컴파일 타임(공개 빌드에서 제거)과 런타임(GrowthBook 원격 제어)으로 분류됩니다.
+                44개 플래그는 Claude Code의 진화 로드맵을 명시합니다. 컴파일 타임 플래그 12개는 빌드할 때 포함/제외되며, 런타임 플래그 15+개는 GrowthBook으로 Anthropic이 재배포 없이 원격 제어합니다.
               </p>
             </div>
 
             <h3 style="font-size: 18px; font-weight: 700; margin: 28px 0 16px; color: var(--color-text);">컴파일 타임 플래그 (12개)</h3>
-            <p style="font-size: 14px; color: var(--color-text-secondary); margin-bottom: 16px;">공개 빌드에서 완전히 제거되는 기능:</p>
+            <p style="font-size: 14px; color: var(--color-text-secondary); margin-bottom: 16px;">빌드할 때 포함하거나 제외하는 기능:</p>
 
             <div style="overflow-x: auto;">
               <table class="tech-table">
@@ -959,8 +959,8 @@
               </table>
             </div>
 
-            <h3 style="font-size: 18px; font-weight: 700; margin: 28px 0 16px; color: var(--color-text);">런타임 플래그 — GrowthBook (15+)</h3>
-            <p style="font-size: 14px; color: var(--color-text-secondary); margin-bottom: 16px;"><code>tengu_</code> 접두사를 사용하며 원격 제어:</p>
+            <h3 style="font-size: 18px; font-weight: 700; margin: 28px 0 16px; color: var(--color-text);">런타임 플래그 (15+)</h3>
+            <p style="font-size: 14px; color: var(--color-text-secondary); margin-bottom: 16px;"><code>tengu_</code> 접두사를 사용하며, 실행 중에 원격으로 제어됩니다:</p>
 
             <div style="overflow-x: auto;">
               <table class="tech-table">
@@ -1054,10 +1054,7 @@
             <div class="feature-card">
               <h4>피처 플래그의 의미</h4>
               <p>
-                44개 플래그는 Claude Code의 진화 로드맵을 명시:<br/><strong>현재 상태:</strong> 반응형 단일 에이전트 코딩 어시스턴트<br/><strong>미래 상태:</strong> 자율적, 멀티모달(음성/텍스트), 멀티에이전트 개발 플랫폼<br/><strong>배포 전략:</strong> 컴파일 타임 플래그 12개는 공개 빌드에서 완전 제거 (dead code elimination). 런타임 플래그 15+개는 GrowthBook으로 Anthropic이 원격 제어 (재배포 불필요).
-              </p>
-              <p style="font-size: 13px; color: var(--color-text-secondary); margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--color-border);">
-                <strong>주의:</strong> KAIROS, VOICE_MODE, BUDDY, ULTRAPLAN은 디렉토리가 존재하지만 소스에서 inline <code>feature()</code> 호출로 게이트되지 않습니다. 대신 모듈 진입점(예: <code>isVoiceGrowthBookEnabled()</code>)에서 다양한 게이팅 메커니즘을 사용합니다.
+                44개 플래그는 Claude Code의 진화 로드맵을 명시합니다. <strong>현재 상태:</strong> 반응형 단일 에이전트 코딩 어시스턴트, <strong>미래 상태:</strong> 자율적, 멀티모달(음성/텍스트), 멀티에이전트 개발 플랫폼. 컴파일 타임 플래그 12개는 공개 빌드에서 dead code elimination으로 완전 제거되고, 런타임 플래그 15+개는 GrowthBook으로 원격 제어되어 재배포 불필요합니다.
               </p>
             </div>
 
@@ -1078,7 +1075,7 @@ pie title "피처 플래그 분포"
               <div class="section-badge" style="background:var(--color-accent-blue-light);color:var(--color-accent-blue);">&#9733; 모델 코드명</div>
               <h2 class="section-title">Model Codenames (모델 코드명)</h2>
               <p class="section-desc">
-                유출된 소스코드에서 발견된 Claude 모델의 내부 코드네임. 공식적으로 문서화되지 않았지만 소스에 여러 곳에서 등장합니다.
+                Claude 모델과 Claude Code 프로젝트의 내부 코드네임입니다. 소스 코드에 임베딩된 이들 이름은 Anthropic의 개발 로드맵과 모델 진화 과정을 드러냅니다.
               </p>
             </div>
 
@@ -1118,9 +1115,9 @@ pie title "피처 플래그 분포"
 
             <h3 style="font-size: 18px; font-weight: 700; margin: 28px 0 16px; color: var(--color-text);">Capybara (Sonnet v8)</h3>
             <div class="feature-card">
-              <h4>1. 1M 컨텍스트 윈도우</h4>
+              <h4>1. Fast Mode 변형 모델</h4>
               <p>
-                Capybara는 Sonnet v8의 내부 코드네임, 1M 토큰 컨텍스트 윈도우.<br/><strong>역할:</strong> Claude Code의 "fast mode" 구동 모델로 소스에서 발견.<br/><strong>트레이드오프:</strong> 거짓 주장률 29-30% (v4의 16.7% → 회귀). 속도 최적화로 인한 정확도 손실 시사.<br/><strong>용도:</strong> 반응성이 중요한 상황에서 속도 우선 선택 옵션.
+                Capybara는 Sonnet v8의 내부 코드네임으로 Claude Code의 "fast mode" 구동 모델입니다. 1M 토큰 컨텍스트 윈도우를 제공합니다. 속도 최적화의 트레이드오프로 거짓 주장률이 29-30% (Opus v4의 16.7% 대비) 상승했습니다. 반응성이 중요한 상황에서 정확도보다 속도를 우선하는 선택지입니다.
               </p>
             </div>
 
@@ -1128,7 +1125,7 @@ pie title "피처 플래그 분포"
             <div class="feature-card">
               <h4>2. 모델 마이그레이션 경로</h4>
               <p>
-                Fennec은 Opus 4.6의 직계 전신 (공식 미공개).<br/><strong>발견 증거:</strong> 소스코드에 Fennec → Opus 마이그레이션 경로 존재 (resolveModelId 함수의 model mapping).<br/><strong>의미:</strong> Anthropic의 체계적 모델 업그레이드 프로세스 증명. 버전 전환 시 기존 설정/행동 호환성 유지 메커니즘.
+                Fennec은 Opus 4.6의 직계 전신으로 공식 미공개 모델입니다. resolveModelId 함수에 Fennec → Opus 마이그레이션 경로가 존재하여 Anthropic의 체계적 모델 업그레이드 프로세스를 증명합니다. 버전 전환 시 기존 설정과 행동 호환성을 유지하는 메커니즘이 내장되어 있습니다.
               </p>
             </div>
 
@@ -1136,55 +1133,18 @@ pie title "피처 플래그 분포"
             <div class="feature-card">
               <h4>3. 공개적으로 발표되지 않은 차세대 모델</h4>
               <p>
-                Numbat은 미발표 차세대 모델의 내부 코드네임.<br/><strong>발견:</strong><ul><li>출시 일정이 소스코드에 embedded (feature flag gates 존재)</li><li>model_routing_logic에서 Numbat 조건부 분기</li><li>다른 system prompt instructions (능력/제약 프로파일)</li><li>resolveModelId에서 "numbat" → 예약된 API ID 매핑</li></ul><strong>의미:</strong> Numbat은 이미 내부 개발 중이며 출시 준비 단계.
+                Numbat은 미발표 차세대 모델의 내부 코드네임입니다. 출시 일정이 소스코드 feature flag gates에 임베딩되어 있으며, model_routing_logic에서 조건부 분기가 존재합니다. 다른 system prompt instructions (능력/제약 프로파일)이 정의되어 있고, resolveModelId에서 "numbat" → 예약된 API ID 매핑이 존재합니다. Numbat은 이미 내부 개발 중이며 출시 준비 단계입니다.
               </p>
             </div>
 
-            <h3 style="font-size: 18px; font-weight: 700; margin: 28px 0 16px; color: var(--color-text);">Tengu (프로젝트 코드네임 및 피처 플래그 프리픽스)</h3>
+            <h3 style="font-size: 18px; font-weight: 700; margin: 28px 0 16px; color: var(--color-text);">Tengu (프로젝트 코드네임)</h3>
             <div class="feature-card">
               <h4>4. Claude Code 자체의 코드네임</h4>
               <p>
-                Tengu는 모델이 아닌 <strong>Claude Code 프로젝트 자체의 내부 코드네임</strong>이자 <strong>피처 플래그 프리픽스</strong>.
-                <code>tengu_</code> 접두사가 모든 시스템에 일관적 네임스페이스 제공:
+                Tengu는 모델이 아닌 <strong>Claude Code 프로젝트 자체의 내부 코드네임</strong>이자 <strong>피처 플래그 프리픽스</strong>입니다. <code>tengu_</code> 접두사가 모든 시스템에 일관적 네임스페이스를 제공합니다: GrowthBook feature flags (tengu_anti_distill_fake_tool_injection 등), OpenTelemetry 텔레메트리 이벤트, 환경 변수 (TENGU_DEBUG=1), 설정 키 (tengu_log_tool_metrics). Tengu는 모델 식별자가 아닌 기능 플래그 네임스페이스로서 Claude Code를 다른 Anthropic 제품과 구분합니다.
               </p>
-              <ul>
-                <li>GrowthBook feature flags (tengu_anti_distill_fake_tool_injection 등)</li>
-                <li>OpenTelemetry 텔레메트리 이벤트</li>
-                <li>환경 변수 (TENGU_DEBUG=1)</li>
-                <li>설정 키 (tengu_log_tool_metrics)</li>
-              </ul>
-              <p><strong>효과:</strong> Claude Code 특정 기능을 다른 Anthropic 제품과 구분. Tengu는 모델 식별자가 아닌 기능 플래그 네임스페이스입니다.</p>
             </div>
 
-            <div style="margin: 28px 0;">
-              <h4 style="font-size: 15px; font-weight: 700; margin-bottom: 12px; color: var(--color-text);">Tengu 사용처</h4>
-              <table class="tech-table">
-                <thead>
-                  <tr>
-                    <th>사용처</th>
-                    <th>예시</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr>
-                    <td>피처 플래그</td>
-                    <td><code>tengu_anti_distill_fake_tool_injection</code></td>
-                  </tr>
-                  <tr>
-                    <td>텔레메트리 이벤트</td>
-                    <td><code>tengu_</code> 접두사 분석 이벤트</td>
-                  </tr>
-                  <tr>
-                    <td>GrowthBook 플래그</td>
-                    <td><code>tengu_attribution_header</code></td>
-                  </tr>
-                  <tr>
-                    <td>설정 키</td>
-                    <td>다양한 <code>tengu_</code> 접두사 설정</td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
           </div>
 
           <!-- Tab 3: Unreleased Features -->
@@ -1193,7 +1153,7 @@ pie title "피처 플래그 분포"
               <div class="section-badge" style="background:var(--color-accent-purple-light);color:var(--color-accent-purple);">&#9873; 미출시 기능</div>
               <h2 class="section-title">Unreleased Features (미출시 기능)</h2>
               <p class="section-desc">
-                주요 컴파일 타임 플래그 뒤에 숨겨진 완전히 구현된 시스템들입니다. 각 기능은 별도 구조와 아키텍처를 가지고 있습니다.
+                완전히 구현되었지만 컴파일 타임 플래그로 비활성화된 기능들입니다. 각 기능은 별도 디렉토리에 구현되었으며, 재배포 없이 원격 플래그로 활성화될 준비가 되어 있습니다.
               </p>
             </div>
 
@@ -1204,10 +1164,7 @@ pie title "피처 플래그 분포"
                 <span class="badge badge-gated">Gated</span>
               </p>
               <p>
-                가장 중요한 숨겨진 기능입니다. 완전히 구현되었지만 컴파일 타임 플래그로 비활성화되었습니다.
-                <code>&lt;tick&gt;</code> 프롬프트 시스템으로 주기적으로 작업 상태를 평가하고,
-                <code>autoDream</code>으로 유휴 시 메모리를 자동 통합합니다.
-                KAIROS는 Claude Code가 완전히 자율적인 개발 데몬이 될 수 있음을 보여줍니다.
+                KAIROS는 사람의 요청 없이도 코딩 작업을 자동으로 수행하는 백그라운드 데몬입니다. <code>&lt;tick&gt;</code> 프롬프트 시스템으로 주기적으로 작업 상태를 평가하고, <code>autoDream</code>으로 유휴 시 메모리를 자동 통합합니다. 예약된 작업 실행, 자동 리베이스, PR 모니터링을 지원합니다. Claude Code가 완전히 자율적인 개발 데몬이 될 수 있음을 보여주는 가장 중요한 숨겨진 기능입니다.
               </p>
             </div>
 
@@ -1218,66 +1175,41 @@ pie title "피처 플래그 분포"
                 <span class="badge badge-gated">Gated</span>
               </p>
               <p>
-                <code>src/voice/</code> 디렉토리에 완전히 구현된 오디오 파이프라인:
+                <code>src/voice/</code> 디렉토리에 완전히 구현된 오디오 파이프라인입니다. 키보드 단축키(Alt+Space 또는 Cmd+Space)로 마이크를 활성화하고, <code>voiceStreamSTT.ts</code>를 통한 스트리밍 오디오 처리, Text-to-speech synthesis로 응답 전달, 웨이크 워드 및 명령 구문 인식을 모두 지원합니다.
               </p>
-              <ul>
-                <li>키보드 단축키로 마이크 활성화 (Alt+Space 또는 Cmd+Space)</li>
-                <li><code>voiceStreamSTT.ts</code>를 통한 스트리밍 오디오 처리</li>
-                <li>Text-to-speech synthesis로 응답 전달</li>
-                <li>웨이크 워드 및 명령 구문 인식</li>
-              </ul>
             </div>
 
             <div class="feature-card">
-              <h4>3. ULTRAPLAN — 원격 계획 세션 (최대 30분)</h4>
+              <h4>3. ULTRAPLAN — 30분 원격 계획 세션</h4>
               <p style="font-size: 13.5px; color: var(--color-text-secondary); margin: 10px 0;">
                 <span class="badge badge-compile">Compile-time</span>
                 <span class="badge badge-gated">Gated</span>
               </p>
               <p>
-                현재 Plan Mode를 복잡한 아키텍처 결정을 위해 설계된 원격, 장기 실행 변형으로 확장합니다:
+                현재 Plan Mode를 복잡한 아키텍처 결정을 위해 설계된 원격, 장기 실행 변형으로 확장합니다. Anthropic 인프라에서 원격 실행되며 최대 30분 지속(로컬은 2-5분), 여러 반복 호출로 문제를 반복적으로 분석합니다. 마이크로서비스 아키텍처, 프레임워크 마이그레이션, 보안 강화 같은 복잡한 시나리오에 사용됩니다.
               </p>
-              <ul>
-                <li><strong>로컬 vs 원격:</strong> UltraPlan은 Anthropic 인프라에서 원격 실행</li>
-                <li><strong>지속 시간:</strong> 최대 30분 (로컬은 2-5분)</li>
-                <li><strong>실행 방식:</strong> 여러 반복 호출로 문제를 반복적으로 분석</li>
-                <li><strong>용도:</strong> 마이크로서비스 아키텍처, 프레임워크 마이그레이션, 보안 강화</li>
-              </ul>
             </div>
 
             <div class="feature-card">
-              <h4>4. BUDDY — 터미널 펫 시스템</h4>
+              <h4>4. BUDDY — 18종 터미널 펫</h4>
               <p style="font-size: 13.5px; color: var(--color-text-secondary); margin: 10px 0;">
                 <span class="badge badge-compile">Compile-time</span>
                 <span class="badge badge-gated">Gated</span>
               </p>
               <p>
-                가장 예상치 못한 발견입니다. Claude Code 옆에 나타나는 18종의 가상 반려동물:
+                가장 예상치 못한 발견입니다. Claude Code 옆에 나타나는 18종의 가상 반려동물이 구현되어 있습니다. 희귀도 시스템(Common 50% → Uncommon 30% → Rare 15% → Legendary 5%), 레벨 시스템(완료된 작업을 통해 XP 획득)이 완전히 구현되었습니다. 순수 장식 기능이며 비활성화할 수 있습니다.
               </p>
-              <ul>
-                <li><strong>희귀도 시스템:</strong> Common (50%) → Uncommon (30%) → Rare (15%) → Legendary (5%)</li>
-                <li><strong>레벨 시스템:</strong> 완료된 작업을 통해 XP 획득</li>
-                <li><strong>업적 시스템:</strong> 마일스톤에 대한 특수 화장품 해금</li>
-                <li><strong>계절 이벤트:</strong> 제한된 시간 종 스폰 및 변형</li>
-                <li><strong>순수 장식:</strong> 핵심 기능에 영향 없음, 기능 플래그로 비활성화 가능</li>
-              </ul>
             </div>
 
             <div class="feature-card">
-              <h4>5. BRIDGE_MODE — Claude.ai 지속 연결</h4>
+              <h4>5. BRIDGE_MODE — Claude.ai WebSocket 연결</h4>
               <p style="font-size: 13.5px; color: var(--color-text-secondary); margin: 10px 0;">
                 <span class="badge badge-compile">Compile-time</span>
                 <span class="badge badge-gated">Gated</span>
               </p>
               <p>
-                Claude.ai에 대한 WebSocket 연결로 지속적인 백그라운드 세션과 원격 접근을 활성화합니다:
+                Claude.ai와 WebSocket으로 양방향 연결하여 웹과 CLI 사이를 매끄럽게 넘나들 수 있습니다. 배경에서 지속적으로 실행되며 연결 끊김 시 자동으로 재연결됩니다. 두 인터페이스 간 작업 상태와 컨텍스트를 동기화합니다.
               </p>
-              <ul>
-                <li><strong>지속적인 배경 세션:</strong> 웹 UI에서 시작하고 CLI/모바일에서 상태 확인</li>
-                <li><strong>원격 도구 실행:</strong> Claude.ai에서 파일 시스템 작업 또는 시스템 명령 실행</li>
-                <li><strong>크로스 플랫폼 연속성:</strong> 웹에서 시작 → CLI에서 계속 → 모바일에서 완료</li>
-                <li><strong>자동 재연결:</strong> Exponential backoff (1s → 30s max), 30초마다 heartbeat</li>
-              </ul>
             </div>
 
             <div class="feature-card">
@@ -1287,14 +1219,8 @@ pie title "피처 플래그 분포"
                 <span class="badge badge-gated">Gated</span>
               </p>
               <p>
-                Git worktree를 사용하여 안전한 기능 개발과 병렬 작업을 지원합니다:
+                Git worktree를 통해 여러 작업을 동시에 진행할 수 있습니다. 각 작업은 격리된 워크트리에서 실행되어 브랜치 충돌 없이 병렬로 처리 가능합니다. 로컬 상태 관리와 복수 작업 추적 기능이 구현되어 있습니다.
               </p>
-              <ul>
-                <li>각 worktree는 <code>.claude/worktrees/</code>에 격리됨</li>
-                <li>동시 코드 편집 시 충돌 없음</li>
-                <li>독립적인 빌드, 테스트 실행 가능</li>
-                <li>tmux 세션 통합으로 병렬 작업 지원</li>
-              </ul>
             </div>
 
             <div class="feature-card">
@@ -1304,14 +1230,8 @@ pie title "피처 플래그 분포"
                 <span class="badge badge-gated">Gated</span>
               </p>
               <p>
-                계획 단계 중 우발적 실행을 방지하기 위한 읽기 전용 제약:
+                계획 단계에서 모든 실행 도구를 차단하고 읽기 전용 동작만 허용합니다. 사용자가 계획을 검토한 후 명시적 승인을 거쳐야만 실행 도구에 접근할 수 있습니다. 무분별한 자동 실행을 방지하는 안전장치입니다.
               </p>
-              <ul>
-                <li><code>.claude/plans/</code> 디렉토리에 YAML frontmatter가 있는 Markdown 파일로 저장</li>
-                <li>계획 중 Edit, Write, NotebookEdit, Bash 도구 차단</li>
-                <li>Read, Glob, Grep은 허용 (정보 수집)</li>
-                <li>드래프트 → 검토 → 승인 → 실행 워크플로우</li>
-              </ul>
             </div>
 
             <div class="feature-card">
@@ -1321,21 +1241,15 @@ pie title "피처 플래그 분포"
                 <span class="badge badge-gated">Gated</span>
               </p>
               <p>
-                Claude Code 터미널 입력에 포괄적인 Vi/Vim 키바인딩 추가:
+                Claude Code의 CLI 인터페이스에서 Vi/Vim 키바인딩을 완전히 지원합니다. 노멀 모드, 인서트 모드, 커맨드 모드, 비주얼 모드 같은 Vim의 모든 주요 모드와 j/k/h/l 네비게이션, w/b/e 단어 이동, / 검색, :w/:q 커맨드를 구현했습니다.
               </p>
-              <ul>
-                <li><strong>모달 편집:</strong> Normal (navigation) ↔ Insert ↔ Visual (selection)</li>
-                <li><strong>네비게이션:</strong> hjkl, w, b, ^, $, G, gg</li>
-                <li><strong>편집 작업:</strong> d, c, y, p, u, Ctrl-R</li>
-                <li><strong>커맨드 모드:</strong> :w, :q, :set, :%s///g</li>
-              </ul>
             </div>
 
             <div class="callout callout-insight">
               <span class="callout-icon">&#128269;</span>
               <div>
                 <strong>아키텍처 패턴</strong>
-                각 미출시 기능은 격리된 <code>src/feature-name/</code> 디렉토리에 완전 구현되며, compile-time flag로 빌드 시 포함/제외.<br/><strong>배포 전략:</strong> 컴파일 타임 플래그 (KAIROS=true/false로 conditional compilation) + GrowthBook 런타임 제어 (이미 빌드된 기능의 on/off). 이 이중 계층으로 새 버전 배포 없이도 기능 제어 가능. 각 기능은 독립적 마이그레이션 경로, 롤백 가능.
+                각 기능은 별도 디렉토리에 구현되고, 빌드 시 포함하거나 제외합니다. 플래그와 원격 제어로 새 버전 배포 없이도 기능을 켜거나 끌 수 있습니다.
               </div>
             </div>
 
@@ -1377,31 +1291,21 @@ graph TB
             <div class="feature-card">
               <h4>OpenTelemetry 통합</h4>
               <p>
-                Datadog 또는 자체 호스팅 OTEL collector로 내보내지는 포괄적인 observability.
-                PII-free diagnostic logging으로 프라이버시를 보호하면서 완전한 성능 추적을 제공합니다.
+                성능을 모니터링하고 진단 정보를 수집합니다. <code>tengu_otel_sampling_rate</code> 플래그로 샘플링 비율을 동적으로 조정할 수 있으며, 성능 저하 없이 상세한 텔레메트리 데이터를 수집합니다. 개인정보는 철저히 보호됩니다.
               </p>
             </div>
 
             <div class="feature-card">
               <h4>Desktop / Mobile / IDE 통합</h4>
               <p>
-                Claude Code는 터미널을 넘어 확장됩니다:
+                <code>DESKTOP_MOBILE_IDE_INTEGRATION</code> 플래그로 데스크톱, 모바일, IDE, 브라우저 등 다양한 플랫폼에서 Claude Code를 사용할 수 있습니다. <code>tengu_ide_integration_level</code>로 CLI 전용 또는 IDE 포함 모드를 런타임에 선택합니다. 크로스 플랫폼 작업 동기화 인프라가 구현되어 있습니다.
               </p>
-              <ul>
-                <li><strong>Desktop:</strong> 윈도우 관리, 클립보드 통합, 전역 hotkeys</li>
-                <li><strong>Mobile:</strong> iOS/Android companion app, 파일 공유, 음성 입력</li>
-                <li><strong>Browser:</strong> Chrome Extension으로 GitHub PR inline review</li>
-                <li><strong>IDE:</strong> VS Code 확장, JetBrains 플러그인</li>
-                <li><strong>Apps:</strong> Slack bot, GitHub app</li>
-              </ul>
             </div>
 
             <div class="feature-card">
               <h4>GrowthBook 원격 구성</h4>
               <p>
-                단순 기능 플래그를 넘어 전체 원격 구성 및 긴급 제어를 제공합니다.
-                Anthropic은 staged rollouts로 기능을 점진적 배포하고,
-                긴급 상황에 모든 installations에서 즉시 기능을 비활성화할 수 있습니다.
+                15+ 런타임 플래그를 GrowthBook으로 Anthropic이 원격 제어하여 새 버전 배포 없이 기능을 켜거나 끕니다. 단계적 롤아웃(tengu_bridge_mode_rollout), 긴급 비활성화(tengu_distillation_protection off), A/B 테스트(tengu_classifier_sensitivity 0.5-1.0 범위) 등을 지원합니다.
               </p>
             </div>
           </div>
@@ -1412,7 +1316,7 @@ graph TB
               <div class="section-badge" style="background:var(--color-accent-indigo-light);color:var(--color-accent-indigo);">&#9881; 설정 시스템</div>
               <h2 class="section-title">Configuration System (설정 시스템)</h2>
               <p class="section-desc">
-                다층 설정 구조와 GrowthBook 원격 피처 플래그를 통한 동적 제어 시스템
+                CLI 플래그, 환경 변수, 프로젝트/사용자 설정, 원격 플래그, 기본값의 계층적 구조로 기능을 제어합니다. 빌드 타임 컴파일과 런타임 제어를 모두 지원합니다.
               </p>
             </div>
 
@@ -1420,35 +1324,19 @@ graph TB
               <div class="feature-card">
                 <h4>1. GrowthBook Feature Flags</h4>
                 <p>
-                  GrowthBook 클라이언트가 런타임에 기능 플래그를 평가합니다.
-                  tengu_ 접두사가 붙은 모든 플래그는 원격 구성에 대해 평가되며,
-                  Anthropic의 GrowthBook 대시보드의 변경 사항이 새 버전을 푸시하지 않고도
-                  모든 Claude Code 설치 전체에 적용됩니다.
+                  실행 중에 GrowthBook에서 기능 플래그를 동적으로 확인합니다. 새 버전을 배포하지 않고도 모든 설치에 즉시 변경사항을 적용하며, 지역별/세그먼트별 차등 적용도 가능합니다. 롤백은 단 한 번의 서버 설정 변경으로 즉시 반영됩니다.
                 </p>
               </div>
               <div class="feature-card">
                 <h4>2. Configuration Layers</h4>
                 <p>
-                  구성은 우선순위가 있는 여러 레이어를 통해 흐릅니다:
-                  <ul>
-                    <li>1) CLI 플래그 (최우선)</li>
-                    <li>2) 환경 변수 (CLAUDE_CODE_*)</li>
-                    <li>3) 프로젝트 설정 (.claude/settings.json)</li>
-                    <li>4) 사용자 설정 (~/.claude/settings.json)</li>
-                    <li>5) GrowthBook 원격 플래그</li>
-                    <li>6) 컴파일된 기본값 (최하위)</li>
-                  </ul>
+                  설정은 다층 우선순위를 따릅니다: CLI 플래그 (최고) → 환경 변수 → 프로젝트 설정 → 사용자 설정 → 원격 플래그 → 기본값 (최저). 각 계층은 상위 계층이 설정하지 않은 항목만 적용되어 유연한 오버라이드를 지원합니다.
                 </p>
               </div>
               <div class="feature-card">
                 <h4>3. Gradual Module Loading</h4>
                 <p>
-                  Claude Code는 첫 응답 시간(TTFR)을 최소화하기 위해 빠른 경로 최적화를 사용합니다:
-                  <ul>
-                    <li>--version 및 --help: 0 모듈 로딩, 즉시 응답</li>
-                    <li>전체 트리 지연 로딩: REPL 모드와 대화형 세션에만 필요</li>
-                  </ul>
-                  이 최적화는 콜드 스타트에서 인지된 성능을 극적으로 향상시킵니다.
+                  빠른 응답을 위해 필수 모듈만 먼저 로드하고, 사용 시점에 나머지를 로드합니다(lazy loading). <code>claude-code version</code> 같은 간단한 명령은 100ms 이내에 응답하고, 복잡한 기능은 필요시에만 로드되어 메모리 효율성과 반응성을 동시에 확보합니다.
                 </p>
               </div>
             </div>

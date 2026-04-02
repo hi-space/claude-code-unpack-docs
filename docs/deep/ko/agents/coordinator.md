@@ -214,31 +214,7 @@ sequenceDiagram
 
 ## Git Worktree Isolation
 
-각 팀원 Agent는 전용 Git Worktree에서 작업하여 충돌 없이 동시에 파일을 수정할 수 있습니다.
-
-### Worktree 전략
-
-```mermaid
-graph TB
-    Main["Main Worktree<br/>(branch: main)"]
-    
-    Main --> WT1["Worktree 1<br/>(team/feature-a)"]
-    Main --> WT2["Worktree 2<br/>(team/feature-b)"]
-    Main --> WT3["Worktree 3<br/>(team/tests)"]
-    
-    WT1 --> |"git commit<br/>+ git push"| PR1["Pull Request<br/>Feature A"]
-    WT2 --> |"git commit<br/>+ git push"| PR2["Pull Request<br/>Feature B"]
-    WT3 --> |"git commit<br/>+ git push"| PR3["Pull Request<br/>Tests"]
-    
-    PR1 --> Main
-    PR2 --> Main
-    PR3 --> Main
-    
-    style Main fill:#3498db,color:#fff
-    style WT1 fill:#2ecc71,color:#fff
-    style WT2 fill:#2ecc71,color:#fff
-    style WT3 fill:#2ecc71,color:#fff
-```
+각 팀원 Agent는 전용 Git Worktree에서 작업하여 충돌 없이 동시에 파일을 수정할 수 있습니다. Worktree 전략 다이어그램 및 라이프사이클에 대한 자세한 내용은 [Subagent Types - Worktree Isolation](./subagent-types.md#worktree-isolation)을 참조하세요.
 
 ### 이점
 

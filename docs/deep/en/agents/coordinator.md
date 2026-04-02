@@ -246,31 +246,7 @@ If the lock file exists, the process sleeps for 10ms and retries (backoff).
 
 ## Git Worktree Isolation
 
-Each teammate agent works in a dedicated Git worktree, enabling concurrent file modifications without conflicts.
-
-### Worktree Strategy
-
-```mermaid
-graph TB
-    Main["Main Worktree<br/>(branch: main)"]
-    
-    Main --> WT1["Worktree 1<br/>(team/feature-a)"]
-    Main --> WT2["Worktree 2<br/>(team/feature-b)"]
-    Main --> WT3["Worktree 3<br/>(team/tests)"]
-    
-    WT1 --> |"git commit<br/>+ git push"| PR1["Pull Request<br/>Feature A"]
-    WT2 --> |"git commit<br/>+ git push"| PR2["Pull Request<br/>Feature B"]
-    WT3 --> |"git commit<br/>+ git push"| PR3["Pull Request<br/>Tests"]
-    
-    PR1 --> Main
-    PR2 --> Main
-    PR3 --> Main
-    
-    style Main fill:#3498db,color:#fff
-    style WT1 fill:#2ecc71,color:#fff
-    style WT2 fill:#2ecc71,color:#fff
-    style WT3 fill:#2ecc71,color:#fff
-```
+Each teammate agent works in a dedicated Git worktree, enabling concurrent file modifications without conflicts. For the worktree strategy diagram and lifecycle details, see [Subagent Types - Worktree Isolation](./subagent-types.md#worktree-isolation).
 
 ### Benefits
 

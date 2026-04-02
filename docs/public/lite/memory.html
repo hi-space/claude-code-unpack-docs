@@ -693,7 +693,7 @@
         <div class="hero-eyebrow">Memory System</div>
         <h1>Self-Healing Memory &amp; Context Budgeting</h1>
         <p class="hero-desc">
-          3-Layer 자가 치유 메모리 아키텍처와 5-Layer 컨텍스트 압축 시스템 분석. 컨텍스트 엔트로피를 방지하고 장시간 세션을 안정적으로 유지하는 메커니즘.
+          3-Layer 자가 치유 메모리 아키텍처와 4-Layer 컨텍스트 압축 시스템으로 장시간 세션을 안정적으로 유지합니다. 컨텍스트가 가득 차도 MEMORY.md 포인터는 항상 살아있어, 중요한 정보 접근성이 떨어지지 않습니다.
         </p>
         <div class="hero-stats">
           <div class="hero-stat">
@@ -717,17 +717,17 @@
           <div class="section-badge">&#9731; Architecture</div>
           <h2 class="section-title">3-Layer Memory Architecture</h2>
           <p class="section-desc">
-            컨텍스트 엔트로피 — 장시간 AI 세션에서 컨텍스트 품질이 점진적으로 저하되어 환각과 자기 모순을 유발하는 현상 — 를 방지하기 위해 설계된 3단계 시스템.
+            컨텍스트 엔트로피(대화가 길어질수록 품질이 저하되고 환각이 증가하는 현상)를 방지하기 위해 설계된 3단계 시스템입니다. 장시간 코딩 세션에서 AI가 이전 결정을 참조하고 일관성 있게 진행할 수 있도록 구조화됩니다.
           </p>
         </div>
 
         <div class="desc-box">
-          <strong>핵심 문제:</strong> 장시간 코딩 세션에서 AI 어시스턴트가 직면하는 근본적 도전 — 대화 이력으로 컨텍스트 윈도우가 가득 차고, 오래된 컨텍스트가 압축되거나 삭제되어 중요한 세부사항이 손실되며, 모델이 환각하기 시작하거나 이전 결정과 모순됩니다.
+          <strong>핵심 문제:</strong> 대화가 길어지면 중요한 정보가 손실되고, AI가 이전 결정을 잊거나 모순된 답변을 합니다.
         </div>
 
         <h3 style="font-size:18px;font-weight:700;margin:24px 0 16px;color:var(--color-text);">1단계: MEMORY.md 포인터 시스템</h3>
         <p style="color:var(--color-text-secondary);line-height:1.7;margin-bottom:16px;">
-          핵심 혁신은 <code>MEMORY.md</code> — 컨텍스트 윈도우에 영구적으로 로드되는 경량 <strong>포인터 기반 인덱스</strong>입니다. 저장소가 아닌 인덱스/포인터로 작동하여, 최소 토큰 비용으로 모델이 필요 시 세부사항을 검색할 수 있습니다.
+          항상 메모리에 있는 가벼운 인덱스. AI가 필요할 때 세부사항을 찾아 읽을 수 있습니다.
         </p>
         <table class="info-table">
           <thead>
@@ -739,53 +739,59 @@
           <tbody>
             <tr>
               <td>형식</td>
-              <td>짧은 항목의 Markdown 파일</td>
+              <td>Markdown 파일</td>
             </tr>
             <tr>
-              <td>줄 길이</td>
-              <td>줄당 ~150자</td>
+              <td>크기</td>
+              <td>한 줄에 ~150자</td>
             </tr>
             <tr>
               <td>로딩</td>
-              <td>항상 컨텍스트 윈도우에 로드</td>
+              <td>항상 메모리에 있음</td>
             </tr>
             <tr>
               <td>역할</td>
-              <td>저장소가 아닌 인덱스/포인터</td>
+              <td>인덱스 / 포인터</td>
             </tr>
           </tbody>
         </table>
 
         <h3 style="font-size:18px;font-weight:700;margin:24px 0 16px;color:var(--color-text);">2단계: 자동 컨텍스트 압축</h3>
         <p style="color:var(--color-text-secondary);line-height:1.7;margin-bottom:16px;">
-          대화가 커지면 오래된 메시지가 자동으로 압축됩니다. 핵심 정보를 보존하면서 원본 메시지를 압축 버전으로 교체하여 토큰 사용을 최적화합니다.
+          대화가 길어지면 오래된 메시지를 자동으로 요약해 공간을 절약합니다.
         </p>
 
         <h3 style="font-size:18px;font-weight:700;margin:24px 0 16px;color:var(--color-text);">3단계: 토큰 예산 관리자</h3>
         <p style="color:var(--color-text-secondary);line-height:1.7;margin-bottom:16px;">
-          컨텍스트 윈도우를 경쟁하는 요구 사이에 동적으로 할당합니다. 시스템 프롬프트(~20-25K), 도구 스키마(14-17K), MEMORY.md(~500-1K), 대화(남은 토큰), 예비(모델 응답)를 자동으로 분배합니다.
+          메모리 공간을 똑똑하게 나눠씁니다. 시스템, 도구, 대화 등이 각각 필요한 만큼 자동으로 할당됩니다.
         </p>
 
         <div class="feature-cards">
           <div class="feature-card">
             <h4>1. MEMORY.md 포인터 시스템</h4>
-            <p>MEMORY.md는 컨텍스트 윈도우에 <strong>항상 로드되는 경량 포인터 인덱스</strong>로 작동합니다. <code>~150자/줄</code> 형식으로 저장소가 아닌 인덱스 역할을 하며, 모델이 필요 시 Read/Grep으로 세부사항을 검색합니다. 이 포인터 방식은 프로젝트 규모와 무관하게 <strong>~500-1K 토큰</strong>으로 일정하게 유지되어, 전체 컨텍스트에서 저장하거나 요약하는 것의 단점을 극복합니다.</p>
+            <p>컨텍스트 윈도우에 항상 로드되는 경량 포인터 인덱스로, 줄당 약 150자 형식입니다. 저장소 역할이 아니라 인덱스 역할을 하므로, 프로젝트 규모와 무관하게 약 500-1K 토큰만 차지하면서 전체 지식의 지도를 제공합니다. 모델이 필요할 때 Read/Grep으로 세부사항을 검색하는 구조입니다.</p>
           </div>
           <div class="feature-card">
-            <h4>2. ConversationCompressor</h4>
-            <p><code>ConversationCompressor</code>는 대화 이력이 예산을 초과할 때 오래된 메시지를 자동으로 요약합니다. 핵심 정보(결정사항, 파일 수정사항, 발견사항)는 보존하면서 장황한 설명과 도구 출력은 제거하여 <strong>정보 손실을 최소화</strong>합니다. 압축된 메시지에서 새로운 사실을 추출하여 MEMORY.md에 추가하므로, 정보가 단순히 축소되지 않고 <strong>더 구조화된 포인터로 업그레이드</strong>됩니다.</p>
+            <h4>2. 자동 컨텍스트 압축</h4>
+            <p>대화 이력이 예산을 초과할 때 오래된 메시지를 자동으로 요약합니다. 중요한 결정과 파일 변경 내역은 보존하면서 장황한 설명과 도구 출력은 제거하여 정보 손실을 최소화합니다. 압축된 메시지에서 새로운 사실을 추출하여 MEMORY.md에 추가하므로, 정보가 단순히 축소되지 않고 더 구조화된 포인터로 업그레이드됩니다.</p>
           </div>
           <div class="feature-card">
-            <h4>3. TokenBudgetAllocator</h4>
-            <p>~1M 토큰 컨텍스트를 동적으로 할당합니다: <strong>시스템 프롬프트 ~20-25K</strong>, <strong>도구 스키마 14-17K</strong>, <strong>MEMORY.md ~500-1K</strong>, <strong>대화 이력 ~900-950K</strong>, <strong>응답 예비 ~8-10K</strong>. <code>TokenBudgetAllocator</code>가 실시간으로 예산 초과를 감지하면 <code>ConversationCompressor</code>를 트리거하여 대화를 압축합니다. 이 피드백 루프로 장시간 세션도 안정적으로 유지됩니다.</p>
+            <h4>3. 토큰 예산 관리자</h4>
+            <p>약 1M 토큰 컨텍스트를 동적으로 할당합니다:<br/>
+              - 시스템 프롬프트 약 20-25K<br/>
+              - 도구 스키마 14-17K<br/>
+              - MEMORY.md 약 500-1K<br/>
+              - 대화 이력 약 900-950K<br/>
+              - 응답 예비 약 8-10K<br/>
+              실시간으로 예산 초과를 감지하면 자동으로 대화를 압축하여 장시간 세션도 안정적으로 유지됩니다.</p>
           </div>
           <div class="feature-card">
             <h4>4. Self-Healing Feedback Loop</h4>
-            <p>세 층(Layer)이 함께 작동하여 <strong>컨텍스트 품질이 저하되지 않고 오히려 개선</strong>됩니다. MEMORY.md가 항상 로드되므로 모델이 이전 결정을 참조 가능하고, 모순 감지 시 즉시 보정됩니다. 압축 → 새 사실 추출 → MEMORY.md 업데이트의 피드백 루프로, 장시간 세션도 구조화되고 일관성 있게 진행됩니다. 환각 대신 <strong>자가 치유</strong>가 일어납니다.</p>
+            <p>세 층이 함께 작동하여 컨텍스트 품질이 저하되지 않고 오히려 개선됩니다. MEMORY.md가 항상 로드되므로 모델이 이전 결정을 참조 가능하고, 모순 감지 시 즉시 보정됩니다. 압축 → 새 사실 추출 → MEMORY.md 업데이트의 피드백 루프로, 장시간 세션도 구조화되고 일관성 있게 진행됩니다.</p>
           </div>
           <div class="feature-card">
-            <h4>5. KAIROS autoDream Integration</h4>
-            <p>현재 시스템은 <strong>수동적 자가 치유</strong> — 컨텍스트 압박 시에만 트리거됩니다. 미출시 KAIROS 데몬 모드의 <code>autoDream</code>은 이를 <strong>능동적 지식 관리</strong>로 진화시킵니다. 유휴 시간에 자동으로: 관측 병합(중복 제거), 모순 제거(일관성 유지), 인사이트 결정화(핵심 발견 강화)를 수행하며, 세션 간 학습을 가능하게 합니다.</p>
+            <h4>5. 능동적 지식 관리 (미출시)</h4>
+            <p>현재 시스템은 수동적 자가 치유 — 컨텍스트 압박 시에만 트리거됩니다. 미출시 KAIROS 데몬 모드의 자동 기능은 이를 능동적 지식 관리로 진화시킵니다. 유휴 시간에 자동으로 관측 병합(중복 제거), 모순 제거(일관성 유지), 인사이트 결정화(핵심 발견 강화)를 수행하며, 세션 간 학습을 가능하게 합니다.</p>
           </div>
         </div>
 
@@ -822,11 +828,11 @@ graph TB
           <div class="section-badge">&#9889; Compaction</div>
           <h2 class="section-title">5-Layer Context Compaction</h2>
           <p class="section-desc">
-            필요한 최소한의 압축만 적용하여 정보 품질을 최대한 보존하면서 컨텍스트 제한을 유지하는 점진적 압축 시스템. 각 레이어는 필요할 때만 활성화됩니다.
+            필요한 최소한의 압축만 적용하여 정보 품질을 최대한 보존하면서 컨텍스트 제한을 유지하는 점진적 압축 시스템입니다. 각 레이어는 필요할 때만 활성화되어, 시간 기반에서 모델 기반, 그리고 긴급 모드까지 단계적으로 발동됩니다.
           </p>
         </div>
 
-        <h3 style="font-size:18px;font-weight:700;margin:24px 0 16px;color:var(--color-text);">Budget Allocation 분석</h3>
+        <h3 style="font-size:18px;font-weight:700;margin:24px 0 16px;color:var(--color-text);">메모리 할당</h3>
         <table class="info-table">
           <thead>
             <tr>
@@ -838,31 +844,31 @@ graph TB
           </thead>
           <tbody>
             <tr>
-              <td>System prompt 명령어</td>
+              <td>시스템 프롬프트</td>
               <td>~20-25K</td>
-              <td>예 (prefix)</td>
+              <td>예</td>
               <td>아니오</td>
             </tr>
             <tr>
-              <td>Tool schemas</td>
+              <td>도구 정의</td>
               <td>14-17K</td>
-              <td>예 (prefix)</td>
+              <td>예</td>
               <td>아니오</td>
             </tr>
             <tr>
-              <td>MEMORY.md (포인터)</td>
+              <td>MEMORY.md</td>
               <td>~500-1K</td>
               <td>아니오</td>
               <td>아니오</td>
             </tr>
             <tr>
-              <td>대화 이력</td>
+              <td>대화</td>
               <td>~900-950K</td>
               <td>아니오</td>
               <td>예</td>
             </tr>
             <tr>
-              <td>Response reserve</td>
+              <td>응답 예비</td>
               <td>~8-10K</td>
               <td>아니오</td>
               <td>예</td>
@@ -873,33 +879,23 @@ graph TB
         <div class="feature-cards">
           <div class="feature-card">
             <h4>1. Layer 1: Time-Based Microcompact - 시간 기반 압축</h4>
-            <p><strong>Trigger:</strong> 마지막 어시스턴트 메시지 이후 시간 간격이 임계값 초과 (GrowthBook 설정, 기본값 60분)<br/>
-              <strong>Action:</strong> Content-clear를 사용하여 오래된 도구 결과 제거, 최근 도구 결과만 유지<br/>
-              <strong>토큰 감소:</strong> 도구 결과 크기에 비례 | <strong>정보 손실:</strong> 최소. 도구 결과는 디스크에서 필요 시 다시 읽을 수 있음.</p>
+            <p>마지막 어시스턴트 메시지 이후 임계값(기본 60분)을 초과하면 Content-clear를 사용하여 오래된 도구 결과를 제거합니다. 최근 도구 결과만 유지하여 경량 압축을 달성하고, 도구 결과는 디스크에서 필요 시 다시 읽을 수 있으므로 정보 손실은 최소입니다.</p>
           </div>
           <div class="feature-card">
             <h4>1B. Layer 1B: Cached Microcompact - 캐시 기반 압축</h4>
-            <p><strong>Trigger:</strong> 프롬프트 캐시가 활성 상태 AND 압축 가능한 도구 결과 존재 (GrowthBook <code>tengu_cache_plum_violet</code> 설정)<br/>
-              <strong>Action:</strong> Cache_edits API를 사용하여 도구 결과 블록 삭제, 프리픽스 재작성 회피<br/>
-              <strong>토큰 감소:</strong> 15-25% | <strong>정보 손실:</strong> 최소. 캐시 프리픽스 보존으로 토큰 증가 방지.</p>
+            <p>프롬프트 캐시가 활성 상태일 때 작동합니다. Cache_edits API를 사용하여 도구 결과 블록을 삭제하고 프리픽스 재작성을 회피함으로써 15-25% 토큰을 절약합니다. 캐시 프리픽스는 보존되므로 토큰 증가를 방지하면서도 경량 압축을 달성합니다.</p>
           </div>
           <div class="feature-card">
             <h4>2. Layer 2: Session Memory Compact - 세션 메모리 압축</h4>
-            <p><strong>Trigger:</strong> Auto-compact 전 시행 (세션 메모리 추출 사용 가능 시)<br/>
-              <strong>Action:</strong> 최근 대화에서 패턴과 결정사항 추출하여 MEMORY.md에 저장, 오래된 메시지 제거<br/>
-              <strong>토큰 감소:</strong> 변동 | <strong>정보 손실:</strong> 낮음. 주요 결정과 발견사항은 MEMORY.md 포인터로 보존됩니다. 성공 시 Auto Compact API 호출 회피.</p>
+            <p>자동 압축 전에 시행됩니다. 최근 대화에서 패턴과 결정사항을 추출하여 MEMORY.md에 저장하고 오래된 메시지를 제거합니다. 주요 결정과 발견사항은 MEMORY.md 포인터로 보존되므로 정보 손실이 낮으며, 성공 시 더 비용이 큰 자동 압축 API 호출을 회피할 수 있습니다.</p>
           </div>
           <div class="feature-card">
             <h4>3. Layer 3: Auto Compact - 모델 기반 요약</h4>
-            <p><strong>Trigger:</strong> 컨텍스트가 임계값 초과 AND 이전 레이어 미충분<br/>
-              <strong>Action:</strong> 최근 몇 턴 제외 모든 메시지를 Claude에 전송하여 의미론적 요약 수행. Circuit breaker: 연속 실패 3회 시 중단 (<code>MAX_CONSECUTIVE_AUTOCOMPACT_FAILURES = 3</code>)<br/>
-              <strong>토큰 감소:</strong> 70-85% | <strong>정보 손실:</strong> 상당하지만 의도적. Post-compact 복구: 최근 파일(최대 5개), 플랜 파일, 호출된 스킬 재주입 (<code>POST_COMPACT_TOKEN_BUDGET = 50,000</code>, <code>POST_COMPACT_MAX_FILES_TO_RESTORE = 5</code>).</p>
+            <p>컨텍스트가 임계값을 초과하고 이전 레이어가 미충분할 때 작동합니다. 최근 몇 턴을 제외한 모든 메시지를 Claude에 전송하여 의미론적 요약을 수행하며, 70-85% 토큰을 절약합니다. 연속 실패 3회 시 중단되며, Post-compact 복구로 최근 파일(최대 5개), 플랜 파일, 호출된 스킬을 재주입하여 정보 손실을 보정합니다.</p>
           </div>
           <div class="feature-card">
             <h4>4. Layer 4: Reactive Compact - 긴급 압축</h4>
-            <p><strong>Trigger:</strong> API 호출 실패: <code>max_tokens</code> 오류<br/>
-              <strong>Action:</strong> <strong>긴급 모드</strong> — 시스템 프롬프트 + MEMORY.md + 마지막 2 턴만 유지. 스트리밍 모드로 재시도하여 메모리 버퍼링 회피<br/>
-              <strong>정보 손실:</strong> 치명적. 대화 이력 대부분 손실되지만 MEMORY.md 포인터는 보존. <strong>마지막 수단</strong> — Layer 1-3 모두 실패했을 때만 발동되며 약 1/10,000+ 세션에서만 나타남.</p>
+            <p>API 호출 실패로 max_tokens 오류가 발생할 때 비상 모드가 작동합니다. 시스템 프롬프트 + MEMORY.md + 마지막 2 턴만 유지하고 스트리밍 모드로 재시도하여 메모리 버퍼링을 회피합니다. 정보 손실이 치명적이지만 MEMORY.md 포인터는 완벽히 보존되므로 모델이 중요한 정보에 여전히 접근할 수 있으며, 약 1/10,000+ 세션에서만 나타나는 마지막 수단입니다.</p>
           </div>
         </div>
 
@@ -946,79 +942,76 @@ flowchart TB
           <div class="section-badge">&#9741; Budget</div>
           <h2 class="section-title">Token Budget Continuation</h2>
           <p class="section-desc">
-            압축에도 불구하고 모델이 복잡한 작업에서 response 중간에 max_tokens 제한에 도달하는 경우를 처리하는 synthetic message injection 및 3단계 복구 경로.
+            압축에도 불구하고 모델이 복잡한 작업에서 응답 중간에 max_tokens 제한에 도달하는 경우를 처리하는 synthetic message injection과 3단계 복구 경로입니다. 75-99% 성공률로 불완전한 응답을 자동으로 복구합니다.
           </p>
         </div>
 
-        <h3 style="font-size:18px;font-weight:700;margin:24px 0 16px;color:var(--color-text);">문제: Synthetic 메시지 주입</h3>
+        <h3 style="font-size:18px;font-weight:700;margin:24px 0 16px;color:var(--color-text);">자동 계속</h3>
         <p style="color:var(--color-text-secondary);line-height:1.7;margin-bottom:16px;">
-          Claude가 token 제한에 도달하면 응답이 갑자기 중단되어 작업이 불완전하게 남습니다. 예를 들어, "복잡한 리팩터 구현"을 요청해도 중간에 "TRUNCATED — hit max_tokens limit"으로 끝날 수 있습니다. 이를 해결하기 위해 시스템은 모델에게 계속하도록 지시하는 synthetic user 메시지를 주입합니다: "계속 남은 변경사항을 진행하세요." 이 메시지는 투명하며 사용자는 대화 이력에서 보지 못합니다.
+          응답이 중단되면 시스템이 자동으로 "계속해주세요"라는 숨겨진 메시지를 보냅니다. 사용자는 연속된 응답으로 봅니다.
         </p>
 
-        <h3 style="font-size:18px;font-weight:700;margin:24px 0 16px;color:var(--color-text);">3단계 복구 경로 통계</h3>
+        <h3 style="font-size:18px;font-weight:700;margin:24px 0 16px;color:var(--color-text);">복구 방법</h3>
         <table class="info-table">
           <thead>
             <tr>
-              <th>Stage</th>
-              <th>Trigger</th>
+              <th>단계</th>
+              <th>조건</th>
               <th>성공률</th>
-              <th>보존된 정보</th>
+              <th>정보</th>
             </tr>
           </thead>
           <tbody>
             <tr>
-              <td>Stage 1: Escalate</td>
-              <td>max_tokens 오류</td>
+              <td>1단계</td>
+              <td>제한 도달</td>
               <td>75%</td>
-              <td>전체 context</td>
+              <td>모두 보존</td>
             </tr>
             <tr>
-              <td>Stage 2: Reactive Compact</td>
-              <td>여전히 불완전</td>
+              <td>2단계</td>
+              <td>여전히 미완료</td>
               <td>90%</td>
-              <td>MEMORY.md + 마지막 2 턴</td>
+              <td>MEMORY.md + 최근 2 턴</td>
             </tr>
             <tr>
-              <td>Stage 3: Streaming</td>
-              <td>여전히 불완전</td>
+              <td>3단계</td>
+              <td>여전히 미완료</td>
               <td>99%</td>
-              <td>Streamed response (실시간)</td>
+              <td>실시간 스트리밍</td>
             </tr>
           </tbody>
         </table>
 
         <div class="desc-box">
-          <strong>핵심:</strong> 매우 적은 작업만 Stage 3이 필요합니다. 대부분은 Stage 1에서 해결됩니다. max_tokens를 8K에서 64K로 증가시키는 것만으로도 대부분의 불완전한 응답이 해결됩니다. <br/><br/>
-          <strong>Post-Compact 복구 상수:</strong> Post-compact 복구는 <code>POST_COMPACT_TOKEN_BUDGET = 50,000</code>, <code>POST_COMPACT_MAX_FILES_TO_RESTORE = 5</code>로 구성됩니다. Circuit breaker 메커니즘: <code>MAX_CONSECUTIVE_AUTOCOMPACT_FAILURES = 3</code> 연속 실패 시 중단.
+          <strong>핵심:</strong> 대부분 1단계에서 끝납니다. 단순히 제한을 높이면 해결되는 경우가 많습니다. 3단계는 거의 필요 없습니다.
         </div>
 
-        <h3 style="font-size:18px;font-weight:700;margin:24px 0 16px;color:var(--color-text);">Stop Reason 주의사항</h3>
+        <h3 style="font-size:18px;font-weight:700;margin:24px 0 16px;color:var(--color-text);">응답 종료 감지</h3>
         <p style="color:var(--color-text-secondary);line-height:1.7;margin-bottom:16px;">
-          Streaming API의 미묘하지만 중요한 구현 세부사항: <strong>실제 stop_reason은 message_delta 이벤트에 있으며, content_block_stop에는 없습니다.</strong> 이를 놓치면 루프가 제대로 종료되지 않아 무한 대기 또는 timeout 기회 손실이 발생합니다.
+          API에서 응답이 제대로 끝났는지 확인하는 방법이 중요합니다. 올바른 위치를 확인하지 않으면 무한 대기에 빠질 수 있습니다.
         </p>
 
         <div class="feature-cards">
           <div class="feature-card">
             <h4>1. Synthetic Message Injection</h4>
-            <p>설정 가능한 토큰 임계값에 도달하면 모델의 응답이 불완전한 상태입니다. 시스템이 <strong>synthetic user message</strong>("계속 남은 변경사항을 진행하세요")를 투명하게 주입하여 모델이 작업을 이어서 완료하도록 유도합니다. 이 메시지는 사용자가 보지 못하며, 사용자는 단일 연속적인 응답으로 경험합니다. 실제로는 <strong>여러 API 호출이 자동으로 연결</strong>됩니다.</p>
+            <p>설정 가능한 토큰 임계값에 도달하면 모델의 응답이 불완전한 상태입니다. 시스템이 "계속 남은 변경사항을 진행하세요"라는 synthetic user message를 투명하게 주입하여 모델이 작업을 이어서 완료하도록 유도합니다. 사용자는 단일 연속적인 응답으로 경험하며, 실제로는 여러 API 호출이 자동으로 연결됩니다.</p>
           </div>
           <div class="feature-card">
             <h4>2. Stage 1: Max Tokens Escalation</h4>
-            <p><strong>첫 번째 복구 시도</strong>입니다. 모델이 max_tokens로 중단되면 <strong>max_tokens를 ~8K에서 ~64K로 에스컬레이션</strong>하여 재시도합니다. 불완전한 응답의 <strong>약 75%가 이 단계에서 해결</strong>됩니다. 전체 컨텍스트가 보존되므로 정보 손실이 0입니다. 이 간단한 방법이 대부분 충분하다는 점이 핵심 인사이트입니다.</p>
+            <p>모델이 max_tokens로 중단되면 max_tokens를 약 8K에서 약 64K로 에스컬레이션하여 재시도합니다. 불완전한 응답의 약 75%가 이 단계에서 해결되며, 전체 컨텍스트가 보존되므로 정보 손실이 0입니다. 이 간단한 방법이 대부분 충분하다는 점이 전체 복구 전략의 핵심 인사이트입니다.</p>
           </div>
           <div class="feature-card">
             <h4>3. Stage 2: Reactive Compaction</h4>
-            <p>Stage 1 에스컬레이션이 응답을 완료하지 못했을 때 발동합니다. <strong>Layer 4 (Reactive Compact)</strong>를 적용하여 시스템 프롬프트 + MEMORY.md + 마지막 2 턴만 유지 후 재시도합니다. <strong>나머지 경우의 약 90%가 여기서 해결</strong>됩니다. 대화 이력은 상당히 손실되지만 MEMORY.md 포인터는 완벽히 보존되므로 모델이 여전히 중요한 정보에 접근할 수 있습니다.</p>
+            <p>Stage 1 에스컬레이션이 응답을 완료하지 못했을 때 발동합니다. Layer 4 (Reactive Compact)를 적용하여 시스템 프롬프트 + MEMORY.md + 마지막 2 턴만 유지 후 재시도합니다. 나머지 경우의 약 90%가 여기서 해결되며, 대화 이력은 상당히 손실되지만 MEMORY.md 포인터는 완벽히 보존되므로 모델이 여전히 중요한 정보에 접근할 수 있습니다.</p>
           </div>
           <div class="feature-card">
             <h4>4. Stage 3: Streaming Fallback</h4>
-            <p>Stage 2가 여전히 불완전할 때 마지막 수단입니다. <strong>Streaming 응답 모드</strong>를 활성화하여 전체 응답을 메모리에 버퍼링하지 않고 <strong>token-by-token으로 incrementally 처리</strong>합니다. 메모리 압력을 방지하고, 사용자는 터미널에서 line-by-line으로 실시간 피드백을 받습니다. <strong>성공률 약 99%</strong>이지만, Stage 1과 2가 대부분의 경우를 처리하므로 이 단계는 극히 드뭅니다. (~1/100,000 세션).</p>
+            <p>Stage 2가 여전히 불완전할 때 마지막 수단입니다. 스트리밍 응답 모드를 활성화하여 전체 응답을 메모리에 버퍼링하지 않고 token-by-token으로 점진적으로 처리합니다. 메모리 압력을 방지하고, 사용자는 터미널에서 line-by-line으로 실시간 피드백을 받습니다. 성공률 약 99%이지만, Stage 1과 2가 대부분의 경우를 처리하므로 이 단계는 극히 드뭅니다(약 1/100,000 세션).</p>
           </div>
           <div class="feature-card">
             <h4>5. Session Quality Impact</h4>
-            <p><strong>Budgeting 없는 시나리오:</strong> 짧은 세션(&lt;10턴)은 좋으나, 중간(10-50턴)부터 성능 저하, 100+ 턴은 사용 불가능.<br/>
-              <strong>Budgeting 있는 시나리오:</strong> 100+ 턴도 기능적으로 유지.<br/>
-              핵심: <strong>4-Layer 컨텍스트 압축 (Time-based, Cached, Session Memory, Auto, Reactive) + Token budget continuation + 3-Stage recovery + Self-healing memory</strong>의 조합으로 초장시간 세션도 안정적입니다. 압축이 진행되어도 MEMORY.md 포인터가 보존되므로 모델은 항상 중요한 정보에 접근 가능합니다.</p>
+            <p>Budgeting 없는 시나리오에서는 짧은 세션(10턴 미만)은 좋지만 중간(10-50턴)부터 성능 저하, 100+ 턴은 사용 불가능합니다. Budgeting 시스템이 있으면 100+ 턴도 기능적으로 유지됩니다. 4-Layer 컨텍스트 압축(시간 기반, 캐시 기반, 세션 메모리, 자동, 긴급) + Synthetic 메시지 + 3-Stage 복구 + Self-healing 메모리의 조합으로 초장시간 세션도 안정적입니다.</p>
           </div>
         </div>
 
@@ -1050,11 +1043,11 @@ flowchart LR
           <div class="section-badge">&#9888; Recovery</div>
           <h2 class="section-title">Stop Reason & Recovery Handling</h2>
           <p class="section-desc">
-            Streaming API의 미묘한 stop_reason 처리와 max_tokens에 도달했을 때의 복구 전략. 이 구현 세부사항을 놓치면 무한 대기 또는 응답 손실이 발생합니다.
+            Streaming API의 미묘한 stop_reason 처리와 max_tokens에 도달했을 때의 복구 전략입니다. 이 구현 세부사항을 놓치면 무한 대기 또는 응답 손실이 발생하므로, Claude Code의 오랜 세션 안정성을 지탱하는 핵심입니다.
           </p>
         </div>
 
-        <h3 style="font-size:18px;font-weight:700;margin:24px 0 16px;color:var(--color-text);">구현 세부사항: message_delta vs content_block_stop</h3>
+        <h3 style="font-size:18px;font-weight:700;margin:24px 0 16px;color:var(--color-text);">올바른 위치 확인</h3>
 
         <div class="desc-box" style="border-left-color:var(--color-accent-red);">
           <strong style="color:var(--color-accent-red);">❌ 잘못된 방법:</strong><br/>
@@ -1074,29 +1067,30 @@ flowchart LR
         <div class="feature-cards">
           <div class="feature-card">
             <h4>1. Stop Reason in message_delta</h4>
-            <p><strong>핵심 구현 세부사항:</strong> Anthropic API 스트리밍에서 실제 <code>stop_reason</code>은 <code>content_block_stop</code> 이벤트가 아닌 <code>message_delta</code> 이벤트에만 포함됩니다. 공개 문서에 잘 기록되어 있지 않지만, leaked source와 실제 테스트를 통해 드러난 사실입니다. 이를 놓치면 루프가 제대로 종료되지 않아 무한 대기 또는 timeout 기회 손실이 발생합니다.</p>
+            <p>핵심 구현 세부사항: Anthropic API 스트리밍에서 실제 stop_reason은 content_block_stop 이벤트가 아닌 message_delta 이벤트에만 포함됩니다. 공개 문서에 잘 기록되어 있지 않지만, 실제 테스트를 통해 드러난 사실입니다. 이를 놓치면 루프가 제대로 종료되지 않아 무한 대기 또는 timeout 기회 손실이 발생합니다.</p>
           </div>
           <div class="feature-card">
             <h4>2. Stop Reason Types</h4>
-            <p><code>message_delta</code>의 <code>stop_reason</code> 필드는 정확히 세 값을 가집니다:</p>
-              <ul>
-                <li><strong>end_turn</strong> — 응답이 자연스럽게 완료 (정상 흐름)</li>
-                <li><strong>tool_use</strong> — 도구 호출이 발생했으므로 계속해야 함 (도구 실행 후 재호출)</li>
-                <li><strong>max_tokens</strong> — 응답이 강제 절단됨 (Stage 1 recovery 트리거)</li>
-              </ul>
-              <p>각 경우에 따라 완전히 다른 처리 경로가 필요합니다.</p>
+            <p>stop_reason 필드는 정확히 세 값을 가지며, 각각 다른 처리 경로가 필요합니다:<br/>
+              - <strong>end_turn:</strong> 응답이 자연스럽게 완료 (정상 흐름)<br/>
+              - <strong>tool_use:</strong> 도구 호출이 발생, 실행 후 재호출 필요<br/>
+              - <strong>max_tokens:</strong> 응답이 강제 절단됨, 복구 전략 트리거</p>
           </div>
           <div class="feature-card">
             <h4>3. Max Tokens Detection</h4>
-            <p><code>stop_reason === 'max_tokens'</code>일 때 응답이 불완전하게 절단되었음을 나타냅니다. 이를 감지하면 <strong>즉시 Stage 1 recovery (max_tokens 8K → 64K 에스컬레이션)</strong>를 자동 트리거합니다. 응답이 자연스럽게 끝났는지(end_turn) 또는 강제 중단되었는지(max_tokens) 구분하는 것이 <strong>전체 복구 전략의 기초</strong>입니다. 이 단순한 판단이 대부분의 불완전한 응답을 해결합니다.</p>
+            <p>stop_reason === 'max_tokens'일 때 응답이 불완전하게 절단되었음을 나타냅니다. 이를 감지하면 즉시 Stage 1 복구(max_tokens 8K → 64K 에스컬레이션)를 자동 트리거합니다. 응답이 자연스럽게 끝났는지(end_turn) 또는 강제 중단되었는지(max_tokens) 구분하는 것이 전체 복구 전략의 기초이며, 이 단순한 판단이 대부분의 불완전한 응답을 해결합니다.</p>
           </div>
           <div class="feature-card">
             <h4>4. Tool Use Continuation</h4>
-            <p><code>stop_reason === 'tool_use'</code>일 때 도구 호출이 대기 중이지만 아직 실행되지 않았음을 의미합니다. 정상 흐름입니다: (1) 도구 실행 (동시성 안전 여부에 따라 병렬 또는 순차), (2) 결과를 대화에 첨부, (3) 모델에 재호출하여 도구 결과에 대해 계속 진행. Recovery가 필요하지 않으며, 모델이 자연스럽게 다음 단계로 진행합니다.</p>
+            <p>tool_use일 때 도구 호출이 대기 중이지만 아직 실행되지 않았음을 의미합니다. 정상 흐름으로 다음 순서를 따릅니다:<br/>
+              (1) 도구 실행 (병렬 또는 순차)<br/>
+              (2) 결과를 대화에 첨부<br/>
+              (3) 모델에 재호출하여 계속 진행<br/>
+              Recovery가 필요하지 않으며, 모델이 자연스럽게 다음 단계로 진행합니다.</p>
           </div>
           <div class="feature-card">
             <h4>5. Infinite Wait Prevention</h4>
-            <p><code>content_block_stop</code>에서 stop_reason을 확인하면 <code>undefined</code>이므로 루프가 제대로 종료되지 않아 <strong>무한 대기</strong> 상태에 빠집니다. 또한 timeout 기회를 놓쳐 응답이 완전히 손실될 수 있습니다. <strong>반드시 <code>message_delta</code> 이벤트에서만 확인</strong>해야 합니다. 이는 안정적인 streaming 파싱과 recovery cascade의 기초이며, Claude Code의 오랜 세션 안정성을 지탱하는 핵심 구현 세부사항입니다.</p>
+            <p>content_block_stop에서 stop_reason을 확인하면 undefined이므로 루프가 제대로 종료되지 않아 무한 대기 상태에 빠집니다. 또한 timeout 기회를 놓쳐 응답이 완전히 손실될 수 있습니다. 반드시 message_delta 이벤트에서만 확인해야 합니다. 이는 안정적인 streaming 파싱과 recovery cascade의 기초이며, Claude Code의 오랜 세션 안정성을 지탱하는 핵심 구현 세부사항입니다.</p>
           </div>
         </div>
 

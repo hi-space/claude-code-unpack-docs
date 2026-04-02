@@ -608,7 +608,7 @@
         <div class="hero-eyebrow">Query Engine</div>
         <h1>QueryEngine Deep Dive</h1>
         <p class="hero-desc">
-          Claude Code의 핵심 실행 루프. 사용자 입력을 받아 API 호출, 도구 실행, 컨텍스트 관리를 반복하며 최종 응답을 생성합니다.
+          사용자 입력부터 최종 응답까지 모든 과정을 관리하는 Claude Code의 핵심 엔진입니다.
         </p>
         <div class="hero-stats">
           <div class="hero-stat">
@@ -644,24 +644,19 @@
           <div class="feature-card">
             <h4>1. Streaming-First Design</h4>
             <p>
-              StreamProcessor는 Server-Sent Events (SSE)로 수신한 API 응답을 청크 단위로 처리하며, 도구 호출 감지 즉시 실행 시작으로 head-of-line blocking 제거. 모델이 여전히 응답을 생성 중일 때 도구들은 병렬로 실행되어 지각된 레이턴시를 극적으로 감소시킵니다.
+              Server-Sent Events(SSE) 스트림에서 도구 호출을 감지하는 즉시 실행을 시작합니다. 모델이 여전히 다음 응답을 생성 중일 때 도구들이 병렬로 실행되므로, head-of-line blocking(줄서기 대기)이 제거되어 지각된 레이턴시가 극적으로 감소합니다. 덕분에 기다림 없이 훨씬 빠른 응답을 제공할 수 있습니다.
             </p>
           </div>
           <div class="feature-card">
             <h4>2. Stop Reason Handling</h4>
             <p>
-              StreamProcessor는 Anthropic API의 SSE 스트림을 처리할 때 미묘한 차이를 정확히 구분합니다: <code>content_block_stop</code> 이벤트는 개별 콘텐츠 블록 완료, 실제 <code>stop_reason</code>(end_turn/tool_use)은 <code>message_delta</code> 이벤트에서만 나타납니다. 이 구분을 놓치면 도구 호출 종료 시점 판단 오류 발생.
+              Anthropic API의 SSE 스트림을 처리할 때 미묘한 신호 차이를 정확히 구분합니다. 개별 콘텐츠 블록이 완료되는 신호와 실제 응답이 완료되는 시점을 구분하여, 도구 호출 종료 시점을 정확히 판단합니다. 이 구분을 놓치면 도구 실행이 중단되거나 불완전한 응답이 생성될 수 있으므로 매우 중요합니다.
             </p>
           </div>
           <div class="feature-card">
-            <h4>3. Recovery Paths (max_tokens)</h4>
+            <h4>3. Recovery Paths</h4>
             <p>
-              max_tokens에 도달하면 3가지 계층화된 복구 경로를 순차적으로 시도합니다:
-              <ul>
-                <li>(1) max_output_tokens를 8K → 16K → 64K로 에스컬레이션</li>
-                <li>(2) Reactive Compact 모드로 컨텍스트 극도로 압축 후 재시도</li>
-                <li>(3) 스트리밍 체계 재설정</li>
-              </ul>
+              응답이 길이 제한에 도달하면 자동으로 3단계 계층화된 복구 경로를 순차적으로 시도합니다. 먼저 출력 토큰 한도를 8K에서 16K, 64K로 점진적으로 확장하고, 실패하면 Reactive Compact 모드로 컨텍스트를 극도로 압축한 후 재시도합니다. 이 에스컬레이션 방식 덕분에 대부분의 응답이 낮은 비용으로 첫 단계에서 복구되면서도 큰 응답도 처리할 수 있습니다.
             </p>
           </div>
           <div class="feature-card" style="background: var(--color-bg-secondary); border-left: 3px solid var(--color-accent-blue);">
@@ -680,7 +675,7 @@
           <div class="section-badge">&#9889; Core</div>
           <h2 class="section-title">Core Execution Loop</h2>
           <p class="section-desc">
-            QueryEngine은 메모리 로드에서 시작하여 반복적으로 메시지를 전송하고, 응답을 파싱하며, 도구를 실행하고, 컨텍스트를 관리하는 주요 루프입니다.
+            QueryEngine은 메모리 로드에서 시작하여 반복적으로 메시지를 전송하고, 응답을 파싱하며, 도구를 실행하고, 컨텍스트를 관리하는 주요 루프입니다. 캐시 최적화와 권한 검사를 거쳐 안전하고 효율적으로 대화를 진행합니다.
           </p>
         </div>
 
@@ -743,19 +738,23 @@ flowchart TB
           <div class="feature-card">
             <h4>캐시 경계 관리</h4>
             <p>
-              시스템 프롬프트는 <strong>캐시 가능 접두사</strong>(ID, 도구 정의, 안전 규칙 등 고정 블록)와 <strong>세션 접미사</strong>(git 상태, MCP 스키마 등 가변 블록)로 분리됩니다. 접두사가 변경되지 않으면 캐시를 재사용하여 매 API 호출마다 14-17K 토큰을 절약하며, 캐시 히트 시 약 90%의 비용 할인이 적용됩니다.
+              시스템 프롬프트를 캐시 가능 접두사(ID, 도구 정의, 안전 규칙 등)와 세션 접미사(git 상태, MCP 스키마 등)로 분리합니다. 접두사가 변경되지 않으면 캐시를 재사용하여 매 API 호출마다 14-17K 토큰을 절약하며, 캐시 히트 시 약 90%의 비용 할인이 적용됩니다. 덕분에 매 요청마다 전체 프롬프트를 다시 보낼 필요가 없습니다.
             </p>
           </div>
           <div class="feature-card">
             <h4>3-Layer 권한 파이프라인</h4>
             <p>
-              모든 도구 호출은 실행 전 3단계 권한 검사를 통과해야 합니다. <strong>Layer 1:</strong> 읽기 전용 도구(Read, Glob, Grep)는 고정 허용 목록으로 자동 승인. <strong>Layer 2:</strong> 사용자가 설정한 허용/거부 규칙 확인. <strong>Layer 3:</strong> 이전 단계에서 결정되지 않은 호출은 AI 분류기(Sonnet)가 위험도를 판단하여 자동 승인 또는 사용자에게 확인을 요청합니다.
+              모든 도구 호출은 실행 전 3단계 권한 검사를 통과해야 합니다:<br/>
+              - <strong>레이어 1:</strong> 읽기 전용 도구(Read, Glob, Grep)는 고정 허용 목록으로 자동 승인.<br/>
+              - <strong>레이어 2:</strong> 사용자가 설정한 허용/거부 규칙 확인.<br/>
+              - <strong>레이어 3:</strong> 이전 단계에서 결정되지 않은 호출은 AI 분류기가 위험도를 판단하여 자동 승인 또는 사용자에게 확인을 요청합니다.<br/>
+              따라서 의도하지 않은 작업이 실행되지 않으면서도 안전한 작업은 빠르게 진행됩니다.
             </p>
           </div>
           <div class="feature-card">
             <h4>토큰 예산 자동 관리</h4>
             <p>
-              대화가 길어지면 토큰 예산 초과를 감지하여 오래된 메시지부터 자동으로 압축합니다. 압축된 메시지는 핵심 내용만 유지하는 요약으로 대체되어, 100턴 이상의 긴 세션에서도 컨텍스트 품질을 유지하면서 대화를 지속할 수 있습니다.
+              대화가 길어지면 토큰 예산 초과를 감지하여 오래된 메시지부터 자동으로 압축합니다. 압축된 메시지는 핵심 내용만 유지하는 요약으로 대체되어, 100턴 이상의 긴 세션에서도 컨텍스트 품질을 유지하면서 대화를 지속할 수 있습니다. 사용자는 이 과정을 느끼지 못하면서 자연스럽게 긴 대화를 나눌 수 있습니다.
             </p>
           </div>
         </div>
@@ -767,7 +766,7 @@ flowchart TB
           <div class="section-badge">&#9889; Flow</div>
           <h2 class="section-title">Query Loop Flow</h2>
           <p class="section-desc">
-            사용자 입력부터 최종 응답까지의 간소화된 흐름으로 컨텍스트 압축, API 호출, 도구 실행, 복구 경로를 보여줍니다.
+            사용자 입력부터 최종 응답까지의 간소화된 흐름으로 컨텍스트 압축, API 호출, 도구 실행, 복구 경로를 보여줍니다. 토큰 초과 시 자동으로 복구하여 사용자가 신경 쓸 필요 없이 대화를 계속할 수 있습니다.
           </p>
         </div>
 
@@ -797,13 +796,17 @@ flowchart TB
           <div class="feature-card">
             <h4>스트리밍 도구 실행</h4>
             <p>
-              StreamProcessor는 SSE 스트림에서 도구 호출 블록을 감지하는 즉시 실행을 시작합니다. 모델이 여전히 다음 응답을 생성하는 동안 도구가 병렬로 실행되므로, 순차 처리 대비 지각 레이턴시가 크게 감소합니다. <code>content_block_stop</code>(개별 블록 완료)과 <code>message_delta</code>의 <code>stop_reason</code>(전체 응답 완료)을 정확히 구분하여 종료 시점을 판단합니다.
+              SSE 스트림에서 도구 호출 블록을 감지하는 즉시 실행을 시작합니다. 모델이 여전히 다음 응답을 생성하는 동안 도구가 병렬로 실행되므로, 순차 처리 대비 지각 레이턴시가 크게 감소합니다. 개별 블록 완료와 전체 응답 완료를 정확히 구분하여 종료 시점을 정확하게 판단하므로, 전체 처리 시간을 크게 단축하면서도 정확성을 잃지 않습니다.
             </p>
           </div>
           <div class="feature-card">
             <h4>복구 캐스케이드</h4>
             <p>
-              <code>max_tokens</code>에 도달하면 3단계 자동 복구가 순차적으로 시도됩니다. (1) <code>max_output_tokens</code>를 8K &rarr; 16K &rarr; 64K로 에스컬레이션하여 출력 공간 확보. (2) Reactive Compact 모드로 컨텍스트를 극도로 압축한 후 재시도. (3) 스트리밍 체계 자체를 리셋합니다. 대부분의 경우 1단계에서 해결되며, 3단계까지 도달하는 경우는 드뭅니다.
+              길이 제한에 도달하면 3단계 자동 복구가 순차적으로 시도됩니다:<br/>
+              - <strong>1단계:</strong> 출력 토큰 한도를 8K → 16K → 64K로 에스컬레이션하여 출력 공간 확보<br/>
+              - <strong>2단계:</strong> Reactive Compact 모드로 컨텍스트를 극도로 압축한 후 재시도<br/>
+              - <strong>3단계:</strong> 스트리밍 체계 자체를 리셋<br/>
+              대부분의 경우 1단계에서 해결되며, 3단계까지 도달하는 경우는 드뭅니다.
             </p>
           </div>
         </div>

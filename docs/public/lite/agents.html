@@ -792,7 +792,7 @@
         <div class="hero-eyebrow">Multi-Agent</div>
         <h1>Multi-Agent Architecture</h1>
         <p class="hero-desc">
-          Coordinator 모드, 5+ SubAgent 유형, KAIROS 자율 데몬. AsyncLocalStorage 격리와 파일 기반 Mailbox IPC를 통한 분산 작업 조율.
+          여러 에이전트가 함께 일하며 작업을 나누고 결과를 합치는 시스템입니다.
         </p>
         <div class="hero-stats">
           <div class="hero-stat">
@@ -837,7 +837,7 @@
               <div class="section-badge">&#9670; Coordinator</div>
               <h2 class="section-title">코디네이터 모드</h2>
               <p class="section-desc">
-                Claude Code의 다중 에이전트 오케스트레이션 시스템. 오케스트레이션 로직이 코드가 아닌 시스템 프롬프트에 존재하여, 코드 변경 없이 전략을 수정할 수 있습니다.
+                여러 에이전트를 조율해서 큰 작업을 나누고 처리하는 방식입니다. 작업 전략을 코드 수정 없이 지시문만 바꿔서 조정할 수 있습니다.
               </p>
             </div>
 
@@ -854,31 +854,31 @@
               <tbody>
                 <tr>
                   <td>InProcessTeammate</td>
-                  <td>Shared V8 Heap</td>
-                  <td>AsyncLocalStorage</td>
-                  <td>Direct Memory</td>
-                  <td>Lightweight parallel tasks</td>
+                  <td>같은 프로세스</td>
+                  <td>격리된 공간</td>
+                  <td>메모리 직접</td>
+                  <td>빠른 병렬 작업</td>
                 </tr>
                 <tr>
                   <td>LocalAgent</td>
-                  <td>Separate Process</td>
-                  <td>Process Boundary</td>
-                  <td>File Mailbox IPC</td>
-                  <td>Long-running work</td>
+                  <td>별도 프로세스</td>
+                  <td>프로세스 경계</td>
+                  <td>파일 메시지</td>
+                  <td>오래 걸리는 작업</td>
                 </tr>
                 <tr>
                   <td>RemoteAgent</td>
-                  <td>Remote Machine</td>
-                  <td>Network Boundary</td>
-                  <td>Teleport RPC</td>
-                  <td>Distributed compute</td>
+                  <td>원격 머신</td>
+                  <td>네트워크 경계</td>
+                  <td>원격 호출</td>
+                  <td>분산 처리</td>
                 </tr>
                 <tr>
                   <td>LocalShell</td>
-                  <td>Subprocess</td>
-                  <td>Process Boundary</td>
-                  <td>stdin/stdout</td>
-                  <td>Shell commands</td>
+                  <td>서브프로세스</td>
+                  <td>프로세스 경계</td>
+                  <td>표준 입출력</td>
+                  <td>셸 명령</td>
                 </tr>
               </tbody>
             </table>
@@ -887,25 +887,25 @@
               <div class="feature-card">
                 <h4>1. Prompt-Based Orchestration</h4>
                 <p>
-                  오케스트레이션 로직이 코드가 아닌 시스템 프롬프트에 존재합니다. <strong>코디네이터 프롬프트</strong>는 작업 분해, 워커 할당, 품질 제어, 진행 모니터링, 결과 병합의 5단계를 정의하며, "Do not rubber-stamp weak work" 같은 명시적 품질 관리 지시문을 포함합니다. 코드 변경 없이 시스템 프롬프트만 수정하여 전체 오케스트레이션 전략을 즉시 변경할 수 있습니다.
+                  가장 주목할 만한 설계는 에이전트를 지휘하는 오케스트레이션 로직이 코드가 아니라 코디네이터 프롬프트에 담겨 있다는 점입니다. 프롬프트는 작업 분해, 워커 할당, 품질 검증, 진행 모니터링, 결과 병합의 5단계를 정의하며, "작업의 부정확함을 절대 간과하지 말 것"과 같은 명시적 품질 관리 지시를 포함합니다. 덕분에 코드를 건드리지 않고 프롬프트만 수정해서 전체 전략을 즉시 변경할 수 있습니다.
                 </p>
               </div>
               <div class="feature-card">
                 <h4>2. "Do Not Rubber-Stamp" Quality Control</h4>
                 <p>
-                  코디네이터는 각 워커의 출력을 <strong>비판적으로 검증</strong>하며, 불완전하거나 부정확한 작업을 거부하고 수정을 요청합니다. 검증 단계에서는 아키텍처 일관성, 원래 요구사항과의 부합성, 반복 실패 추적을 수행하여 단순한 자동화가 아닌 품질 제어를 코드 레벨에 내장합니다.
+                  코디네이터는 각 워커의 결과물을 비판적으로 검증하며, 불완전하거나 부정확한 작업을 거부하고 수정을 요청합니다. 검증 단계에서는 아키텍처 일관성, 원래 요구사항과의 부합성, 반복 실패 패턴을 추적하여 단순한 자동화가 아닌 품질 제어를 구조화합니다. 이는 코드 레벨에 내장된 엄격한 검수 원칙입니다.
                 </p>
               </div>
               <div class="feature-card">
                 <h4>3. Task Panel Management</h4>
                 <p>
-                  <strong>TaskList</strong>는 모든 활성 작업자를 메모리에 기록하며 CoordinatorAgentStatus.tsx UI 대시보드에 반영됩니다. 각 태스크는 pending → running → completed/failed 상태를 거치며, <strong>heartbeat 타임아웃(5분)</strong> 초과 시 stalled 태스크로 감지됩니다. 코디네이터는 TaskList만 확인해도 전체 작업 진행 상황을 파악할 수 있습니다.
+                  TaskList는 모든 활성 워커와 작업 상태를 메모리에 기록하며 UI 대시보드에 실시간으로 반영됩니다. 각 작업은 pending → running → completed/failed 상태를 거치며, 5분 이상 응답이 없는 작업은 자동으로 stalled 상태로 감지됩니다. 코디네이터는 TaskList만 확인해도 전체 작업의 진행 상황, 완료 수, 실패 현황을 한눈에 파악할 수 있습니다.
                 </p>
               </div>
               <div class="feature-card">
                 <h4>4. Worker Agent Lifecycle</h4>
                 <p>
-                  각 워커는 자신만의 <strong>독립 QueryEngine 인스턴스</strong>와 격리된 컨텍스트 윈도우를 받습니다. 워커는 완전한 작업 설명(prompt), 허용된 도구 목록, 부모 AbortController를 수신한 후 독립적으로 작동하며, 최종 결과만 코디네이터에 반환합니다. 워커 간에는 conversation history, tool state, permissions이 공유되지 않습니다.
+                  각 워커는 자신만의 독립 QueryEngine 인스턴스와 격리된 컨텍스트 윈도우를 받습니다. 워커는 작업 설명, 허용된 도구 목록, 부모 AbortController를 수신한 후 독립적으로 작동하며, 최종 결과만 코디네이터에 반환합니다. 워커 간에는 대화 기록, 도구 상태, 권한이 공유되지 않으므로 완전히 격리된 환경에서 작업합니다.
                 </p>
               </div>
             </div>
@@ -952,7 +952,7 @@ sequenceDiagram
               <div class="feature-card">
                 <h4>5. Feature Gate - Compile Time Flag</h4>
                 <p>
-                  코디네이터 모드는 <code>COORDINATOR_MODE</code> <strong>컴파일 타임 플래그</strong> 뒤에 게이트되어 있으며, 공개 빌드에서는 비활성화됩니다. 플래그가 꺼져있으면 Bun 번들러의 tree-shaking 최적화에 의해 src/coordinator/ 전체 디렉토리가 바이너리에서 제거되어 번들 크기 증가가 없습니다.
+                  코디네이터 모드는 COORDINATOR_MODE 컴파일 타임 플래그 뒤에 게이트되어 있으며, 공개 빌드에서는 비활성화됩니다. 플래그가 꺼져있으면 Bun 번들러의 tree-shaking 최적화에 의해 코디네이터 디렉토리 전체가 바이너리에서 제거되어 번들 크기가 증가하지 않습니다. 필요할 때만 선택적으로 활성화할 수 있는 유연한 구조입니다.
                 </p>
               </div>
             </div>
@@ -961,41 +961,17 @@ sequenceDiagram
               <div class="feature-card">
                 <h4>워크트리 격리 원리</h4>
                 <p>
-                  코디네이터 모드에서 각 에이전트는 <code>.claude-worktrees/{taskId}</code> 경로에 전용 git worktree를 생성하여 독립적으로 작업합니다. 모든 에이전트가 동일한 리포지토리를 공유하지만 각자의 브랜치(<code>team/{taskId}</code>)에서 변경하므로, 여러 에이전트가 동일 파일을 동시에 수정해도 git merge conflict가 발생하지 않습니다.
+                  코디네이터 모드에서 각 에이전트는 .claude-worktrees/{taskId} 경로에 전용 git worktree를 생성하여 독립적으로 작업합니다. 모든 에이전트가 동일한 리포지토리를 공유하지만 각자의 브랜치(team/{taskId})에서 변경하므로, 여러 에이전트가 동일 파일을 동시에 수정해도 git merge conflict가 발생하지 않습니다. 이것이 대규모 병렬 작업을 가능하게 하는 핵심 메커니즘입니다.
                 </p>
               </div>
               <div class="feature-card">
                 <h4>자동 정리 및 병합</h4>
                 <p>
-                  에이전트가 작업을 완료하면 변경사항을 자신의 브랜치에 커밋하고, worktree는 자동으로 삭제됩니다. 변경사항이 없는 worktree도 자동 정리되어 디스크 낭비가 없습니다. 최종 병합은 코디네이터가 각 에이전트의 PR을 메인 브랜치로 통합하는 방식으로 처리합니다.
+                  에이전트가 작업을 완료하면 변경사항을 자신의 브랜치에 커밋하고, worktree는 자동으로 삭제됩니다. 변경사항이 없는 worktree도 자동 정리되어 디스크 낭비가 없습니다. 최종 병합은 코디네이터가 각 에이전트의 PR을 메인 브랜치로 통합하는 방식으로 처리하므로, 장기 실행 워크플로우에서도 안정적으로 리소스를 관리할 수 있습니다.
                 </p>
               </div>
             </div>
 
-            <div class="diagram-container">
-              <div class="diagram-title">Git Worktree Isolation Strategy</div>
-              <pre class="mermaid">
-graph TB
-    Main["메인 워크트리<br/>(branch: main)"]
-
-    Main --> WT1["워크트리 1<br/>(team/feature-a)"]
-    Main --> WT2["워크트리 2<br/>(team/feature-b)"]
-    Main --> WT3["워크트리 3<br/>(team/tests)"]
-
-    WT1 --> |"git commit<br/>+ git push"| PR1["PR: Feature A"]
-    WT2 --> |"git commit<br/>+ git push"| PR2["PR: Feature B"]
-    WT3 --> |"git commit<br/>+ git push"| PR3["PR: Tests"]
-
-    PR1 --> Main
-    PR2 --> Main
-    PR3 --> Main
-
-    style Main fill:#3b82f6,color:#fff
-    style WT1 fill:#10b981,color:#fff
-    style WT2 fill:#10b981,color:#fff
-    style WT3 fill:#10b981,color:#fff
-              </pre>
-            </div>
           </section>
 
         </div>
@@ -1008,7 +984,7 @@ graph TB
               <div class="section-badge">&#9733; SubAgents</div>
               <h2 class="section-title">서브에이전트 유형</h2>
               <p class="section-desc">
-                5가지 이상의 특화된 서브에이전트 유형, 각각 특정 목적과 제한된 도구 접근 권한. AsyncLocalStorage 격리와 계층적 AbortController를 통한 안전한 병렬 실행.
+                특정 역할마다 다른 에이전트 유형이 있으며, 각 유형은 보안과 효율성을 위해 할당된 도구만 사용 가능합니다. 탐색부터 검증까지, 정확한 도구 세트로 전문화된 에이전트들이 함께 동작합니다.
               </p>
             </div>
 
@@ -1024,106 +1000,42 @@ graph TB
               <tbody>
                 <tr>
                   <td>general-purpose</td>
-                  <td>All tools</td>
-                  <td>Full capability</td>
-                  <td>30s - 5m</td>
+                  <td>모든 도구</td>
+                  <td>전체 권한</td>
+                  <td>30초-5분</td>
                 </tr>
                 <tr>
                   <td>Explore</td>
-                  <td>Read-only tools</td>
-                  <td>Max 3 parallel, 15m timeout</td>
-                  <td>5-30s per agent</td>
+                  <td>읽기만</td>
+                  <td>최대 3개 병렬</td>
+                  <td>에이전트당 5-30초</td>
                 </tr>
                 <tr>
                   <td>Plan</td>
-                  <td>Read-only tools</td>
-                  <td>Detailed planning focus</td>
-                  <td>10-60s</td>
+                  <td>읽기만</td>
+                  <td>계획에 집중</td>
+                  <td>10-60초</td>
                 </tr>
                 <tr>
                   <td>claude-code-guide</td>
-                  <td>Glob, Grep, Read, WebFetch</td>
-                  <td>Info retrieval only</td>
-                  <td>5-15s</td>
+                  <td>검색 및 읽기</td>
+                  <td>정보 수집만</td>
+                  <td>5-15초</td>
                 </tr>
                 <tr>
                   <td>statusline-setup</td>
-                  <td>Read, Edit</td>
-                  <td>Minimal tool access</td>
-                  <td>5-10s</td>
+                  <td>읽기, 수정</td>
+                  <td>최소 권한</td>
+                  <td>5-10초</td>
                 </tr>
                 <tr>
                   <td>verification</td>
-                  <td>All except Agent, Edit, Write, NotebookEdit</td>
-                  <td>Read-only, produces verdicts</td>
-                  <td>30s-2m</td>
+                  <td>읽기만</td>
+                  <td>검증 전담</td>
+                  <td>30초-2분</td>
                 </tr>
               </tbody>
             </table>
-
-            <div class="feature-cards">
-              <div class="feature-card">
-                <h4>Tool Access Model: Allowlist, Not Denylist</h4>
-                <p>
-                  각 서브에이전트 유형은 <strong>allowlist 모델</strong>을 사용합니다. 도구는 명시적으로 허용되거나 차단되며, allowlist에 없는 도구는 사용 불가능합니다. 이는 denylist 방식(기본 허용, 특정 도구만 차단)과 대조됩니다. Allowlist는 더 안전하며 새 도구 추가 시 각 에이전트 타입에 대해 명시적 검토가 필요합니다.
-                </p>
-              </div>
-              <div class="feature-card">
-                <h4>1. AsyncLocalStorage Isolation</h4>
-                <p>
-                  <strong>InProcessTeammate</strong>는 Node.js AsyncLocalStorage를 통해 동일 V8 힙 내에서 격리된 컨텍스트를 유지합니다. 별도 프로세스 생성 오버헤드(~40MB 메모리, ms 단위 시작 시간) 없이 안전한 병렬 실행이 가능하며, 각 teammate는 자신만의 conversation history, tool state, permission scope를 가집니다. 100+개 에이전트 동시 실행 가능합니다.
-                </p>
-              </div>
-              <div class="feature-card">
-                <h4>2. File-Based Mailbox IPC</h4>
-                <p>
-                  <strong>LocalAgent</strong> 간 통신에 JSON 파일 기반 Mailbox 패턴을 사용합니다. dotfile lockfile으로 원자적 쓰기를 제어하며(10ms 백오프 재시도), 에이전트 크래시 시에도 mailbox 파일이 손상되지 않아 높은 복원력을 제공합니다. 코디네이터는 timeout 감지 시 새 에이전트를 생성하여 미완료 작업을 이어받을 수 있습니다.
-                </p>
-              </div>
-              <div class="feature-card">
-                <h4>3. Task List as Coordination Protocol</h4>
-                <p>
-                  Task List는 단순한 할일 목록이 아닌 <strong>분산 조율 프로토콜</strong>입니다. 에이전트가 크래시되어도 미완료 태스크는 Task List에 남아있어 다른 에이전트가 작업을 claim하여 이어받을 수 있습니다. 코디네이터는 Task List 상태만 확인해도 pending/in_progress/completed/failed 브레이크다운으로 전체 진행 상황을 파악하며, 에이전트와 코디네이터 간의 직접 의존성이 없어 결합도를 최소화합니다.
-                </p>
-              </div>
-            </div>
-
-            <div class="diagram-container">
-              <div class="diagram-title">SubAgent Communication & Coordination Flow</div>
-              <pre class="mermaid">
-sequenceDiagram
-    participant C as 코디네이터
-    participant TL as 작업 목록
-    participant A as 서브에이전트 A
-    participant MB as Mailbox (파일)
-    participant B as 서브에이전트 B
-
-    C->>TL: 작업 생성
-    A->>TL: 작업 할당 (상태: 진행 중)
-    A->>A: 작업 실행
-    A->>MB: 메시지 작성 (JSON)
-    MB->>B: 메시지 읽기 (폴링)
-    B->>TL: 작업 결과 업데이트
-    A->>TL: 완료 표시
-    C->>TL: 진행 상황 확인
-    C->>C: 결과 병합
-              </pre>
-            </div>
-
-            <div class="feature-cards">
-              <div class="feature-card">
-                <h4>4. AbortController Hierarchy</h4>
-                <p>
-                  <strong>계층적 AbortController 구조</strong>를 통해 에이전트 수명 주기를 관리합니다. 부모 에이전트가 취소되면 root AbortController의 abort() 호출이 모든 자식 에이전트의 signal로 전파되며, 각 에이전트는 pending 도구 호출을 취소하고 worktree를 정리한 후 종료됩니다. 깊은 중첩 구조(agent → subagent → sub-subagent)에서도 고아 프로세스가 발생하지 않습니다.
-                </p>
-              </div>
-              <div class="feature-card">
-                <h4>5. Git Worktree Isolation</h4>
-                <p>
-                  각 에이전트는 <strong>전용 git worktree</strong>(예: .claude-worktrees/{taskId})에서 독립적으로 작업하여 여러 에이전트가 동시에 동일 파일을 수정해도 git merge conflict가 발생하지 않습니다. 각 에이전트는 자신의 브랜치(team/{taskId})에서 변경사항을 커밋하고, 에이전트 완료 시 워크트리는 자동으로 정리되며 병합은 코디네이터가 처리합니다.
-                </p>
-              </div>
-            </div>
 
             <div class="diagram-container">
               <div class="diagram-title">SubAgent Types & Isolation Mechanisms</div>
@@ -1166,15 +1078,108 @@ flowchart TB
 
             <div class="feature-cards">
               <div class="feature-card">
+                <h4>Tool Access Model: Allowlist, Not Denylist</h4>
+                <p>
+                  각 서브에이전트 유형은 allowlist 모델을 사용합니다. 도구는 명시적으로 허용되거나 차단되며, allowlist에 없는 도구는 사용 불가능합니다. 이는 기본 허용하고 일부만 차단하는 denylist 방식과 대조됩니다. Allowlist는 더 안전하며 새 도구 추가 시 각 에이전트 타입에 대해 명시적 검토가 필요하므로, 실수와 보안 위험을 크게 줄입니다.
+                </p>
+              </div>
+              <div class="feature-card">
+                <h4>1. AsyncLocalStorage Isolation</h4>
+                <p>
+                  InProcessTeammate는 Node.js AsyncLocalStorage를 통해 동일 V8 힙 내에서 격리된 컨텍스트를 유지합니다. 별도 프로세스 생성 오버헤드(약 40MB 메모리, 밀리초 단위 시작 시간) 없이 안전한 병렬 실행이 가능하며, 각 teammate는 자신만의 대화 기록, 도구 상태, 권한 범위를 가집니다. 이 설계로 수십~수백 개의 에이전트를 동시에 실행할 수 있습니다.
+                </p>
+              </div>
+              <div class="feature-card">
+                <h4>2. File-Based Mailbox IPC</h4>
+                <p>
+                  LocalAgent 간 통신에 JSON 파일 기반 Mailbox 패턴을 사용합니다. 닷파일 lockfile으로 원자적 쓰기를 제어하며(10ms 백오프 재시도), 에이전트 크래시 시에도 mailbox 파일이 손상되지 않아 높은 복원력을 제공합니다. 코디네이터는 timeout 감지 시 새 에이전트를 생성하여 미완료 작업을 이어받을 수 있습니다.
+                </p>
+              </div>
+              <div class="feature-card">
+                <h4>3. Task List as Coordination Protocol</h4>
+                <p>
+                  Task List는 단순한 할일 목록이 아닌 분산 조율 프로토콜입니다. 에이전트가 크래시되어도 미완료 태스크는 Task List에 남아있어 다른 에이전트가 작업을 claim하여 이어받을 수 있습니다. 코디네이터는 Task List 상태만 확인해도 pending/in_progress/completed/failed 브레이크다운으로 전체 진행 상황을 파악하며, 에이전트와 코디네이터 간의 직접 의존성이 없어 결합도를 최소화합니다.
+                </p>
+              </div>
+            </div>
+
+            <div class="diagram-container">
+              <div class="diagram-title">SubAgent Communication & Coordination Flow</div>
+              <pre class="mermaid">
+sequenceDiagram
+    participant C as 코디네이터
+    participant TL as 작업 목록
+    participant A as 서브에이전트 A
+    participant MB as Mailbox (파일)
+    participant B as 서브에이전트 B
+
+    C->>TL: 작업 생성
+    A->>TL: 작업 할당 (상태: 진행 중)
+    A->>A: 작업 실행
+    A->>MB: 메시지 작성 (JSON)
+    MB->>B: 메시지 읽기 (폴링)
+    B->>TL: 작업 결과 업데이트
+    A->>TL: 완료 표시
+    C->>TL: 진행 상황 확인
+    C->>C: 결과 병합
+              </pre>
+            </div>
+
+            <div class="feature-cards">
+              <div class="feature-card">
+                <h4>4. AbortController Hierarchy</h4>
+                <p>
+                  계층적 AbortController 구조를 통해 에이전트 수명 주기를 관리합니다. 부모 에이전트가 취소되면 root AbortController의 abort() 호출이 모든 자식 에이전트의 signal로 전파되며, 각 에이전트는 pending 도구 호출을 취소하고 worktree를 정리한 후 종료됩니다. 깊은 중첩 구조에서도 고아 프로세스가 발생하지 않습니다.
+                </p>
+              </div>
+              <div class="feature-card">
+                <h4>5. Git Worktree Isolation</h4>
+                <p>
+                  각 에이전트는 전용 git worktree(예: .claude-worktrees/{taskId})에서 독립적으로 작업하여 여러 에이전트가 동시에 동일 파일을 수정해도 git merge conflict가 발생하지 않습니다. 각 에이전트는 자신의 브랜치(team/{taskId})에서 변경사항을 커밋하고, 에이전트 완료 시 워크트리는 자동으로 정리되며 병합은 코디네이터가 처리합니다.
+                </p>
+              </div>
+            </div>
+
+            <div class="diagram-container">
+              <div class="diagram-title">Git Worktree Isolation Strategy</div>
+              <pre class="mermaid">
+graph TB
+    Main["메인 워크트리<br/>(branch: main)"]
+
+    Main --> WT1["워크트리 1<br/>(team/feature-a)"]
+    Main --> WT2["워크트리 2<br/>(team/feature-b)"]
+    Main --> WT3["워크트리 3<br/>(team/tests)"]
+
+    WT1 --> |"git commit<br/>+ git push"| PR1["PR: Feature A"]
+    WT2 --> |"git commit<br/>+ git push"| PR2["PR: Feature B"]
+    WT3 --> |"git commit<br/>+ git push"| PR3["PR: Tests"]
+
+    PR1 --> Main
+    PR2 --> Main
+    PR3 --> Main
+
+    style Main fill:#3b82f6,color:#fff
+    style WT1 fill:#10b981,color:#fff
+    style WT2 fill:#10b981,color:#fff
+    style WT3 fill:#10b981,color:#fff
+              </pre>
+            </div>
+
+            <div class="feature-cards">
+              <div class="feature-card">
                 <h4>6. Verification Agent</h4>
                 <p>
-                  <strong>Verification Agent</strong>는 구현 후 테스트 및 검증을 위해 특화되었습니다. 읽기 전용 실행, 적대적 포커스(구현 깨뜨리기 시도), 증거 기반 평가(PASS/FAIL/PARTIAL)를 수행합니다. <code>tengu_hive_evidence</code> GrowthBook 플래그로 제어됩니다.
+                  Verification Agent는 구현 후 테스트 및 검증을 위해 특화되었습니다. 읽기 전용 실행, 적대적 포커스(구현 깨뜨리기 시도), 증거 기반 평가(PASS/FAIL/PARTIAL)를 수행하며, tengu_hive_evidence GrowthBook 플래그로 제어됩니다. 품질 검증의 마지막 관문입니다.
                 </p>
               </div>
               <div class="feature-card">
                 <h4>7. Explore Agent Thoroughness Levels</h4>
                 <p>
-                  <strong>Explore 에이전트</strong>는 세 가지 철저함 레벨을 지원합니다: <br/><strong>quick</strong> (특정 디렉토리, 1-2 파일, 5-10초), <strong>medium</strong> (여러 위치, 5-20개 파일, 15-30초), <strong>very thorough</strong> (전체 코드베이스, 50+ 파일, 30-60초). 최대 3개의 Explore 에이전트가 병렬로 실행 가능하며, 각 에이전트는 15분 타임아웃을 가집니다.
+                  Explore 에이전트는 세 가지 철저함 레벨을 지원합니다:<br/>
+                  - <strong>quick:</strong> 특정 디렉토리, 1-2 파일, 5-10초<br/>
+                  - <strong>medium:</strong> 여러 위치, 5-20개 파일, 15-30초<br/>
+                  - <strong>very thorough:</strong> 전체 코드베이스, 50+ 파일, 30-60초<br/>
+                  최대 3개의 Explore 에이전트가 병렬로 실행 가능하며, 각 에이전트는 15분 타임아웃을 가집니다. 필요에 따라 탐색 깊이를 선택할 수 있습니다.
                 </p>
               </div>
             </div>
@@ -1215,7 +1220,7 @@ flowchart TB
               <div class="section-badge">&#9881; KAIROS</div>
               <h2 class="section-title">KAIROS — 자율 데몬 모드</h2>
               <p class="section-desc">
-                완전히 구현되었지만 컴파일 타임 플래그로 비활성화된 자율 에이전트 데몬. 현재의 반응형 모델에서 지속적으로 작동하는 백그라운드 에이전트로의 패러다임 전환을 나타냅니다.
+                사용자 요청을 기다리는 대신 스스로 계속 모니터링하고 자동으로 행동하는 백그라운드 데몬입니다. 시간이 지날수록 스스로 학습하고 똑똑해집니다.
               </p>
             </div>
 
@@ -1237,34 +1242,34 @@ flowchart TB
               </thead>
               <tbody>
                 <tr>
-                  <td>Activation</td>
-                  <td>User-initiated</td>
-                  <td>Self-starting (tick)</td>
+                  <td>시작</td>
+                  <td>사용자가 요청</td>
+                  <td>자동 시작</td>
                 </tr>
                 <tr>
-                  <td>Context</td>
-                  <td>Single session</td>
-                  <td>Persistent across sessions</td>
+                  <td>기억</td>
+                  <td>세션별</td>
+                  <td>지속적</td>
                 </tr>
                 <tr>
-                  <td>Memory</td>
-                  <td>Per-session context</td>
-                  <td>autoDream consolidated</td>
+                  <td>학습</td>
+                  <td>없음</td>
+                  <td>자동 통합</td>
                 </tr>
                 <tr>
-                  <td>Events</td>
-                  <td>None</td>
-                  <td>GitHub webhooks, filesystem</td>
+                  <td>감시</td>
+                  <td>없음</td>
+                  <td>GitHub 이벤트</td>
                 </tr>
                 <tr>
-                  <td>Logging</td>
-                  <td>Conversation history</td>
-                  <td>Append-only daily journal</td>
+                  <td>기록</td>
+                  <td>대화 기록</td>
+                  <td>일일 로그</td>
                 </tr>
                 <tr>
-                  <td>Operation</td>
-                  <td>Synchronous</td>
-                  <td>Background daemon</td>
+                  <td>방식</td>
+                  <td>동기식</td>
+                  <td>백그라운드</td>
                 </tr>
               </tbody>
             </table>
@@ -1273,7 +1278,7 @@ flowchart TB
               <div class="feature-card">
                 <h4>1. Tick Loop System</h4>
                 <p>
-                  사용자 입력에 응답하는 일반 Claude Code와 달리, KAIROS는 <strong>주기적 tick 루프</strong>로 동작합니다. <code>&lt;tick&gt;</code> 프롬프트가 설정된 간격(예: 30-60초)으로 모델에 전송되며, 각 tick에서 모델은 <strong>workspace state, pending events, recent actions</strong>을 받아 자율적으로 액션 필요 여부를 판단합니다. 액션 결정 후 결과는 dailyLog에 append되고 다음 tick의 컨텍스트가 됩니다.
+                  사용자 입력에 응답하는 일반 Claude Code와 달리, KAIROS는 주기적 tick 루프로 동작합니다. &lt;tick&gt; 프롬프트가 설정된 간격(예: 30-60초)으로 모델에 전송되며, 각 tick에서 모델은 workspace state, pending events, recent actions를 받아 자율적으로 액션 필요 여부를 판단합니다. 액션 결정 후 결과는 dailyLog에 append되고 다음 tick의 컨텍스트가 됩니다.
                 </p>
               </div>
             </div>
@@ -1305,13 +1310,22 @@ graph TB
               <div class="feature-card">
                 <h4>2. autoDream Memory Consolidation</h4>
                 <p>
-                  <strong>autoDream</strong>은 유휴 시간(DREAM_THRESHOLD 초 이상)에 자동으로 실행되며, 생물학적 수면 중 기억 통합과 유사합니다. <strong>4단계</strong>를 거칩니다: (1) dailyLog에서 최근 관측 로드, (2) 관련 관측 병합, (3) 모순 제거 후 실제 코드로 검증, (4) 모호한 관측을 구체적 사실로 결정화(crystallize). 최종 사실은 MEMORY.md에 append되어 데몬의 지식이 시간이 지날수록 정제됩니다.
+                  autoDream은 유휴 시간에 자동으로 실행되며, 생물학적 수면 중 기억 통합과 유사합니다. 4단계를 거칩니다:<br/>
+                  - dailyLog에서 최근 관측 로드<br/>
+                  - 관련 관측 병합<br/>
+                  - 모순 제거 후 실제 코드로 검증<br/>
+                  - 모호한 관측을 구체적 사실로 결정화<br/>
+                  최종 사실은 MEMORY.md에 기록되어 데몬의 지식이 시간이 지날수록 정제됩니다.
                 </p>
               </div>
               <div class="feature-card">
                 <h4>3. Event Watcher - GitHub Integration</h4>
                 <p>
-                  KAIROS는 <strong>GitHub 웹훅</strong>을 구독하여 <code>pull_request, pull_request_review, issue_comment, check_suite, push, issues</code> 이벤트를 모니터링합니다. 이벤트는 priority로 분류됩니다: <strong>high</strong>(CI 실패, 리뷰 changes requested) → 즉시 tick 트리거, <strong>medium</strong>(새 코멘트) → 다음 tick에 포함, <strong>low</strong>(정보성) → dailyLog에만 기록. 데몬은 GitHub 이벤트에 자율적으로 반응하여 대기 중 능동적으로 대응합니다.
+                  KAIROS는 GitHub 웹훅을 구독하여 PR, 리뷰, 코멘트, CI, 푸시, 이슈 이벤트를 모니터링합니다. 이벤트는 우선순위로 분류됩니다:<br/>
+                  - <strong>high:</strong> CI 실패, 리뷰 변경 요청 → 즉시 tick 트리거<br/>
+                  - <strong>medium:</strong> 새 코멘트 → 다음 tick에 포함<br/>
+                  - <strong>low:</strong> 정보성 → dailyLog에만 기록<br/>
+                  데몬은 GitHub 이벤트에 자율적으로 반응하여 대기 중에도 능동적으로 대응합니다.
                 </p>
               </div>
             </div>
@@ -1352,13 +1366,18 @@ graph TB
               <div class="feature-card">
                 <h4>4. Daily Log - Append-Only Journal</h4>
                 <p>
-                  KAIROS는 <strong>append-only 일일 로그</strong>(dailyLog)를 유지하여 각 tick에서: (1) 수행한 액션과 결과, (2) 코드베이스 관측, (3) 취한 결정과 근거, (4) 수신한 GitHub 이벤트와 처리 방식을 기록합니다. 로그 항목은 type(action/observation/event/dream/error), tickNumber, timestamp, context를 포함하며, 이는 autoDream의 입력이 되고 사용자에게 완전한 감사 추적(audit trail)을 제공합니다.
+                  KAIROS는 append-only 일일 로그를 유지하여 각 tick에서 다음을 기록합니다:<br/>
+                  - 수행한 액션과 결과<br/>
+                  - 코드베이스 관측<br/>
+                  - 취한 결정과 근거<br/>
+                  - 수신한 GitHub 이벤트와 처리 방식<br/>
+                  이 로그는 autoDream의 입력이 되고 사용자에게 완전한 감사 추적을 제공합니다.
                 </p>
               </div>
               <div class="feature-card">
                 <h4>5. Deployment Status - Compile-Time Gate</h4>
                 <p>
-                  KAIROS는 <strong>완전히 구현</strong>되었으며 150+ 코드베이스 참조를 가진 프로덕션-레디 코드이지만, <code>KAIROS</code> 컴파일 타임 플래그 뒤에 게이트되어 있습니다. 공개 빌드에서는 dead-code-eliminated되며, 최종 테스트와 정책 결정을 대기 중입니다. 내부 Anthropic 빌드에서는 <code>KAIROS_ENABLED=true</code> 환경 변수와 GitHub 토큰으로 활성화됩니다.
+                  KAIROS는 완전히 구현되었으며 150+ 코드베이스 참조를 가진 프로덕션-레디 코드이지만, KAIROS 컴파일 타임 플래그 뒤에 게이트되어 있습니다. 공개 빌드에서는 dead-code-eliminated되며, 최종 테스트와 정책 결정을 대기 중입니다. 내부 Anthropic 빌드에서는 KAIROS_ENABLED=true 환경 변수와 GitHub 토큰으로 활성화됩니다.
                 </p>
               </div>
             </div>
@@ -1367,7 +1386,7 @@ graph TB
               <span class="callout-icon">&#128269;</span>
               <div>
                 <strong>Paradigm Shift</strong>
-                KAIROS는 AI 코딩 어시스턴트의 다음 진화에 대한 Anthropic의 비전입니다: 요청 시에만 응답하는 게 아니라 지속적으로 이슈를 감시하고, CI 실패와 의존성 업데이트에 자동 대응하며, 시간이 지날수록 autoDream으로 코드베이스 이해도를 향상시킵니다.
+                KAIROS는 에이전트의 미래를 보여줍니다. 단순히 요청에 응답하는 대신, 계속 모니터링하고 자동으로 문제를 해결하며, 시간이 지날수록 똑똑해집니다.
               </div>
             </div>
           </section>
