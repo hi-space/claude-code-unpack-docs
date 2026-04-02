@@ -1,0 +1,1256 @@
+<!DOCTYPE html>
+<html lang="ko" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Claude Code Memory System</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@11.4.1/dist/mermaid.min.js"></script>
+  <style>
+    /* ===== CSS Reset & Variables ===== */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --color-bg: #ffffff;
+      --color-bg-secondary: #f8f9fb;
+      --color-bg-tertiary: #f1f3f5;
+      --color-bg-card: #ffffff;
+      --color-border: #e5e7eb;
+      --color-border-light: #f0f1f3;
+      --color-text: #1a1a2e;
+      --color-text-secondary: #6b7280;
+      --color-text-muted: #9ca3af;
+      --color-primary: #d97706;
+      --color-primary-light: #fef3c7;
+      --color-primary-dark: #b45309;
+      --color-accent-blue: #3b82f6;
+      --color-accent-blue-light: #eff6ff;
+      --color-accent-green: #10b981;
+      --color-accent-green-light: #ecfdf5;
+      --color-accent-purple: #8b5cf6;
+      --color-accent-purple-light: #f5f3ff;
+      --color-accent-red: #ef4444;
+      --color-accent-red-light: #fef2f2;
+      --color-accent-teal: #14b8a6;
+      --color-accent-teal-light: #f0fdfa;
+      --color-accent-indigo: #6366f1;
+      --color-accent-indigo-light: #eef2ff;
+      --color-accent-amber: #f59e0b;
+      --color-accent-amber-light: #fffbeb;
+      --sidebar-width: 260px;
+      --font-sans: 'Noto Sans KR', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      --font-mono: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', 'Consolas', monospace;
+      --shadow-sm: 0 1px 2px rgba(0,0,0,0.04);
+      --shadow-md: 0 4px 12px rgba(0,0,0,0.06);
+      --shadow-lg: 0 8px 24px rgba(0,0,0,0.08);
+      --shadow-xl: 0 12px 32px rgba(0,0,0,0.10);
+      --radius-sm: 6px;
+      --radius-md: 10px;
+      --radius-lg: 14px;
+      --radius-xl: 20px;
+    }
+
+    [data-theme="dark"] {
+      --color-bg: #0f1117;
+      --color-bg-secondary: #1a1b23;
+      --color-bg-tertiary: #22232d;
+      --color-bg-card: #1a1b23;
+      --color-border: #2d2e3a;
+      --color-border-light: #23242f;
+      --color-text: #e4e5ea;
+      --color-text-secondary: #9ca0af;
+      --color-text-muted: #6b7085;
+      --color-primary: #f59e0b;
+      --color-primary-light: #422006;
+      --color-primary-dark: #fbbf24;
+      --color-accent-blue-light: #172554;
+      --color-accent-green-light: #052e16;
+      --color-accent-purple-light: #2e1065;
+      --color-accent-red-light: #450a0a;
+      --color-accent-teal-light: #042f2e;
+      --color-accent-indigo-light: #1e1b4b;
+      --color-accent-amber-light: #451a03;
+      --shadow-sm: 0 1px 2px rgba(0,0,0,0.2);
+      --shadow-md: 0 4px 12px rgba(0,0,0,0.3);
+      --shadow-lg: 0 8px 24px rgba(0,0,0,0.35);
+      --shadow-xl: 0 12px 32px rgba(0,0,0,0.4);
+    }
+
+    html { scroll-behavior: smooth; font-size: 16px; }
+
+    body {
+      font-family: var(--font-sans);
+      color: var(--color-text);
+      background: var(--color-bg);
+      line-height: 1.7;
+      -webkit-font-smoothing: antialiased;
+      transition: background 0.3s ease, color 0.3s ease;
+    }
+
+    /* ===== Sidebar ===== */
+    .sidebar {
+      position: fixed;
+      top: 0; left: 0;
+      width: var(--sidebar-width);
+      height: 100vh;
+      background: var(--color-bg);
+      border-right: 1px solid var(--color-border);
+      padding: 28px 0;
+      overflow-y: auto;
+      z-index: 100;
+      display: flex;
+      flex-direction: column;
+      transition: background 0.3s ease, border-color 0.3s ease;
+    }
+
+    .sidebar-header {
+      padding: 0 20px 20px;
+      border-bottom: 1px solid var(--color-border-light);
+      margin-bottom: 12px;
+    }
+
+    .sidebar-header h2 {
+      font-size: 15px;
+      font-weight: 800;
+      color: var(--color-text);
+      letter-spacing: -0.02em;
+    }
+
+    .sidebar-header span {
+      font-size: 11.5px;
+      color: var(--color-text-muted);
+      font-weight: 500;
+    }
+
+    .sidebar-nav { flex: 1; padding: 0 10px; }
+
+    .sidebar-nav .nav-section {
+      font-size: 10.5px;
+      font-weight: 700;
+      color: var(--color-text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      padding: 14px 12px 6px;
+    }
+
+    .sidebar-nav a {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 8px 12px;
+      color: var(--color-text-secondary);
+      text-decoration: none;
+      font-size: 13px;
+      font-weight: 500;
+      border-radius: var(--radius-sm);
+      transition: all 0.15s ease;
+      margin-bottom: 1px;
+    }
+
+    .sidebar-nav a:hover {
+      color: var(--color-text);
+      background: var(--color-bg-secondary);
+    }
+
+    .sidebar-nav a.active {
+      color: var(--color-primary-dark);
+      background: var(--color-primary-light);
+      font-weight: 700;
+    }
+
+    .sidebar-nav a .nav-icon {
+      width: 20px; height: 20px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 13px;
+      flex-shrink: 0;
+    }
+
+    .deep-dive-cta {
+      margin: 16px 10px 8px;
+      padding: 10px 12px;
+      background: linear-gradient(135deg, var(--color-accent-blue-light), transparent);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-md);
+      transition: all 0.2s ease;
+    }
+    .deep-dive-cta:hover {
+      border-color: var(--color-accent-blue);
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.06);
+    }
+    .deep-dive-cta a {
+      text-decoration: none !important;
+      display: block;
+      gap: 0;
+      padding: 0 !important;
+      margin: 0 !important;
+      background: none !important;
+    }
+    .deep-dive-cta a:hover {
+      background: none !important;
+    }
+    .deep-dive-cta .cta-badge {
+      display: inline-block;
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--color-accent-blue);
+      background: var(--color-accent-blue-light);
+      padding: 2px 8px;
+      border-radius: 4px;
+      margin-bottom: 6px;
+    }
+    .deep-dive-cta .cta-title {
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--color-accent-blue);
+      margin-bottom: 4px;
+    }
+    .deep-dive-cta .cta-desc {
+      font-size: 11.5px;
+      line-height: 1.55;
+      color: var(--color-text-secondary);
+    }
+
+    .sidebar-footer {
+      padding: 16px 20px;
+      border-top: 1px solid var(--color-border-light);
+    }
+
+    .theme-toggle {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 12.5px;
+      color: var(--color-text-secondary);
+      background: var(--color-bg-secondary);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-sm);
+      padding: 7px 12px;
+      cursor: pointer;
+      width: 100%;
+      transition: all 0.15s ease;
+      font-family: var(--font-sans);
+    }
+
+    .theme-toggle:hover {
+      color: var(--color-text);
+      border-color: #d1d5db;
+    }
+
+    /* ===== Main Content ===== */
+    .main {
+      margin-left: var(--sidebar-width);
+      min-height: 100vh;
+    }
+
+    .content {
+      max-width: 920px;
+      margin: 0 auto;
+      padding: 40px 40px 80px;
+    }
+
+    /* ===== Hero ===== */
+    .hero {
+      margin-bottom: 48px;
+      padding: 40px 0 36px;
+      border-bottom: 1px solid var(--color-border-light);
+    }
+
+    .hero-eyebrow {
+      font-size: 12.5px;
+      font-weight: 700;
+      color: var(--color-primary);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      margin-bottom: 14px;
+    }
+
+    .hero h1 {
+      font-size: 36px;
+      font-weight: 800;
+      letter-spacing: -0.035em;
+      line-height: 1.15;
+      margin-bottom: 14px;
+      color: var(--color-text);
+    }
+
+    .hero-desc {
+      font-size: 16px;
+      color: var(--color-text-secondary);
+      line-height: 1.7;
+      max-width: 640px;
+    }
+
+    .hero-stats {
+      display: flex;
+      gap: 28px;
+      margin-top: 28px;
+      flex-wrap: wrap;
+    }
+
+    .hero-stat {
+      display: flex;
+      flex-direction: column;
+      padding: 16px 20px;
+      background: var(--color-bg-secondary);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-md);
+      min-width: 130px;
+      transition: all 0.2s ease;
+    }
+
+    .hero-stat:hover {
+      border-color: var(--color-primary);
+      box-shadow: var(--shadow-md);
+      transform: translateY(-2px);
+    }
+
+    .hero-stat-value {
+      font-size: 26px;
+      font-weight: 800;
+      color: var(--color-text);
+      letter-spacing: -0.02em;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .hero-stat-label {
+      font-size: 12px;
+      color: var(--color-text-muted);
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      margin-top: 2px;
+    }
+
+    /* ===== Section ===== */
+    .section {
+      margin-bottom: 56px;
+      scroll-margin-top: 24px;
+    }
+
+    .section-header {
+      margin-bottom: 28px;
+    }
+
+    .section-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 11.5px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      padding: 4px 12px;
+      border-radius: 20px;
+      margin-bottom: 10px;
+    }
+
+    .section-title {
+      font-size: 26px;
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      line-height: 1.25;
+      margin-bottom: 10px;
+    }
+
+    .section-desc {
+      font-size: 15px;
+      color: var(--color-text-secondary);
+      line-height: 1.7;
+      max-width: 680px;
+    }
+
+    /* ===== Diagram Container ===== */
+    .diagram-container {
+      background: var(--color-bg-secondary);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-lg);
+      padding: 28px 24px;
+      margin: 24px 0;
+      overflow-x: auto;
+    }
+
+    .diagram-container .mermaid {
+      display: flex;
+      justify-content: center;
+    }
+
+    .diagram-title {
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--color-text-secondary);
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .diagram-title::before {
+      content: '';
+      display: inline-block;
+      width: 3px; height: 14px;
+      background: var(--color-primary);
+      border-radius: 2px;
+    }
+
+    /* ===== Feature Cards ===== */
+    .feature-cards {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      margin: 24px 0;
+    }
+
+    .feature-card {
+      background: var(--color-bg-card);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-md);
+      padding: 20px;
+      margin: 0;
+      transition: all 0.15s ease;
+    }
+
+    .feature-card:hover {
+      border-color: #d1d5db;
+      box-shadow: var(--shadow-lg);
+    }
+
+    .feature-card h4 {
+      font-size: 15px;
+      font-weight: 700;
+      margin-bottom: 8px;
+      color: var(--color-text);
+    }
+
+    .feature-card p {
+      font-size: 14px;
+      color: var(--color-text-secondary);
+      line-height: 1.8;
+    }
+
+    .feature-card code {
+      font-family: var(--font-mono);
+      font-size: 12px;
+      background: var(--color-bg-tertiary);
+      padding: 2px 6px;
+      border-radius: 4px;
+      color: var(--color-primary-dark);
+    }
+
+    .feature-card ul {
+      margin: 10px 0 0 0;
+      padding-left: 20px;
+      list-style: disc;
+    }
+
+    .feature-card li {
+      font-size: 13.5px;
+      color: var(--color-text-secondary);
+      line-height: 1.7;
+      margin-bottom: 4px;
+    }
+
+    /* ===== Description Box ===== */
+    .desc-box {
+      background: var(--color-bg-secondary);
+      border-left: 4px solid var(--color-primary);
+      padding: 14px 16px;
+      border-radius: var(--radius-sm);
+      margin: 20px 0;
+      font-size: 14px;
+      line-height: 1.7;
+      color: var(--color-text-secondary);
+    }
+
+    .desc-box code {
+      background: var(--color-bg-tertiary);
+      padding: 2px 6px;
+      border-radius: 3px;
+      font-family: var(--font-mono);
+      font-size: 12px;
+      color: var(--color-primary-dark);
+    }
+
+    /* ===== Table ===== */
+    .info-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 20px 0;
+      font-size: 13.5px;
+    }
+
+    .info-table th {
+      text-align: left;
+      padding: 10px 14px;
+      font-weight: 700;
+      font-size: 11.5px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--color-text-muted);
+      border-bottom: 2px solid var(--color-border);
+      background: var(--color-bg-secondary);
+    }
+
+    .info-table td {
+      padding: 10px 14px;
+      border-bottom: 1px solid var(--color-border-light);
+      color: var(--color-text-secondary);
+    }
+
+    .info-table tr:hover td {
+      background: var(--color-bg-secondary);
+    }
+
+    /* ===== Footer ===== */
+    .footer {
+      margin-top: 40px;
+      padding: 28px 0;
+      border-top: 1px solid var(--color-border-light);
+      text-align: center;
+      font-size: 12.5px;
+      color: var(--color-text-muted);
+      line-height: 1.8;
+    }
+
+    /* ===== Mobile Header ===== */
+    .mobile-header {
+      display: none;
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      height: 52px;
+      background: var(--color-bg);
+      border-bottom: 1px solid var(--color-border);
+      padding: 0 16px;
+      align-items: center;
+      gap: 12px;
+      z-index: 201;
+      transition: background 0.3s ease, border-color 0.3s ease;
+    }
+
+    .mobile-header-title {
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--color-text);
+    }
+
+    .hamburger-btn {
+      width: 36px; height: 36px;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      gap: 5px;
+      background: none; border: none; cursor: pointer; padding: 6px;
+    }
+
+    .hamburger-btn span {
+      display: block; width: 20px; height: 2px;
+      background: var(--color-text); border-radius: 2px;
+      transition: all 0.3s ease;
+    }
+
+    .sidebar-backdrop {
+      display: none;
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,0.4);
+      z-index: 150;
+    }
+
+    .sidebar-backdrop.open { display: block; }
+
+    /* ===== Back to Top ===== */
+    .back-to-top {
+      position: fixed;
+      bottom: 28px; right: 28px;
+      width: 38px; height: 38px;
+      background: var(--color-text);
+      color: var(--color-bg);
+      border: none;
+      border-radius: 50%;
+      cursor: pointer;
+      font-size: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      opacity: 0;
+      visibility: hidden;
+      transition: all 0.2s ease;
+      z-index: 99;
+      box-shadow: var(--shadow-lg);
+    }
+
+    .back-to-top.visible { opacity: 1; visibility: visible; }
+    .back-to-top:hover { background: var(--color-primary-dark); }
+
+    /* ===== Responsive ===== */
+    @media (max-width: 1024px) {
+      .mobile-header { display: flex; }
+      .sidebar {
+        transform: translateX(-100%);
+        transition: transform 0.3s ease;
+        z-index: 200;
+      }
+      .sidebar.open { transform: translateX(0); }
+      .main { margin-left: 0; padding-top: 52px; }
+      .content { padding: 28px 24px 64px; }
+      .hero h1 { font-size: 28px; }
+      .section-title { font-size: 22px; }
+    }
+
+    @media (max-width: 640px) {
+      .content { padding: 20px 16px 48px; }
+      .hero h1 { font-size: 24px; }
+      .hero-stats { gap: 12px; }
+      .hero-stat { min-width: 100px; padding: 12px 14px; }
+      .hero-stat-value { font-size: 22px; }
+      .diagram-container { padding: 16px 12px; }
+    }
+
+    /* ===== Print ===== */
+    @media print {
+      .sidebar, .back-to-top, .theme-toggle { display: none; }
+      .main { margin-left: 0; }
+    }
+
+    /* ===== Mermaid overrides ===== */
+    .mermaid svg { max-width: 100%; height: auto; }
+  </style>
+</head>
+<body>
+
+  <!-- Mobile Header -->
+  <header class="mobile-header">
+    <button class="hamburger-btn" onclick="toggleSidebar()" aria-label="메뉴">
+      <span></span><span></span><span></span>
+    </button>
+    <span class="mobile-header-title">Claude Code</span>
+  </header>
+  <div class="sidebar-backdrop" onclick="toggleSidebar()"></div>
+
+  <!-- Sidebar -->
+  <nav class="sidebar">
+    <div class="sidebar-header">
+      <h2>Claude Code</h2>
+      <span>Architecture Overview</span>
+    </div>
+    <div class="sidebar-nav">
+      <a href="index.html">
+        <span class="nav-icon">&#9670;</span> Hub
+      </a>
+      <div class="nav-section">Core</div>
+      <a href="overview.html">
+        <span class="nav-icon">&#9672;</span> Architecture
+      </a>
+      <a href="query-engine.html">
+        <span class="nav-icon">&#9889;</span> Query Engine
+      </a>
+      <a href="memory.html" class="active">
+        <span class="nav-icon">&#9731;</span> Memory
+      </a>
+      <a href="agents.html">
+        <span class="nav-icon">&#9733;</span> Agents
+      </a>
+      <div class="nav-section">Systems</div>
+      <a href="tools.html">
+        <span class="nav-icon">&#9881;</span> Tools
+      </a>
+      <a href="cli-ui.html">
+        <span class="nav-icon">&#9618;</span> CLI / UI
+      </a>
+      <a href="system-prompt.html">
+        <span class="nav-icon">&#9998;</span> System Prompt
+      </a>
+      <a href="security.html">
+        <span class="nav-icon">&#9888;</span> Security
+      </a>
+      <a href="hidden-features.html">
+        <span class="nav-icon">&#9873;</span> Hidden Features
+      </a>
+    </div>
+    <div class="deep-dive-cta">
+      <a href="/claude-code-unpack-docs/deep/ko/">
+        <span class="cta-badge">Deep Dive</span>
+        <div class="cta-title">심층 분석 보기 &rarr;</div>
+        <div class="cta-desc">구현 원리, 설계 철학, 내부 동작을 50+ 페이지로 상세히 분석합니다.</div>
+      </a>
+    </div>
+    </div>
+    <div class="sidebar-footer">
+      <button class="theme-toggle" onclick="toggleTheme()">
+        <span class="theme-icon">&#9789;</span>
+        <span class="theme-label">Dark Mode</span>
+      </button>
+    </div>
+  </nav>
+
+  <!-- Main Content -->
+  <div class="main">
+    <div class="content">
+
+      <!-- Hero -->
+      <div class="hero">
+        <div class="hero-eyebrow">Memory System</div>
+        <h1>Self-Healing Memory &amp; Context Budgeting</h1>
+        <p class="hero-desc">
+          3-Layer 자가 치유 메모리 아키텍처와 5-Layer 컨텍스트 압축 시스템 분석. 컨텍스트 엔트로피를 방지하고 장시간 세션을 안정적으로 유지하는 메커니즘.
+        </p>
+        <div class="hero-stats">
+          <div class="hero-stat">
+            <span class="hero-stat-value">3</span>
+            <span class="hero-stat-label">Memory Layers</span>
+          </div>
+          <div class="hero-stat">
+            <span class="hero-stat-value">4</span>
+            <span class="hero-stat-label">Compaction Layers</span>
+          </div>
+          <div class="hero-stat">
+            <span class="hero-stat-value">~20K</span>
+            <span class="hero-stat-label">Token Prefix</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Section 1: 3-Layer Memory Architecture -->
+      <section class="section accent-green" id="memory-architecture">
+        <div class="section-header">
+          <div class="section-badge">&#9731; Architecture</div>
+          <h2 class="section-title">3-Layer Memory Architecture</h2>
+          <p class="section-desc">
+            컨텍스트 엔트로피 — 장시간 AI 세션에서 컨텍스트 품질이 점진적으로 저하되어 환각과 자기 모순을 유발하는 현상 — 를 방지하기 위해 설계된 3단계 시스템.
+          </p>
+        </div>
+
+        <div class="desc-box">
+          <strong>핵심 문제:</strong> 장시간 코딩 세션에서 AI 어시스턴트가 직면하는 근본적 도전 — 대화 이력으로 컨텍스트 윈도우가 가득 차고, 오래된 컨텍스트가 압축되거나 삭제되어 중요한 세부사항이 손실되며, 모델이 환각하기 시작하거나 이전 결정과 모순됩니다.
+        </div>
+
+        <h3 style="font-size:18px;font-weight:700;margin:24px 0 16px;color:var(--color-text);">1단계: MEMORY.md 포인터 시스템</h3>
+        <p style="color:var(--color-text-secondary);line-height:1.7;margin-bottom:16px;">
+          핵심 혁신은 <code>MEMORY.md</code> — 컨텍스트 윈도우에 영구적으로 로드되는 경량 <strong>포인터 기반 인덱스</strong>입니다. 저장소가 아닌 인덱스/포인터로 작동하여, 최소 토큰 비용으로 모델이 필요 시 세부사항을 검색할 수 있습니다.
+        </p>
+        <table class="info-table">
+          <thead>
+            <tr>
+              <th>속성</th>
+              <th>설명</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>형식</td>
+              <td>짧은 항목의 Markdown 파일</td>
+            </tr>
+            <tr>
+              <td>줄 길이</td>
+              <td>줄당 ~150자</td>
+            </tr>
+            <tr>
+              <td>로딩</td>
+              <td>항상 컨텍스트 윈도우에 로드</td>
+            </tr>
+            <tr>
+              <td>역할</td>
+              <td>저장소가 아닌 인덱스/포인터</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <h3 style="font-size:18px;font-weight:700;margin:24px 0 16px;color:var(--color-text);">2단계: 자동 컨텍스트 압축</h3>
+        <p style="color:var(--color-text-secondary);line-height:1.7;margin-bottom:16px;">
+          대화가 커지면 오래된 메시지가 자동으로 압축됩니다. 핵심 정보를 보존하면서 원본 메시지를 압축 버전으로 교체하여 토큰 사용을 최적화합니다.
+        </p>
+
+        <h3 style="font-size:18px;font-weight:700;margin:24px 0 16px;color:var(--color-text);">3단계: 토큰 예산 관리자</h3>
+        <p style="color:var(--color-text-secondary);line-height:1.7;margin-bottom:16px;">
+          컨텍스트 윈도우를 경쟁하는 요구 사이에 동적으로 할당합니다. 시스템 프롬프트(~20-25K), 도구 스키마(14-17K), MEMORY.md(~500-1K), 대화(남은 토큰), 예비(모델 응답)를 자동으로 분배합니다.
+        </p>
+
+        <div class="feature-cards">
+          <div class="feature-card">
+            <h4>1. MEMORY.md 포인터 시스템</h4>
+            <p>MEMORY.md는 컨텍스트 윈도우에 <strong>항상 로드되는 경량 포인터 인덱스</strong>로 작동합니다. <code>~150자/줄</code> 형식으로 저장소가 아닌 인덱스 역할을 하며, 모델이 필요 시 Read/Grep으로 세부사항을 검색합니다. 이 포인터 방식은 프로젝트 규모와 무관하게 <strong>~500-1K 토큰</strong>으로 일정하게 유지되어, 전체 컨텍스트에서 저장하거나 요약하는 것의 단점을 극복합니다.</p>
+          </div>
+          <div class="feature-card">
+            <h4>2. ConversationCompressor</h4>
+            <p><code>ConversationCompressor</code>는 대화 이력이 예산을 초과할 때 오래된 메시지를 자동으로 요약합니다. 핵심 정보(결정사항, 파일 수정사항, 발견사항)는 보존하면서 장황한 설명과 도구 출력은 제거하여 <strong>정보 손실을 최소화</strong>합니다. 압축된 메시지에서 새로운 사실을 추출하여 MEMORY.md에 추가하므로, 정보가 단순히 축소되지 않고 <strong>더 구조화된 포인터로 업그레이드</strong>됩니다.</p>
+          </div>
+          <div class="feature-card">
+            <h4>3. TokenBudgetAllocator</h4>
+            <p>~1M 토큰 컨텍스트를 동적으로 할당합니다: <strong>시스템 프롬프트 ~20-25K</strong>, <strong>도구 스키마 14-17K</strong>, <strong>MEMORY.md ~500-1K</strong>, <strong>대화 이력 ~900-950K</strong>, <strong>응답 예비 ~8-10K</strong>. <code>TokenBudgetAllocator</code>가 실시간으로 예산 초과를 감지하면 <code>ConversationCompressor</code>를 트리거하여 대화를 압축합니다. 이 피드백 루프로 장시간 세션도 안정적으로 유지됩니다.</p>
+          </div>
+          <div class="feature-card">
+            <h4>4. Self-Healing Feedback Loop</h4>
+            <p>세 층(Layer)이 함께 작동하여 <strong>컨텍스트 품질이 저하되지 않고 오히려 개선</strong>됩니다. MEMORY.md가 항상 로드되므로 모델이 이전 결정을 참조 가능하고, 모순 감지 시 즉시 보정됩니다. 압축 → 새 사실 추출 → MEMORY.md 업데이트의 피드백 루프로, 장시간 세션도 구조화되고 일관성 있게 진행됩니다. 환각 대신 <strong>자가 치유</strong>가 일어납니다.</p>
+          </div>
+          <div class="feature-card">
+            <h4>5. KAIROS autoDream Integration</h4>
+            <p>현재 시스템은 <strong>수동적 자가 치유</strong> — 컨텍스트 압박 시에만 트리거됩니다. 미출시 KAIROS 데몬 모드의 <code>autoDream</code>은 이를 <strong>능동적 지식 관리</strong>로 진화시킵니다. 유휴 시간에 자동으로: 관측 병합(중복 제거), 모순 제거(일관성 유지), 인사이트 결정화(핵심 발견 강화)를 수행하며, 세션 간 학습을 가능하게 합니다.</p>
+          </div>
+        </div>
+
+        <div class="diagram-container">
+          <div class="diagram-title">3-Layer Self-Healing Memory System</div>
+          <pre class="mermaid">
+graph TB
+    subgraph L1["1단계: MEMORY.md (항상 로드)"]
+        MD["경량 포인터 인덱스<br/>줄당 ~150자<br/>항상 컨텍스트 윈도우에"]
+    end
+
+    subgraph L2["2단계: 컨텍스트 압축"]
+        CC["자동 메시지 압축<br/>오래된 메시지 요약<br/>핵심 정보 보존"]
+    end
+
+    subgraph L3["3단계: 토큰 예산 관리자"]
+        TB["동적 토큰 할당<br/>시스템 프롬프트 / 도구 / 대화<br/>적응형 예산 분배"]
+    end
+
+    L1 -->|"가리킴"| Knowledge["분산된 지식<br/>파일, 문서, 이전 결정"]
+    L2 -->|"피드"| L1
+    L3 -->|"제어"| L2
+
+    style L1 fill:#ecfdf5,stroke:#10b981,color:#065f46
+    style L2 fill:#eff6ff,stroke:#3b82f6,color:#1e40af
+    style L3 fill:#f0fdfa,stroke:#14b8a6,color:#115e59
+          </pre>
+        </div>
+      </section>
+
+      <!-- Section 2: 5-Layer Context Compaction -->
+      <section class="section accent-blue" id="context-compaction">
+        <div class="section-header">
+          <div class="section-badge">&#9889; Compaction</div>
+          <h2 class="section-title">5-Layer Context Compaction</h2>
+          <p class="section-desc">
+            필요한 최소한의 압축만 적용하여 정보 품질을 최대한 보존하면서 컨텍스트 제한을 유지하는 점진적 압축 시스템. 각 레이어는 필요할 때만 활성화됩니다.
+          </p>
+        </div>
+
+        <h3 style="font-size:18px;font-weight:700;margin:24px 0 16px;color:var(--color-text);">Budget Allocation 분석</h3>
+        <table class="info-table">
+          <thead>
+            <tr>
+              <th>구성 요소</th>
+              <th>Token</th>
+              <th>캐시 가능</th>
+              <th>동적</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>System prompt 명령어</td>
+              <td>~20-25K</td>
+              <td>예 (prefix)</td>
+              <td>아니오</td>
+            </tr>
+            <tr>
+              <td>Tool schemas</td>
+              <td>14-17K</td>
+              <td>예 (prefix)</td>
+              <td>아니오</td>
+            </tr>
+            <tr>
+              <td>MEMORY.md (포인터)</td>
+              <td>~500-1K</td>
+              <td>아니오</td>
+              <td>아니오</td>
+            </tr>
+            <tr>
+              <td>대화 이력</td>
+              <td>~900-950K</td>
+              <td>아니오</td>
+              <td>예</td>
+            </tr>
+            <tr>
+              <td>Response reserve</td>
+              <td>~8-10K</td>
+              <td>아니오</td>
+              <td>예</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <div class="feature-cards">
+          <div class="feature-card">
+            <h4>1. Layer 1: Time-Based Microcompact - 시간 기반 압축</h4>
+            <p><strong>Trigger:</strong> 마지막 어시스턴트 메시지 이후 시간 간격이 임계값 초과 (GrowthBook 설정, 기본값 60분)<br/>
+              <strong>Action:</strong> Content-clear를 사용하여 오래된 도구 결과 제거, 최근 도구 결과만 유지<br/>
+              <strong>토큰 감소:</strong> 도구 결과 크기에 비례 | <strong>정보 손실:</strong> 최소. 도구 결과는 디스크에서 필요 시 다시 읽을 수 있음.</p>
+          </div>
+          <div class="feature-card">
+            <h4>1B. Layer 1B: Cached Microcompact - 캐시 기반 압축</h4>
+            <p><strong>Trigger:</strong> 프롬프트 캐시가 활성 상태 AND 압축 가능한 도구 결과 존재 (GrowthBook <code>tengu_cache_plum_violet</code> 설정)<br/>
+              <strong>Action:</strong> Cache_edits API를 사용하여 도구 결과 블록 삭제, 프리픽스 재작성 회피<br/>
+              <strong>토큰 감소:</strong> 15-25% | <strong>정보 손실:</strong> 최소. 캐시 프리픽스 보존으로 토큰 증가 방지.</p>
+          </div>
+          <div class="feature-card">
+            <h4>2. Layer 2: Session Memory Compact - 세션 메모리 압축</h4>
+            <p><strong>Trigger:</strong> Auto-compact 전 시행 (세션 메모리 추출 사용 가능 시)<br/>
+              <strong>Action:</strong> 최근 대화에서 패턴과 결정사항 추출하여 MEMORY.md에 저장, 오래된 메시지 제거<br/>
+              <strong>토큰 감소:</strong> 변동 | <strong>정보 손실:</strong> 낮음. 주요 결정과 발견사항은 MEMORY.md 포인터로 보존됩니다. 성공 시 Auto Compact API 호출 회피.</p>
+          </div>
+          <div class="feature-card">
+            <h4>3. Layer 3: Auto Compact - 모델 기반 요약</h4>
+            <p><strong>Trigger:</strong> 컨텍스트가 임계값 초과 AND 이전 레이어 미충분<br/>
+              <strong>Action:</strong> 최근 몇 턴 제외 모든 메시지를 Claude에 전송하여 의미론적 요약 수행. Circuit breaker: 연속 실패 3회 시 중단 (<code>MAX_CONSECUTIVE_AUTOCOMPACT_FAILURES = 3</code>)<br/>
+              <strong>토큰 감소:</strong> 70-85% | <strong>정보 손실:</strong> 상당하지만 의도적. Post-compact 복구: 최근 파일(최대 5개), 플랜 파일, 호출된 스킬 재주입 (<code>POST_COMPACT_TOKEN_BUDGET = 50,000</code>, <code>POST_COMPACT_MAX_FILES_TO_RESTORE = 5</code>).</p>
+          </div>
+          <div class="feature-card">
+            <h4>4. Layer 4: Reactive Compact - 긴급 압축</h4>
+            <p><strong>Trigger:</strong> API 호출 실패: <code>max_tokens</code> 오류<br/>
+              <strong>Action:</strong> <strong>긴급 모드</strong> — 시스템 프롬프트 + MEMORY.md + 마지막 2 턴만 유지. 스트리밍 모드로 재시도하여 메모리 버퍼링 회피<br/>
+              <strong>정보 손실:</strong> 치명적. 대화 이력 대부분 손실되지만 MEMORY.md 포인터는 보존. <strong>마지막 수단</strong> — Layer 1-3 모두 실패했을 때만 발동되며 약 1/10,000+ 세션에서만 나타남.</p>
+          </div>
+        </div>
+
+        <div class="diagram-container">
+          <div class="diagram-title">4-Layer Progressive Compaction Flow</div>
+          <pre class="mermaid">
+flowchart TB
+    Check{컨텍스트<br/>임계값 초과?}
+    Check -->|아니오| Continue["정상 계속"]
+    Check -->|예| TBM{마지막 어시스턴트<br/>메시지 이후<br/>시간 초과?}
+
+    TBM -->|예| L1["1단계: 시간 기반 압축<br/>오래된 도구 결과 제거<br/>경량"]
+    TBM -->|아니오| CACHE{캐시 기반<br/>압축<br/>가능?}
+
+    L1 --> Continue
+
+    CACHE -->|예| L1B["1B단계: 캐시 기반 압축<br/>도구 결과 캐시 편집<br/>경량"]
+    CACHE -->|아니오| Continue
+    L1B --> Continue
+
+    Check -->|예 & 추가 조건| L2["2단계: 세션 메모리 압축<br/>MEMORY.md에 패턴 추출<br/>경량"]
+    L2 -->|성공| Continue
+    L2 -->|실패| L3
+
+    L3["3단계: 자동 압축<br/>모델 기반 요약<br/>고비용"] --> Check2{여전히<br/>max_tokens 초과?}
+    Check2 -->|아니오| Continue
+    Check2 -->|예| L4
+
+    L4["4단계: 긴급 압축<br/>비상 절단 + 스트리밍<br/>비상"] --> Continue
+
+    style Continue fill:#ecfdf5,stroke:#10b981,color:#065f46
+    style L1 fill:#fef3c7,stroke:#d97706,color:#92400e
+    style L1B fill:#ffe4e4,stroke:#f59e0b,color:#92400e
+    style L2 fill:#fed7d7,stroke:#d97706,color:#92400e
+    style L3 fill:#fccccb,stroke:#ef4444,color:#7c2d12
+    style L4 fill:#fee2e2,stroke:#ef4444,color:#991b1b
+          </pre>
+        </div>
+      </section>
+
+      <!-- Section 3: Token Budget Continuation -->
+      <section class="section accent-teal" id="token-budget">
+        <div class="section-header">
+          <div class="section-badge">&#9741; Budget</div>
+          <h2 class="section-title">Token Budget Continuation</h2>
+          <p class="section-desc">
+            압축에도 불구하고 모델이 복잡한 작업에서 response 중간에 max_tokens 제한에 도달하는 경우를 처리하는 synthetic message injection 및 3단계 복구 경로.
+          </p>
+        </div>
+
+        <h3 style="font-size:18px;font-weight:700;margin:24px 0 16px;color:var(--color-text);">문제: Synthetic 메시지 주입</h3>
+        <p style="color:var(--color-text-secondary);line-height:1.7;margin-bottom:16px;">
+          Claude가 token 제한에 도달하면 응답이 갑자기 중단되어 작업이 불완전하게 남습니다. 예를 들어, "복잡한 리팩터 구현"을 요청해도 중간에 "TRUNCATED — hit max_tokens limit"으로 끝날 수 있습니다. 이를 해결하기 위해 시스템은 모델에게 계속하도록 지시하는 synthetic user 메시지를 주입합니다: "계속 남은 변경사항을 진행하세요." 이 메시지는 투명하며 사용자는 대화 이력에서 보지 못합니다.
+        </p>
+
+        <h3 style="font-size:18px;font-weight:700;margin:24px 0 16px;color:var(--color-text);">3단계 복구 경로 통계</h3>
+        <table class="info-table">
+          <thead>
+            <tr>
+              <th>Stage</th>
+              <th>Trigger</th>
+              <th>성공률</th>
+              <th>보존된 정보</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Stage 1: Escalate</td>
+              <td>max_tokens 오류</td>
+              <td>75%</td>
+              <td>전체 context</td>
+            </tr>
+            <tr>
+              <td>Stage 2: Reactive Compact</td>
+              <td>여전히 불완전</td>
+              <td>90%</td>
+              <td>MEMORY.md + 마지막 2 턴</td>
+            </tr>
+            <tr>
+              <td>Stage 3: Streaming</td>
+              <td>여전히 불완전</td>
+              <td>99%</td>
+              <td>Streamed response (실시간)</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <div class="desc-box">
+          <strong>핵심:</strong> 매우 적은 작업만 Stage 3이 필요합니다. 대부분은 Stage 1에서 해결됩니다. max_tokens를 8K에서 64K로 증가시키는 것만으로도 대부분의 불완전한 응답이 해결됩니다. <br/><br/>
+          <strong>Post-Compact 복구 상수:</strong> Post-compact 복구는 <code>POST_COMPACT_TOKEN_BUDGET = 50,000</code>, <code>POST_COMPACT_MAX_FILES_TO_RESTORE = 5</code>로 구성됩니다. Circuit breaker 메커니즘: <code>MAX_CONSECUTIVE_AUTOCOMPACT_FAILURES = 3</code> 연속 실패 시 중단.
+        </div>
+
+        <h3 style="font-size:18px;font-weight:700;margin:24px 0 16px;color:var(--color-text);">Stop Reason 주의사항</h3>
+        <p style="color:var(--color-text-secondary);line-height:1.7;margin-bottom:16px;">
+          Streaming API의 미묘하지만 중요한 구현 세부사항: <strong>실제 stop_reason은 message_delta 이벤트에 있으며, content_block_stop에는 없습니다.</strong> 이를 놓치면 루프가 제대로 종료되지 않아 무한 대기 또는 timeout 기회 손실이 발생합니다.
+        </p>
+
+        <div class="feature-cards">
+          <div class="feature-card">
+            <h4>1. Synthetic Message Injection</h4>
+            <p>설정 가능한 토큰 임계값에 도달하면 모델의 응답이 불완전한 상태입니다. 시스템이 <strong>synthetic user message</strong>("계속 남은 변경사항을 진행하세요")를 투명하게 주입하여 모델이 작업을 이어서 완료하도록 유도합니다. 이 메시지는 사용자가 보지 못하며, 사용자는 단일 연속적인 응답으로 경험합니다. 실제로는 <strong>여러 API 호출이 자동으로 연결</strong>됩니다.</p>
+          </div>
+          <div class="feature-card">
+            <h4>2. Stage 1: Max Tokens Escalation</h4>
+            <p><strong>첫 번째 복구 시도</strong>입니다. 모델이 max_tokens로 중단되면 <strong>max_tokens를 ~8K에서 ~64K로 에스컬레이션</strong>하여 재시도합니다. 불완전한 응답의 <strong>약 75%가 이 단계에서 해결</strong>됩니다. 전체 컨텍스트가 보존되므로 정보 손실이 0입니다. 이 간단한 방법이 대부분 충분하다는 점이 핵심 인사이트입니다.</p>
+          </div>
+          <div class="feature-card">
+            <h4>3. Stage 2: Reactive Compaction</h4>
+            <p>Stage 1 에스컬레이션이 응답을 완료하지 못했을 때 발동합니다. <strong>Layer 4 (Reactive Compact)</strong>를 적용하여 시스템 프롬프트 + MEMORY.md + 마지막 2 턴만 유지 후 재시도합니다. <strong>나머지 경우의 약 90%가 여기서 해결</strong>됩니다. 대화 이력은 상당히 손실되지만 MEMORY.md 포인터는 완벽히 보존되므로 모델이 여전히 중요한 정보에 접근할 수 있습니다.</p>
+          </div>
+          <div class="feature-card">
+            <h4>4. Stage 3: Streaming Fallback</h4>
+            <p>Stage 2가 여전히 불완전할 때 마지막 수단입니다. <strong>Streaming 응답 모드</strong>를 활성화하여 전체 응답을 메모리에 버퍼링하지 않고 <strong>token-by-token으로 incrementally 처리</strong>합니다. 메모리 압력을 방지하고, 사용자는 터미널에서 line-by-line으로 실시간 피드백을 받습니다. <strong>성공률 약 99%</strong>이지만, Stage 1과 2가 대부분의 경우를 처리하므로 이 단계는 극히 드뭅니다. (~1/100,000 세션).</p>
+          </div>
+          <div class="feature-card">
+            <h4>5. Session Quality Impact</h4>
+            <p><strong>Budgeting 없는 시나리오:</strong> 짧은 세션(&lt;10턴)은 좋으나, 중간(10-50턴)부터 성능 저하, 100+ 턴은 사용 불가능.<br/>
+              <strong>Budgeting 있는 시나리오:</strong> 100+ 턴도 기능적으로 유지.<br/>
+              핵심: <strong>4-Layer 컨텍스트 압축 (Time-based, Cached, Session Memory, Auto, Reactive) + Token budget continuation + 3-Stage recovery + Self-healing memory</strong>의 조합으로 초장시간 세션도 안정적입니다. 압축이 진행되어도 MEMORY.md 포인터가 보존되므로 모델은 항상 중요한 정보에 접근 가능합니다.</p>
+          </div>
+        </div>
+
+        <div class="diagram-container">
+          <div class="diagram-title">3-Stage Recovery Cascade</div>
+          <pre class="mermaid">
+flowchart LR
+    Fail["응답 불완전<br/>또는 max_tokens 오류"] --> S1["1단계: 에스컬레이션<br/>max_tokens 8K → 64K"]
+    S1 --> Check1{해결됨?}
+    Check1 -->|아니오| S2["2단계: 긴급 압축<br/>비상 절단<br/>+ 재시도"]
+    Check1 -->|예| Done["✅ 정상 계속"]
+    S2 --> Check2{해결됨?}
+    Check2 -->|아니오| S3["3단계: 스트리밍<br/>폴백 모드<br/>점진적 응답"]
+    Check2 -->|예| Done
+    S3 --> Done
+
+    style Done fill:#ecfdf5,stroke:#10b981,color:#065f46
+    style Fail fill:#fef2f2,stroke:#ef4444,color:#991b1b
+    style S1 fill:#fef3c7,stroke:#d97706,color:#92400e
+    style S2 fill:#f0e5ff,stroke:#8b5cf6,color:#5b21b6
+    style S3 fill:#fccccb,stroke:#ef4444,color:#7c2d12
+          </pre>
+        </div>
+      </section>
+
+      <!-- Section 4: Stop Reason & Recovery -->
+      <section class="section accent-red" id="stop-reason">
+        <div class="section-header">
+          <div class="section-badge">&#9888; Recovery</div>
+          <h2 class="section-title">Stop Reason & Recovery Handling</h2>
+          <p class="section-desc">
+            Streaming API의 미묘한 stop_reason 처리와 max_tokens에 도달했을 때의 복구 전략. 이 구현 세부사항을 놓치면 무한 대기 또는 응답 손실이 발생합니다.
+          </p>
+        </div>
+
+        <h3 style="font-size:18px;font-weight:700;margin:24px 0 16px;color:var(--color-text);">구현 세부사항: message_delta vs content_block_stop</h3>
+
+        <div class="desc-box" style="border-left-color:var(--color-accent-red);">
+          <strong style="color:var(--color-accent-red);">❌ 잘못된 방법:</strong><br/>
+          for await (const event of response) {<br/>
+          &nbsp;&nbsp;if (event.type === 'content_block_stop') {<br/>
+          &nbsp;&nbsp;&nbsp;&nbsp;console.log(event.stop_reason);  // ← undefined!<br/>
+          &nbsp;&nbsp;}<br/>
+          }<br/><br/>
+          <strong style="color:var(--color-accent-green);">✅ 올바른 방법:</strong><br/>
+          for await (const event of response) {<br/>
+          &nbsp;&nbsp;if (event.type === 'message_delta') {<br/>
+          &nbsp;&nbsp;&nbsp;&nbsp;console.log(event.delta.stop_reason);  // ← "end_turn" or "max_tokens"<br/>
+          &nbsp;&nbsp;}<br/>
+          }
+        </div>
+
+        <div class="feature-cards">
+          <div class="feature-card">
+            <h4>1. Stop Reason in message_delta</h4>
+            <p><strong>핵심 구현 세부사항:</strong> Anthropic API 스트리밍에서 실제 <code>stop_reason</code>은 <code>content_block_stop</code> 이벤트가 아닌 <code>message_delta</code> 이벤트에만 포함됩니다. 공개 문서에 잘 기록되어 있지 않지만, leaked source와 실제 테스트를 통해 드러난 사실입니다. 이를 놓치면 루프가 제대로 종료되지 않아 무한 대기 또는 timeout 기회 손실이 발생합니다.</p>
+          </div>
+          <div class="feature-card">
+            <h4>2. Stop Reason Types</h4>
+            <p><code>message_delta</code>의 <code>stop_reason</code> 필드는 정확히 세 값을 가집니다:</p>
+              <ul>
+                <li><strong>end_turn</strong> — 응답이 자연스럽게 완료 (정상 흐름)</li>
+                <li><strong>tool_use</strong> — 도구 호출이 발생했으므로 계속해야 함 (도구 실행 후 재호출)</li>
+                <li><strong>max_tokens</strong> — 응답이 강제 절단됨 (Stage 1 recovery 트리거)</li>
+              </ul>
+              <p>각 경우에 따라 완전히 다른 처리 경로가 필요합니다.</p>
+          </div>
+          <div class="feature-card">
+            <h4>3. Max Tokens Detection</h4>
+            <p><code>stop_reason === 'max_tokens'</code>일 때 응답이 불완전하게 절단되었음을 나타냅니다. 이를 감지하면 <strong>즉시 Stage 1 recovery (max_tokens 8K → 64K 에스컬레이션)</strong>를 자동 트리거합니다. 응답이 자연스럽게 끝났는지(end_turn) 또는 강제 중단되었는지(max_tokens) 구분하는 것이 <strong>전체 복구 전략의 기초</strong>입니다. 이 단순한 판단이 대부분의 불완전한 응답을 해결합니다.</p>
+          </div>
+          <div class="feature-card">
+            <h4>4. Tool Use Continuation</h4>
+            <p><code>stop_reason === 'tool_use'</code>일 때 도구 호출이 대기 중이지만 아직 실행되지 않았음을 의미합니다. 정상 흐름입니다: (1) 도구 실행 (동시성 안전 여부에 따라 병렬 또는 순차), (2) 결과를 대화에 첨부, (3) 모델에 재호출하여 도구 결과에 대해 계속 진행. Recovery가 필요하지 않으며, 모델이 자연스럽게 다음 단계로 진행합니다.</p>
+          </div>
+          <div class="feature-card">
+            <h4>5. Infinite Wait Prevention</h4>
+            <p><code>content_block_stop</code>에서 stop_reason을 확인하면 <code>undefined</code>이므로 루프가 제대로 종료되지 않아 <strong>무한 대기</strong> 상태에 빠집니다. 또한 timeout 기회를 놓쳐 응답이 완전히 손실될 수 있습니다. <strong>반드시 <code>message_delta</code> 이벤트에서만 확인</strong>해야 합니다. 이는 안정적인 streaming 파싱과 recovery cascade의 기초이며, Claude Code의 오랜 세션 안정성을 지탱하는 핵심 구현 세부사항입니다.</p>
+          </div>
+        </div>
+
+        <div class="diagram-container">
+          <div class="diagram-title">Stop Reason Detection & Recovery Flow</div>
+          <pre class="mermaid">
+flowchart TB
+    STREAM["스트리밍 응답"] --> EVENT{이벤트 타입?}
+    EVENT -->|content_block_delta| CONTENT["텍스트 청크 처리<br/>버퍼에 추가"]
+    EVENT -->|message_delta| DELTA["⚠️ 여기서 stop_reason 확인<br/>(content_block_stop 아님!)"]
+    EVENT -->|content_block_stop| STOP["❌ 잘못됨: stop_reason<br/>여기서 undefined"]
+
+    CONTENT --> EVENT
+    DELTA --> CHECK{stop_reason?}
+    STOP --> MISS["응답 파싱 실패<br/>⚠️ 무한 대기 위험"]
+
+    CHECK -->|end_turn| DONE["✅ 응답 완료<br/>정상 흐름"]
+    CHECK -->|max_tokens| RECOVER["⚠️ 응답 불완전<br/>복구 트리거"]
+    CHECK -->|tool_use| TOOLS["도구 호출 대기 중<br/>계속"]
+
+    RECOVER --> S1["1단계: 에스컬레이션"]
+    TOOLS --> EXEC["도구 실행<br/>계속"]
+
+    style DELTA fill:#ecfdf5,stroke:#10b981,color:#065f46
+    style STOP fill:#fef2f2,stroke:#ef4444,color:#991b1b
+    style DONE fill:#ecfdf5,stroke:#10b981,color:#065f46
+    style RECOVER fill:#fef3c7,stroke:#d97706,color:#92400e
+          </pre>
+        </div>
+      </section>
+
+      <!-- Footer -->
+            <footer class="footer">
+        <p>
+          <a href="https://github.com/hi-space/claude-code-unpack-docs" target="_blank" rel="noopener noreferrer"
+             style="color:var(--color-text-muted);text-decoration:none;border-bottom:1px solid var(--color-border);">
+            hi-space/claude-code-unpack-docs
+          </a>
+          &middot; &copy; 2026 All rights reserved.
+        </p>
+      </footer>
+
+    </div>
+  </div>
+
+  <!-- Back to Top -->
+  <button class="back-to-top" onclick="window.scrollTo({top:0,behavior:'smooth'})" title="Back to top">&#8593;</button>
+
+  <script>
+    // ===== Mermaid Init =====
+    const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+    mermaid.initialize({
+      startOnLoad: true,
+      theme: isDark ? 'dark' : 'neutral',
+      fontFamily: "'Noto Sans KR', system-ui, sans-serif",
+      flowchart: { curve: 'basis', padding: 16 },
+      themeVariables: isDark ? {
+        primaryColor: '#422006',
+        primaryBorderColor: '#f59e0b',
+        primaryTextColor: '#fbbf24',
+        lineColor: '#6b7085',
+        secondaryColor: '#172554',
+        tertiaryColor: '#2e1065'
+      } : {
+        primaryColor: '#fef3c7',
+        primaryBorderColor: '#d97706',
+        primaryTextColor: '#92400e',
+        lineColor: '#9ca3af',
+        secondaryColor: '#eff6ff',
+        tertiaryColor: '#f5f3ff'
+      }
+    });
+
+    // CDN fallback
+    window.addEventListener('load', () => {
+      if (typeof mermaid === 'undefined') {
+        document.querySelectorAll('.diagram-container').forEach(c => {
+          const fb = document.createElement('div');
+          fb.style.cssText = 'text-align:center;padding:40px;color:var(--color-text-muted);font-size:14px;';
+          fb.textContent = 'Diagram requires internet for Mermaid.js';
+          c.querySelector('.mermaid')?.replaceWith(fb);
+        });
+      }
+    });
+
+    // ===== Theme Toggle =====
+    function toggleTheme() {
+      const html = document.documentElement;
+      const current = html.getAttribute('data-theme');
+      const next = current === 'dark' ? 'light' : 'dark';
+      html.setAttribute('data-theme', next);
+      localStorage.setItem('claude-docs-theme', next);
+      updateThemeUI(next);
+      location.reload();
+    }
+
+    function updateThemeUI(theme) {
+      const icon = document.querySelector('.theme-icon');
+      const label = document.querySelector('.theme-label');
+      if (theme === 'dark') {
+        icon.innerHTML = '&#9788;';
+        label.textContent = 'Light Mode';
+      } else {
+        icon.innerHTML = '&#9789;';
+        label.textContent = 'Dark Mode';
+      }
+    }
+
+    // Restore theme on load
+    (function() {
+      const saved = localStorage.getItem('claude-docs-theme');
+      if (saved) {
+        document.documentElement.setAttribute('data-theme', saved);
+        updateThemeUI(saved);
+      } else if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
+        document.documentElement.setAttribute('data-theme', 'dark');
+        updateThemeUI('dark');
+      }
+    })();
+
+    // ===== Mobile Sidebar =====
+    function toggleSidebar() {
+      document.querySelector('.sidebar').classList.toggle('open');
+      document.querySelector('.sidebar-backdrop').classList.toggle('open');
+    }
+
+    // ===== Back to Top =====
+    const backBtn = document.querySelector('.back-to-top');
+    window.addEventListener('scroll', () => {
+      backBtn.classList.toggle('visible', window.scrollY > 400);
+    });
+
+
+    // ===== Active Nav Tracking =====
+    const sections = document.querySelectorAll('.section, .hero');
+    const navLinks = document.querySelectorAll('.sidebar-nav a');
+
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          const id = entry.target.id || entry.target.closest('[id]')?.id;
+          if (!id) return;
+          navLinks.forEach(link => {
+            const href = link.getAttribute('href');
+            if (href.startsWith('#')) {
+              link.classList.toggle('active', href === '#' + id);
+            }
+          });
+        }
+      });
+    }, { rootMargin: '-10% 0px -70% 0px' });
+
+    sections.forEach(s => observer.observe(s));
+  </script>
+
+</body>
+</html>

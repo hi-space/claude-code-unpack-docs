@@ -1,0 +1,936 @@
+<!DOCTYPE html>
+<html lang="ko" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>QueryEngine Deep Dive — Claude Code Architecture Overview</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@11.4.1/dist/mermaid.min.js"></script>
+  <style>
+    /* ===== CSS Reset & Variables ===== */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --color-bg: #ffffff;
+      --color-bg-secondary: #f8f9fb;
+      --color-bg-tertiary: #f1f3f5;
+      --color-bg-card: #ffffff;
+      --color-border: #e5e7eb;
+      --color-border-light: #f0f1f3;
+      --color-text: #1a1a2e;
+      --color-text-secondary: #6b7280;
+      --color-text-muted: #9ca3af;
+      --color-primary: #d97706;
+      --color-primary-light: #fef3c7;
+      --color-primary-dark: #b45309;
+      --color-accent-blue: #3b82f6;
+      --color-accent-blue-light: #eff6ff;
+      --color-accent-green: #10b981;
+      --color-accent-green-light: #ecfdf5;
+      --color-accent-purple: #8b5cf6;
+      --color-accent-purple-light: #f5f3ff;
+      --color-accent-red: #ef4444;
+      --color-accent-red-light: #fef2f2;
+      --color-accent-teal: #14b8a6;
+      --color-accent-teal-light: #f0fdfa;
+      --color-accent-indigo: #6366f1;
+      --color-accent-indigo-light: #eef2ff;
+      --color-accent-amber: #f59e0b;
+      --color-accent-amber-light: #fffbeb;
+      --sidebar-width: 260px;
+      --font-sans: 'Noto Sans KR', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      --font-mono: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', 'Consolas', monospace;
+      --shadow-sm: 0 1px 2px rgba(0,0,0,0.04);
+      --shadow-md: 0 4px 12px rgba(0,0,0,0.06);
+      --shadow-lg: 0 8px 24px rgba(0,0,0,0.08);
+      --shadow-xl: 0 12px 32px rgba(0,0,0,0.10);
+      --radius-sm: 6px;
+      --radius-md: 10px;
+      --radius-lg: 14px;
+      --radius-xl: 20px;
+    }
+
+    [data-theme="dark"] {
+      --color-bg: #0f1117;
+      --color-bg-secondary: #1a1b23;
+      --color-bg-tertiary: #22232d;
+      --color-bg-card: #1a1b23;
+      --color-border: #2d2e3a;
+      --color-border-light: #23242f;
+      --color-text: #e4e5ea;
+      --color-text-secondary: #9ca0af;
+      --color-text-muted: #6b7085;
+      --color-primary: #f59e0b;
+      --color-primary-light: #422006;
+      --color-primary-dark: #fbbf24;
+      --color-accent-blue-light: #172554;
+      --color-accent-green-light: #052e16;
+      --color-accent-purple-light: #2e1065;
+      --color-accent-red-light: #450a0a;
+      --color-accent-teal-light: #042f2e;
+      --color-accent-indigo-light: #1e1b4b;
+      --color-accent-amber-light: #451a03;
+      --shadow-sm: 0 1px 2px rgba(0,0,0,0.2);
+      --shadow-md: 0 4px 12px rgba(0,0,0,0.3);
+      --shadow-lg: 0 8px 24px rgba(0,0,0,0.35);
+      --shadow-xl: 0 12px 32px rgba(0,0,0,0.4);
+    }
+
+    html { scroll-behavior: smooth; font-size: 16px; }
+
+    body {
+      font-family: var(--font-sans);
+      color: var(--color-text);
+      background: var(--color-bg);
+      line-height: 1.7;
+      -webkit-font-smoothing: antialiased;
+      transition: background 0.3s ease, color 0.3s ease;
+    }
+
+    /* ===== Sidebar ===== */
+    .sidebar {
+      position: fixed;
+      top: 0; left: 0;
+      width: var(--sidebar-width);
+      height: 100vh;
+      background: var(--color-bg);
+      border-right: 1px solid var(--color-border);
+      padding: 28px 0;
+      overflow-y: auto;
+      z-index: 100;
+      display: flex;
+      flex-direction: column;
+      transition: background 0.3s ease, border-color 0.3s ease;
+    }
+
+    .sidebar-header {
+      padding: 0 20px 20px;
+      border-bottom: 1px solid var(--color-border-light);
+      margin-bottom: 12px;
+    }
+
+    .sidebar-header h2 {
+      font-size: 15px;
+      font-weight: 800;
+      color: var(--color-text);
+      letter-spacing: -0.02em;
+    }
+
+    .sidebar-header span {
+      font-size: 11.5px;
+      color: var(--color-text-muted);
+      font-weight: 500;
+    }
+
+    .sidebar-nav { flex: 1; padding: 0 10px; }
+
+    .sidebar-nav .nav-section {
+      font-size: 10.5px;
+      font-weight: 700;
+      color: var(--color-text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      padding: 14px 12px 6px;
+    }
+
+    .sidebar-nav a {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 8px 12px;
+      color: var(--color-text-secondary);
+      text-decoration: none;
+      font-size: 13px;
+      font-weight: 500;
+      border-radius: var(--radius-sm);
+      transition: all 0.15s ease;
+      margin-bottom: 1px;
+    }
+
+    .sidebar-nav a:hover {
+      color: var(--color-text);
+      background: var(--color-bg-secondary);
+    }
+
+    .sidebar-nav a.active {
+      color: var(--color-primary-dark);
+      background: var(--color-primary-light);
+      font-weight: 700;
+    }
+
+    .sidebar-nav a .nav-icon {
+      width: 20px; height: 20px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 13px;
+      flex-shrink: 0;
+    }
+
+    .deep-dive-cta {
+      margin: 16px 10px 8px;
+      padding: 10px 12px;
+      background: linear-gradient(135deg, var(--color-accent-blue-light), transparent);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-md);
+      transition: all 0.2s ease;
+    }
+    .deep-dive-cta:hover {
+      border-color: var(--color-accent-blue);
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.06);
+    }
+    .deep-dive-cta a {
+      text-decoration: none !important;
+      display: block;
+      gap: 0;
+      padding: 0 !important;
+      margin: 0 !important;
+      background: none !important;
+    }
+    .deep-dive-cta a:hover {
+      background: none !important;
+    }
+    .deep-dive-cta .cta-badge {
+      display: inline-block;
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--color-accent-blue);
+      background: var(--color-accent-blue-light);
+      padding: 2px 8px;
+      border-radius: 4px;
+      margin-bottom: 6px;
+    }
+    .deep-dive-cta .cta-title {
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--color-accent-blue);
+      margin-bottom: 4px;
+    }
+    .deep-dive-cta .cta-desc {
+      font-size: 11.5px;
+      line-height: 1.55;
+      color: var(--color-text-secondary);
+    }
+
+    .sidebar-footer {
+      padding: 16px 20px;
+      border-top: 1px solid var(--color-border-light);
+    }
+
+    .theme-toggle {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 12.5px;
+      color: var(--color-text-secondary);
+      background: var(--color-bg-secondary);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-sm);
+      padding: 7px 12px;
+      cursor: pointer;
+      width: 100%;
+      transition: all 0.15s ease;
+      font-family: var(--font-sans);
+    }
+
+    .theme-toggle:hover {
+      color: var(--color-text);
+      border-color: #d1d5db;
+    }
+
+    /* ===== Main Content ===== */
+    .main {
+      margin-left: var(--sidebar-width);
+      min-height: 100vh;
+    }
+
+    .content {
+      max-width: 920px;
+      margin: 0 auto;
+      padding: 40px 40px 80px;
+    }
+
+    /* ===== Hero ===== */
+    .hero {
+      margin-bottom: 48px;
+      padding: 40px 0 36px;
+      border-bottom: 1px solid var(--color-border-light);
+    }
+
+    .hero-eyebrow {
+      font-size: 12.5px;
+      font-weight: 700;
+      color: var(--color-primary);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      margin-bottom: 14px;
+    }
+
+    .hero h1 {
+      font-size: 36px;
+      font-weight: 800;
+      letter-spacing: -0.035em;
+      line-height: 1.15;
+      margin-bottom: 14px;
+      color: var(--color-text);
+    }
+
+    .hero-desc {
+      font-size: 16px;
+      color: var(--color-text-secondary);
+      line-height: 1.7;
+      max-width: 640px;
+    }
+
+    .hero-stats {
+      display: flex;
+      gap: 28px;
+      margin-top: 28px;
+      flex-wrap: wrap;
+    }
+
+    .hero-stat {
+      display: flex;
+      flex-direction: column;
+      padding: 16px 20px;
+      background: var(--color-bg-secondary);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-md);
+      min-width: 130px;
+      transition: all 0.2s ease;
+    }
+
+    .hero-stat:hover {
+      border-color: var(--color-primary);
+      box-shadow: var(--shadow-md);
+      transform: translateY(-2px);
+    }
+
+    .hero-stat-value {
+      font-size: 26px;
+      font-weight: 800;
+      color: var(--color-text);
+      letter-spacing: -0.02em;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .hero-stat-label {
+      font-size: 12px;
+      color: var(--color-text-muted);
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      margin-top: 2px;
+    }
+
+    /* ===== Section ===== */
+    .section {
+      margin-bottom: 56px;
+      scroll-margin-top: 24px;
+    }
+
+    .section-header {
+      margin-bottom: 28px;
+    }
+
+    .section-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 11.5px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      padding: 4px 12px;
+      border-radius: 20px;
+      margin-bottom: 10px;
+    }
+
+    .section-title {
+      font-size: 26px;
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      line-height: 1.25;
+      margin-bottom: 10px;
+    }
+
+    .section-desc {
+      font-size: 15px;
+      color: var(--color-text-secondary);
+      line-height: 1.7;
+      max-width: 680px;
+    }
+
+    /* ===== Diagram Container ===== */
+    .diagram-container {
+      background: var(--color-bg-secondary);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-lg);
+      padding: 28px 24px;
+      margin: 24px 0;
+      overflow-x: auto;
+    }
+
+    .diagram-container .mermaid {
+      display: flex;
+      justify-content: center;
+    }
+
+    .diagram-title {
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--color-text-secondary);
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .diagram-title::before {
+      content: '';
+      display: inline-block;
+      width: 3px; height: 14px;
+      background: var(--color-primary);
+      border-radius: 2px;
+    }
+
+    /* ===== Feature Cards ===== */
+    .feature-cards { display:flex; flex-direction:column; gap:12px; margin:24px 0; }
+    .feature-card { background:var(--color-bg-card); border:1px solid var(--color-border); border-radius:var(--radius-md); padding:20px; margin:0; transition:all 0.15s ease; }
+    .feature-card:hover { border-color:#d1d5db; box-shadow:var(--shadow-lg); }
+    .feature-card h4 { font-size:15px; font-weight:700; margin-bottom:8px; color:var(--color-text); }
+    .feature-card p { font-size:14px; color:var(--color-text-secondary); line-height:1.8; }
+    .feature-card code { font-family:var(--font-mono); font-size:12px; background:var(--color-bg-tertiary); padding:2px 6px; border-radius:4px; color:var(--color-primary-dark); }
+    .feature-card ul {
+      margin: 10px 0 0 0;
+      padding-left: 20px;
+      list-style: disc;
+    }
+
+    .feature-card li {
+      font-size: 13.5px;
+      color: var(--color-text-secondary);
+      line-height: 1.7;
+      margin-bottom: 4px;
+    }
+
+    /* ===== Section accent colors ===== */
+    .accent-query .section-badge { background: var(--color-accent-green-light); color: var(--color-accent-green); }
+
+    /* ===== Footer ===== */
+    .footer {
+      margin-top: 40px;
+      padding: 28px 0;
+      border-top: 1px solid var(--color-border-light);
+      text-align: center;
+      font-size: 12.5px;
+      color: var(--color-text-muted);
+      line-height: 1.8;
+    }
+
+    /* ===== Mobile Header ===== */
+    .mobile-header {
+      display: none;
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      height: 52px;
+      background: var(--color-bg);
+      border-bottom: 1px solid var(--color-border);
+      padding: 0 16px;
+      align-items: center;
+      gap: 12px;
+      z-index: 201;
+      transition: background 0.3s ease, border-color 0.3s ease;
+    }
+
+    .mobile-header-title {
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--color-text);
+    }
+
+    .hamburger-btn {
+      width: 36px; height: 36px;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      gap: 5px;
+      background: none; border: none; cursor: pointer; padding: 6px;
+    }
+
+    .hamburger-btn span {
+      display: block; width: 20px; height: 2px;
+      background: var(--color-text); border-radius: 2px;
+      transition: all 0.3s ease;
+    }
+
+    .sidebar-backdrop {
+      display: none;
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,0.4);
+      z-index: 150;
+    }
+
+    .sidebar-backdrop.open { display: block; }
+
+    /* ===== Back to Top ===== */
+    .back-to-top {
+      position: fixed;
+      bottom: 28px; right: 28px;
+      width: 38px; height: 38px;
+      background: var(--color-text);
+      color: var(--color-bg);
+      border: none;
+      border-radius: 50%;
+      cursor: pointer;
+      font-size: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      opacity: 0;
+      visibility: hidden;
+      transition: all 0.2s ease;
+      z-index: 99;
+      box-shadow: var(--shadow-lg);
+    }
+
+    .back-to-top.visible { opacity: 1; visibility: visible; }
+    .back-to-top:hover { background: var(--color-primary-dark); }
+
+    /* ===== Responsive ===== */
+    @media (max-width: 1024px) {
+      .mobile-header { display: flex; }
+      .sidebar {
+        transform: translateX(-100%);
+        transition: transform 0.3s ease;
+        z-index: 200;
+      }
+      .sidebar.open { transform: translateX(0); }
+      .main { margin-left: 0; padding-top: 52px; }
+      .content { padding: 28px 24px 64px; }
+      .hero h1 { font-size: 28px; }
+      .section-title { font-size: 22px; }
+    }
+
+    @media (max-width: 640px) {
+      .content { padding: 20px 16px 48px; }
+      .hero h1 { font-size: 24px; }
+      .hero-stats { gap: 12px; }
+      .hero-stat { min-width: 100px; padding: 12px 14px; }
+      .hero-stat-value { font-size: 22px; }
+      .diagram-container { padding: 16px 12px; }
+    }
+
+    /* ===== Print ===== */
+    @media print {
+      .sidebar, .back-to-top, .theme-toggle { display: none; }
+      .main { margin-left: 0; }
+    }
+
+    /* ===== Mermaid overrides ===== */
+    .mermaid svg { max-width: 100%; height: auto; }
+  </style>
+</head>
+<body>
+
+  <!-- Mobile Header -->
+  <header class="mobile-header">
+    <button class="hamburger-btn" onclick="toggleSidebar()" aria-label="메뉴">
+      <span></span><span></span><span></span>
+    </button>
+    <span class="mobile-header-title">Claude Code</span>
+  </header>
+  <div class="sidebar-backdrop" onclick="toggleSidebar()"></div>
+
+  <!-- Sidebar -->
+  <nav class="sidebar">
+    <div class="sidebar-header">
+      <h2>Claude Code</h2>
+      <span>Architecture Overview</span>
+    </div>
+    <div class="sidebar-nav">
+      <a href="index.html">
+        <span class="nav-icon">&#9670;</span> Hub
+      </a>
+      <div class="nav-section">Core</div>
+      <a href="overview.html">
+        <span class="nav-icon">&#9672;</span> Architecture
+      </a>
+      <a href="query-engine.html" class="active">
+        <span class="nav-icon">&#9889;</span> Query Engine
+      </a>
+      <a href="memory.html">
+        <span class="nav-icon">&#9731;</span> Memory
+      </a>
+      <a href="agents.html">
+        <span class="nav-icon">&#9733;</span> Agents
+      </a>
+      <div class="nav-section">Systems</div>
+      <a href="tools.html">
+        <span class="nav-icon">&#9881;</span> Tools
+      </a>
+      <a href="cli-ui.html">
+        <span class="nav-icon">&#9618;</span> CLI / UI
+      </a>
+      <a href="system-prompt.html">
+        <span class="nav-icon">&#9998;</span> System Prompt
+      </a>
+      <a href="security.html">
+        <span class="nav-icon">&#9888;</span> Security
+      </a>
+      <a href="hidden-features.html">
+        <span class="nav-icon">&#9873;</span> Hidden Features
+      </a>
+    </div>
+    <div class="deep-dive-cta">
+      <a href="/claude-code-unpack-docs/deep/ko/">
+        <span class="cta-badge">Deep Dive</span>
+        <div class="cta-title">심층 분석 보기 &rarr;</div>
+        <div class="cta-desc">구현 원리, 설계 철학, 내부 동작을 50+ 페이지로 상세히 분석합니다.</div>
+      </a>
+    </div>
+    </div>
+    <div class="sidebar-footer">
+      <button class="theme-toggle" onclick="toggleTheme()">
+        <span class="theme-icon">&#9789;</span>
+        <span class="theme-label">Dark Mode</span>
+      </button>
+    </div>
+  </nav>
+
+  <!-- Main Content -->
+  <div class="main">
+    <div class="content">
+
+      <!-- Hero -->
+      <div class="hero">
+        <div class="hero-eyebrow">Query Engine</div>
+        <h1>QueryEngine Deep Dive</h1>
+        <p class="hero-desc">
+          Claude Code의 핵심 실행 루프. 사용자 입력을 받아 API 호출, 도구 실행, 컨텍스트 관리를 반복하며 최종 응답을 생성합니다.
+        </p>
+        <div class="hero-stats">
+          <div class="hero-stat">
+            <span class="hero-stat-value">Streaming-First</span>
+            <span class="hero-stat-label">Design</span>
+          </div>
+          <div class="hero-stat">
+            <span class="hero-stat-value">5-Layer</span>
+            <span class="hero-stat-label">Compaction</span>
+          </div>
+          <div class="hero-stat">
+            <span class="hero-stat-value">3</span>
+            <span class="hero-stat-label">Recovery Paths</span>
+          </div>
+          <div class="hero-stat">
+            <span class="hero-stat-value">Token Budget</span>
+            <span class="hero-stat-label">Continuation</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Feature Cards -->
+      <section class="section accent-query" id="features">
+        <div class="section-header">
+          <div class="section-badge">&#9889; Features</div>
+          <h2 class="section-title">Key Features</h2>
+          <p class="section-desc">
+            QueryEngine의 핵심 설계 원칙과 최적화 기법들
+          </p>
+        </div>
+
+        <div class="feature-cards">
+          <div class="feature-card">
+            <h4>1. Streaming-First Design</h4>
+            <p>
+              StreamProcessor는 Server-Sent Events (SSE)로 수신한 API 응답을 청크 단위로 처리하며, 도구 호출 감지 즉시 실행 시작으로 head-of-line blocking 제거. 모델이 여전히 응답을 생성 중일 때 도구들은 병렬로 실행되어 지각된 레이턴시를 극적으로 감소시킵니다.
+            </p>
+          </div>
+          <div class="feature-card">
+            <h4>2. Stop Reason Handling</h4>
+            <p>
+              StreamProcessor는 Anthropic API의 SSE 스트림을 처리할 때 미묘한 차이를 정확히 구분합니다: <code>content_block_stop</code> 이벤트는 개별 콘텐츠 블록 완료, 실제 <code>stop_reason</code>(end_turn/tool_use)은 <code>message_delta</code> 이벤트에서만 나타납니다. 이 구분을 놓치면 도구 호출 종료 시점 판단 오류 발생.
+            </p>
+          </div>
+          <div class="feature-card">
+            <h4>3. Recovery Paths (max_tokens)</h4>
+            <p>
+              max_tokens에 도달하면 3가지 계층화된 복구 경로를 순차적으로 시도합니다:
+              <ul>
+                <li>(1) max_output_tokens를 8K → 16K → 64K로 에스컬레이션</li>
+                <li>(2) Reactive Compact 모드로 컨텍스트 극도로 압축 후 재시도</li>
+                <li>(3) 스트리밍 체계 재설정</li>
+              </ul>
+            </p>
+          </div>
+          <div class="feature-card" style="background: var(--color-bg-secondary); border-left: 3px solid var(--color-accent-blue);">
+            <h4>&#9731; Context Compaction &amp; Token Budget</h4>
+            <p>
+              QueryEngine은 토큰 예산 초과 시 5-Layer Context Compaction과 Token Budget Continuation을 활용합니다.
+              자세한 내용은 <a href="memory.html#context-compaction" style="color:var(--color-accent-blue);font-weight:600;">Memory &rarr; Context Compaction</a>을 참조하세요.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <!-- Core Execution Loop -->
+      <section class="section accent-query" id="core-loop">
+        <div class="section-header">
+          <div class="section-badge">&#9889; Core</div>
+          <h2 class="section-title">Core Execution Loop</h2>
+          <p class="section-desc">
+            QueryEngine은 메모리 로드에서 시작하여 반복적으로 메시지를 전송하고, 응답을 파싱하며, 도구를 실행하고, 컨텍스트를 관리하는 주요 루프입니다.
+          </p>
+        </div>
+
+        <div class="diagram-container">
+          <div class="diagram-title">Conversation Loop</div>
+          <pre class="mermaid">
+flowchart TB
+    Start([세션 시작]) --> LoadMem["메모리 로드&lt;br/&gt;MEMORY.md 파싱, 세션 컨텍스트 로드"]
+    LoadMem --> AssemblePrompt["시스템 프롬프트 조립&lt;br/&gt;캐시 가능 접두사 + 세션 접미사 구성"]
+    AssemblePrompt --> CheckCache{"캐시 경계&lt;br/&gt;변경됨?"}
+    CheckCache -->|"아니오"| UseCache["캐시된 접두사 사용&lt;br/&gt;(14-17K 토큰 절약)"]
+    CheckCache -->|"예"| Rebuild["전체 프롬프트 재구성&lt;br/&gt;(캐시 누락 페널티)"]
+
+    UseCache --> Loop
+    Rebuild --> Loop
+
+    subgraph Loop["대화 루프"]
+        SendReq["API 메시지 전송&lt;br/&gt;시스템 프롬프트 +&lt;br/&gt;대화 이력 + 도구 스키마"]
+        SendReq --> Stream["스트리밍 응답 처리&lt;br/&gt;SSE 청크 수신"]
+        Stream --> Parse{"응답 타입?"}
+
+        Parse -->|"text"| RenderText["텍스트 렌더링&lt;br/&gt;터미널 UI 업데이트"]
+        Parse -->|"tool_use"| HandleTool["도구 호출 처리"]
+
+        HandleTool --> PermCheck{"권한 검사&lt;br/&gt;(3계층 파이프라인)"}
+
+        PermCheck -->|"레이어 1: 허용 목록"| AutoAllow["자동 허용&lt;br/&gt;(Read, Glob, Grep...)"]
+        PermCheck -->|"레이어 2: 사용자 규칙"| UserRules["설정의 항상 허용&lt;br/&gt;규칙 확인"]
+        PermCheck -->|"레이어 3: 분류기"| RunClassifier["AI 분류기로&lt;br/&gt;위험도 판단"]
+
+        RunClassifier -->|"안전함"| AutoAllow
+        RunClassifier -->|"위험함"| AskUser["사용자에게&lt;br/&gt;승인/거부 요청"]
+
+        AskUser -->|"승인됨"| AutoAllow
+        AskUser -->|"거부됨"| DenyResult["대화에 거부 메시지 반환"]
+
+        AutoAllow --> DispatchTool["도구 실행&lt;br/&gt;검증된 파라미터로 호출"]
+
+        DispatchTool --> ToolResult["도구 결과"]
+        DenyResult --> AppendResult
+        ToolResult --> AppendResult["대화 기록에&lt;br/&gt;추가"]
+
+        AppendResult --> CheckBudget{"토큰 예산&lt;br/&gt;초과?"}
+        CheckBudget -->|"예"| Compress["오래된 메시지 압축"]
+        CheckBudget -->|"아니오"| NextIter
+
+        Compress --> NextIter["루프 계속"]
+        NextIter --> SendReq
+
+        RenderText --> CheckStop{"종료 조건?"}
+        CheckStop -->|"응답 완료"| EndLoop([루프 종료])
+        CheckStop -->|"도구 호출"| HandleTool
+    end
+
+    EndLoop --> UpdateMem["새로운 사실이 발견된 경우&lt;br/&gt;MEMORY.md 업데이트"]
+          </pre>
+        </div>
+
+        <div class="feature-cards">
+          <div class="feature-card">
+            <h4>캐시 경계 관리</h4>
+            <p>
+              시스템 프롬프트는 <strong>캐시 가능 접두사</strong>(ID, 도구 정의, 안전 규칙 등 고정 블록)와 <strong>세션 접미사</strong>(git 상태, MCP 스키마 등 가변 블록)로 분리됩니다. 접두사가 변경되지 않으면 캐시를 재사용하여 매 API 호출마다 14-17K 토큰을 절약하며, 캐시 히트 시 약 90%의 비용 할인이 적용됩니다.
+            </p>
+          </div>
+          <div class="feature-card">
+            <h4>3-Layer 권한 파이프라인</h4>
+            <p>
+              모든 도구 호출은 실행 전 3단계 권한 검사를 통과해야 합니다. <strong>Layer 1:</strong> 읽기 전용 도구(Read, Glob, Grep)는 고정 허용 목록으로 자동 승인. <strong>Layer 2:</strong> 사용자가 설정한 허용/거부 규칙 확인. <strong>Layer 3:</strong> 이전 단계에서 결정되지 않은 호출은 AI 분류기(Sonnet)가 위험도를 판단하여 자동 승인 또는 사용자에게 확인을 요청합니다.
+            </p>
+          </div>
+          <div class="feature-card">
+            <h4>토큰 예산 자동 관리</h4>
+            <p>
+              대화가 길어지면 토큰 예산 초과를 감지하여 오래된 메시지부터 자동으로 압축합니다. 압축된 메시지는 핵심 내용만 유지하는 요약으로 대체되어, 100턴 이상의 긴 세션에서도 컨텍스트 품질을 유지하면서 대화를 지속할 수 있습니다.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <!-- Query Loop Flow -->
+      <section class="section accent-query" id="query-flow">
+        <div class="section-header">
+          <div class="section-badge">&#9889; Flow</div>
+          <h2 class="section-title">Query Loop Flow</h2>
+          <p class="section-desc">
+            사용자 입력부터 최종 응답까지의 간소화된 흐름으로 컨텍스트 압축, API 호출, 도구 실행, 복구 경로를 보여줍니다.
+          </p>
+        </div>
+
+        <div class="diagram-container">
+          <div class="diagram-title">Query Execution Pipeline</div>
+          <pre class="mermaid">
+flowchart TB
+    INPUT["사용자 입력"] --> COMPACT["컨텍스트&lt;br/&gt;압축"]
+    COMPACT --> CALL["모델 호출&lt;br/&gt;(스트리밍)"]
+    CALL --> STREAM["스트리밍 도구 처리&lt;br/&gt;(도구 호출 수신)"]
+    STREAM --> EXEC["도구 실행&lt;br/&gt;(병렬/순차)"]
+    EXEC --> CHECK{"종료 조건?"}
+    CHECK -->|"도구 호출"| ATTACH["결과를 대화에&lt;br/&gt;첨부"]
+    ATTACH --> COMPACT
+    CHECK -->|"응답 완료"| DONE["응답&lt;br/&gt;완료"]
+    CHECK -->|"토큰 초과"| RECOVER["복구:&lt;br/&gt;8K→64K 확장&lt;br/&gt;또는 긴급 압축"]
+    RECOVER --> COMPACT
+    style INPUT fill:#ecfdf5,stroke:#10b981,color:#065f46
+    style STREAM fill:#fef3c7,stroke:#d97706,color:#92400e
+    style EXEC fill:#eff6ff,stroke:#3b82f6,color:#1e40af
+    style RECOVER fill:#fef2f2,stroke:#ef4444,color:#991b1b
+    style DONE fill:#ecfdf5,stroke:#10b981,color:#065f46
+          </pre>
+        </div>
+
+        <div class="feature-cards">
+          <div class="feature-card">
+            <h4>스트리밍 도구 실행</h4>
+            <p>
+              StreamProcessor는 SSE 스트림에서 도구 호출 블록을 감지하는 즉시 실행을 시작합니다. 모델이 여전히 다음 응답을 생성하는 동안 도구가 병렬로 실행되므로, 순차 처리 대비 지각 레이턴시가 크게 감소합니다. <code>content_block_stop</code>(개별 블록 완료)과 <code>message_delta</code>의 <code>stop_reason</code>(전체 응답 완료)을 정확히 구분하여 종료 시점을 판단합니다.
+            </p>
+          </div>
+          <div class="feature-card">
+            <h4>복구 캐스케이드</h4>
+            <p>
+              <code>max_tokens</code>에 도달하면 3단계 자동 복구가 순차적으로 시도됩니다. (1) <code>max_output_tokens</code>를 8K &rarr; 16K &rarr; 64K로 에스컬레이션하여 출력 공간 확보. (2) Reactive Compact 모드로 컨텍스트를 극도로 압축한 후 재시도. (3) 스트리밍 체계 자체를 리셋합니다. 대부분의 경우 1단계에서 해결되며, 3단계까지 도달하는 경우는 드뭅니다.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <!-- Footer -->
+            <footer class="footer">
+        <p>
+          <a href="https://github.com/hi-space/claude-code-unpack-docs" target="_blank" rel="noopener noreferrer"
+             style="color:var(--color-text-muted);text-decoration:none;border-bottom:1px solid var(--color-border);">
+            hi-space/claude-code-unpack-docs
+          </a>
+          &middot; &copy; 2026 All rights reserved.
+        </p>
+      </footer>
+
+    </div>
+  </div>
+
+  <!-- Back to Top -->
+  <button class="back-to-top" onclick="window.scrollTo({top:0,behavior:'smooth'})" title="Back to top">&#8593;</button>
+
+  <script>
+    // ===== Mermaid Init =====
+    const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+    mermaid.initialize({
+      startOnLoad: true,
+      theme: isDark ? 'dark' : 'neutral',
+      fontFamily: "'Noto Sans KR', system-ui, sans-serif",
+      flowchart: { curve: 'basis', padding: 16 },
+      themeVariables: isDark ? {
+        primaryColor: '#422006',
+        primaryBorderColor: '#f59e0b',
+        primaryTextColor: '#fbbf24',
+        lineColor: '#6b7085',
+        secondaryColor: '#172554',
+        tertiaryColor: '#2e1065'
+      } : {
+        primaryColor: '#fef3c7',
+        primaryBorderColor: '#d97706',
+        primaryTextColor: '#92400e',
+        lineColor: '#9ca3af',
+        secondaryColor: '#eff6ff',
+        tertiaryColor: '#f5f3ff'
+      }
+    });
+
+    // CDN fallback
+    window.addEventListener('load', () => {
+      if (typeof mermaid === 'undefined') {
+        document.querySelectorAll('.diagram-container').forEach(c => {
+          const fb = document.createElement('div');
+          fb.style.cssText = 'text-align:center;padding:40px;color:var(--color-text-muted);font-size:14px;';
+          fb.textContent = 'Diagram requires internet for Mermaid.js';
+          c.querySelector('.mermaid')?.replaceWith(fb);
+        });
+      }
+    });
+
+    // ===== Theme Toggle =====
+    function toggleTheme() {
+      const html = document.documentElement;
+      const current = html.getAttribute('data-theme');
+      const next = current === 'dark' ? 'light' : 'dark';
+      html.setAttribute('data-theme', next);
+      localStorage.setItem('claude-docs-theme', next);
+      updateThemeUI(next);
+      location.reload();
+    }
+
+    function updateThemeUI(theme) {
+      const icon = document.querySelector('.theme-icon');
+      const label = document.querySelector('.theme-label');
+      if (theme === 'dark') {
+        icon.innerHTML = '&#9788;';
+        label.textContent = 'Light Mode';
+      } else {
+        icon.innerHTML = '&#9789;';
+        label.textContent = 'Dark Mode';
+      }
+    }
+
+    // Restore theme on load
+    (function() {
+      const saved = localStorage.getItem('claude-docs-theme');
+      if (saved) {
+        document.documentElement.setAttribute('data-theme', saved);
+        updateThemeUI(saved);
+      } else if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
+        document.documentElement.setAttribute('data-theme', 'dark');
+        updateThemeUI('dark');
+      }
+    })();
+
+    // ===== Mobile Sidebar =====
+    function toggleSidebar() {
+      document.querySelector('.sidebar').classList.toggle('open');
+      document.querySelector('.sidebar-backdrop').classList.toggle('open');
+    }
+
+    // ===== Back to Top =====
+    const backBtn = document.querySelector('.back-to-top');
+    window.addEventListener('scroll', () => {
+      backBtn.classList.toggle('visible', window.scrollY > 400);
+    });
+
+    // ===== Active Nav Tracking =====
+    const sections = document.querySelectorAll('.section, .hero');
+    const navLinks = document.querySelectorAll('.sidebar-nav a');
+
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          const id = entry.target.id || entry.target.closest('[id]')?.id;
+          if (!id) return;
+          navLinks.forEach(link => {
+            const href = link.getAttribute('href');
+            if (href.startsWith('#')) {
+              link.classList.toggle('active', href === '#' + id);
+            }
+          });
+        }
+      });
+    }, { rootMargin: '-10% 0px -70% 0px' });
+
+    sections.forEach(s => observer.observe(s));
+  </script>
+
+</body>
+</html>

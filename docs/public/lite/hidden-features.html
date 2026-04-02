@@ -1,0 +1,1609 @@
+<!DOCTYPE html>
+<html lang="ko" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Claude Code Hidden Features</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@11.4.1/dist/mermaid.min.js"></script>
+  <style>
+    /* ===== CSS Reset & Variables ===== */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --color-bg: #ffffff;
+      --color-bg-secondary: #f8f9fb;
+      --color-bg-tertiary: #f1f3f5;
+      --color-bg-card: #ffffff;
+      --color-border: #e5e7eb;
+      --color-border-light: #f0f1f3;
+      --color-text: #1a1a2e;
+      --color-text-secondary: #6b7280;
+      --color-text-muted: #9ca3af;
+      --color-primary: #d97706;
+      --color-primary-light: #fef3c7;
+      --color-primary-dark: #b45309;
+      --color-accent-blue: #3b82f6;
+      --color-accent-blue-light: #eff6ff;
+      --color-accent-green: #10b981;
+      --color-accent-green-light: #ecfdf5;
+      --color-accent-purple: #8b5cf6;
+      --color-accent-purple-light: #f5f3ff;
+      --color-accent-red: #ef4444;
+      --color-accent-red-light: #fef2f2;
+      --color-accent-teal: #14b8a6;
+      --color-accent-teal-light: #f0fdfa;
+      --color-accent-indigo: #6366f1;
+      --color-accent-indigo-light: #eef2ff;
+      --color-accent-amber: #f59e0b;
+      --color-accent-amber-light: #fffbeb;
+      --sidebar-width: 260px;
+      --font-sans: 'Noto Sans KR', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      --font-mono: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', 'Consolas', monospace;
+      --shadow-sm: 0 1px 2px rgba(0,0,0,0.04);
+      --shadow-md: 0 4px 12px rgba(0,0,0,0.06);
+      --shadow-lg: 0 8px 24px rgba(0,0,0,0.08);
+      --shadow-xl: 0 12px 32px rgba(0,0,0,0.10);
+      --radius-sm: 6px;
+      --radius-md: 10px;
+      --radius-lg: 14px;
+      --radius-xl: 20px;
+    }
+
+    [data-theme="dark"] {
+      --color-bg: #0f1117;
+      --color-bg-secondary: #1a1b23;
+      --color-bg-tertiary: #22232d;
+      --color-bg-card: #1a1b23;
+      --color-border: #2d2e3a;
+      --color-border-light: #23242f;
+      --color-text: #e4e5ea;
+      --color-text-secondary: #9ca0af;
+      --color-text-muted: #6b7085;
+      --color-primary: #f59e0b;
+      --color-primary-light: #422006;
+      --color-primary-dark: #fbbf24;
+      --color-accent-blue-light: #172554;
+      --color-accent-green-light: #052e16;
+      --color-accent-purple-light: #2e1065;
+      --color-accent-red-light: #450a0a;
+      --color-accent-teal-light: #042f2e;
+      --color-accent-indigo-light: #1e1b4b;
+      --color-accent-amber-light: #451a03;
+      --shadow-sm: 0 1px 2px rgba(0,0,0,0.2);
+      --shadow-md: 0 4px 12px rgba(0,0,0,0.3);
+      --shadow-lg: 0 8px 24px rgba(0,0,0,0.35);
+      --shadow-xl: 0 12px 32px rgba(0,0,0,0.4);
+    }
+
+    html { scroll-behavior: smooth; font-size: 16px; }
+
+    body {
+      font-family: var(--font-sans);
+      color: var(--color-text);
+      background: var(--color-bg);
+      line-height: 1.7;
+      -webkit-font-smoothing: antialiased;
+      transition: background 0.3s ease, color 0.3s ease;
+    }
+
+    /* ===== Sidebar ===== */
+    .sidebar {
+      position: fixed;
+      top: 0; left: 0;
+      width: var(--sidebar-width);
+      height: 100vh;
+      background: var(--color-bg);
+      border-right: 1px solid var(--color-border);
+      padding: 28px 0;
+      overflow-y: auto;
+      z-index: 100;
+      display: flex;
+      flex-direction: column;
+      transition: background 0.3s ease, border-color 0.3s ease;
+    }
+
+    .sidebar-header {
+      padding: 0 20px 20px;
+      border-bottom: 1px solid var(--color-border-light);
+      margin-bottom: 12px;
+    }
+
+    .sidebar-header h2 {
+      font-size: 15px;
+      font-weight: 800;
+      color: var(--color-text);
+      letter-spacing: -0.02em;
+    }
+
+    .sidebar-header span {
+      font-size: 11.5px;
+      color: var(--color-text-muted);
+      font-weight: 500;
+    }
+
+    .sidebar-nav { flex: 1; padding: 0 10px; }
+
+    .sidebar-nav .nav-section {
+      font-size: 10.5px;
+      font-weight: 700;
+      color: var(--color-text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      padding: 14px 12px 6px;
+    }
+
+    .sidebar-nav a {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 8px 12px;
+      color: var(--color-text-secondary);
+      text-decoration: none;
+      font-size: 13px;
+      font-weight: 500;
+      border-radius: var(--radius-sm);
+      transition: all 0.15s ease;
+      margin-bottom: 1px;
+    }
+
+    .sidebar-nav a:hover {
+      color: var(--color-text);
+      background: var(--color-bg-secondary);
+    }
+
+    .sidebar-nav a.active {
+      color: var(--color-primary-dark);
+      background: var(--color-primary-light);
+      font-weight: 700;
+    }
+
+    .sidebar-nav a .nav-icon {
+      width: 20px; height: 20px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 13px;
+      flex-shrink: 0;
+    }
+
+    .deep-dive-cta {
+      margin: 16px 10px 8px;
+      padding: 10px 12px;
+      background: linear-gradient(135deg, var(--color-accent-blue-light), transparent);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-md);
+      transition: all 0.2s ease;
+    }
+    .deep-dive-cta:hover {
+      border-color: var(--color-accent-blue);
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.06);
+    }
+    .deep-dive-cta a {
+      text-decoration: none !important;
+      display: block;
+      gap: 0;
+      padding: 0 !important;
+      margin: 0 !important;
+      background: none !important;
+    }
+    .deep-dive-cta a:hover {
+      background: none !important;
+    }
+    .deep-dive-cta .cta-badge {
+      display: inline-block;
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--color-accent-blue);
+      background: var(--color-accent-blue-light);
+      padding: 2px 8px;
+      border-radius: 4px;
+      margin-bottom: 6px;
+    }
+    .deep-dive-cta .cta-title {
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--color-accent-blue);
+      margin-bottom: 4px;
+    }
+    .deep-dive-cta .cta-desc {
+      font-size: 11.5px;
+      line-height: 1.55;
+      color: var(--color-text-secondary);
+    }
+
+    .sidebar-footer {
+      padding: 16px 20px;
+      border-top: 1px solid var(--color-border-light);
+    }
+
+    .theme-toggle {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 12.5px;
+      color: var(--color-text-secondary);
+      background: var(--color-bg-secondary);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-sm);
+      padding: 7px 12px;
+      cursor: pointer;
+      width: 100%;
+      transition: all 0.15s ease;
+      font-family: var(--font-sans);
+    }
+
+    .theme-toggle:hover {
+      color: var(--color-text);
+      border-color: #d1d5db;
+    }
+
+    /* ===== Main Content ===== */
+    .main {
+      margin-left: var(--sidebar-width);
+      min-height: 100vh;
+    }
+
+    .content {
+      max-width: 920px;
+      margin: 0 auto;
+      padding: 40px 40px 80px;
+    }
+
+    /* ===== Hero ===== */
+    .hero {
+      margin-bottom: 48px;
+      padding: 40px 0 36px;
+      border-bottom: 1px solid var(--color-border-light);
+    }
+
+    .hero-eyebrow {
+      font-size: 12.5px;
+      font-weight: 700;
+      color: var(--color-primary);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      margin-bottom: 14px;
+    }
+
+    .hero h1 {
+      font-size: 36px;
+      font-weight: 800;
+      letter-spacing: -0.035em;
+      line-height: 1.15;
+      margin-bottom: 14px;
+      color: var(--color-text);
+    }
+
+    .hero-desc {
+      font-size: 16px;
+      color: var(--color-text-secondary);
+      line-height: 1.7;
+      max-width: 640px;
+    }
+
+    .hero-stats {
+      display: flex;
+      gap: 28px;
+      margin-top: 28px;
+      flex-wrap: wrap;
+    }
+
+    .hero-stat {
+      display: flex;
+      flex-direction: column;
+      padding: 16px 20px;
+      background: var(--color-bg-secondary);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-md);
+      min-width: 130px;
+      transition: all 0.2s ease;
+    }
+
+    .hero-stat:hover {
+      border-color: var(--color-primary);
+      box-shadow: var(--shadow-md);
+      transform: translateY(-2px);
+    }
+
+    .hero-stat-value {
+      font-size: 26px;
+      font-weight: 800;
+      color: var(--color-text);
+      letter-spacing: -0.02em;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .hero-stat-label {
+      font-size: 12px;
+      color: var(--color-text-muted);
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      margin-top: 2px;
+    }
+
+    /* ===== Tab System ===== */
+    .tabs-container { margin: 24px 0; }
+
+    .tab-nav {
+      display: flex;
+      gap: 2px;
+      border-bottom: 2px solid var(--color-border);
+      margin-bottom: 28px;
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+      scrollbar-width: none;
+      -ms-overflow-style: none;
+    }
+
+    .tab-nav::-webkit-scrollbar {
+      display: none;
+    }
+
+    .tab-btn {
+      padding: 10px 20px;
+      font-size: 13.5px;
+      font-weight: 600;
+      color: var(--color-text-muted);
+      background: none;
+      border: none;
+      border-bottom: 2px solid transparent;
+      margin-bottom: -2px;
+      cursor: pointer;
+      font-family: var(--font-sans);
+      transition: all 0.15s ease;
+      white-space: nowrap;
+    }
+
+    .tab-btn:hover {
+      color: var(--color-text-secondary);
+    }
+
+    .tab-btn.active {
+      color: var(--color-primary-dark);
+      border-bottom-color: var(--color-primary);
+    }
+
+    .tab-pane {
+      display: none;
+    }
+
+    .tab-pane.active {
+      display: block;
+    }
+
+    /* ===== Tech Table & Badges ===== */
+    .tech-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 20px 0;
+      font-size: 13.5px;
+    }
+
+    .tech-table th {
+      text-align: left;
+      padding: 10px 14px;
+      font-weight: 700;
+      font-size: 11.5px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--color-text-muted);
+      border-bottom: 2px solid var(--color-border);
+      background: var(--color-bg-secondary);
+    }
+
+    .tech-table td {
+      padding: 10px 14px;
+      border-bottom: 1px solid var(--color-border-light);
+      color: var(--color-text-secondary);
+    }
+
+    .tech-table td:first-child {
+      font-weight: 600;
+      color: var(--color-text);
+    }
+
+    .tech-table tr:hover td {
+      background: var(--color-bg-secondary);
+    }
+
+    .tech-table code {
+      font-family: var(--font-mono);
+      font-size: 12px;
+      background: var(--color-bg-tertiary);
+      padding: 2px 6px;
+      border-radius: 4px;
+      color: var(--color-primary-dark);
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 12px;
+      font-size: 11px;
+      font-weight: 600;
+    }
+
+    .badge-compile {
+      background: var(--color-accent-red-light);
+      color: var(--color-accent-red);
+    }
+
+    .badge-runtime {
+      background: var(--color-accent-blue-light);
+      color: var(--color-accent-blue);
+    }
+
+    .badge-active {
+      background: var(--color-accent-green-light);
+      color: var(--color-accent-green);
+    }
+
+    .badge-gated {
+      background: var(--color-accent-amber-light);
+      color: var(--color-accent-amber);
+    }
+
+    /* ===== Feature Cards Container ===== */
+    .feature-cards {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      margin: 24px 0;
+    }
+
+
+    /* ===== Feature Card ===== */
+    .feature-card {
+      background: var(--color-bg-card);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-md);
+      padding: 20px;
+      margin: 16px 0;
+      transition: all 0.15s ease;
+    }
+
+    .feature-card:hover {
+      border-color: #d1d5db;
+      box-shadow: var(--shadow-lg);
+    }
+
+    .feature-card h4 {
+      font-size: 15px;
+      font-weight: 700;
+      margin-bottom: 8px;
+      color: var(--color-text);
+    }
+
+    .feature-card p {
+      font-size: 14px;
+      color: var(--color-text-secondary);
+      line-height: 1.8;
+    }
+
+    .feature-card code {
+      font-family: var(--font-mono);
+      font-size: 12px;
+      background: var(--color-bg-tertiary);
+      padding: 2px 6px;
+      border-radius: 4px;
+      color: var(--color-primary-dark);
+    }
+
+    .feature-card ul {
+      margin: 10px 0 0 0;
+      padding-left: 20px;
+      list-style: disc;
+    }
+
+    .feature-card li {
+      font-size: 13.5px;
+      color: var(--color-text-secondary);
+      line-height: 1.7;
+      margin-bottom: 4px;
+    }
+
+    .feature-card .badge {
+      margin-right: 8px;
+    }
+
+    /* ===== Section ===== */
+    .section {
+      margin-bottom: 56px;
+      scroll-margin-top: 24px;
+    }
+
+    .section-header {
+      margin-bottom: 28px;
+    }
+
+    .section-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 11.5px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      padding: 4px 12px;
+      border-radius: 20px;
+      margin-bottom: 10px;
+    }
+
+    .section-title {
+      font-size: 26px;
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      line-height: 1.25;
+      margin-bottom: 10px;
+    }
+
+    .section-desc {
+      font-size: 15px;
+      color: var(--color-text-secondary);
+      line-height: 1.7;
+      max-width: 680px;
+    }
+
+    /* ===== Diagram Container ===== */
+    .diagram-container {
+      background: var(--color-bg-secondary);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-lg);
+      padding: 28px 24px;
+      margin: 24px 0;
+      overflow-x: auto;
+    }
+
+    .diagram-container .mermaid {
+      display: flex;
+      justify-content: center;
+    }
+
+    .diagram-title {
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--color-text-secondary);
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .diagram-title::before {
+      content: '';
+      display: inline-block;
+      width: 3px; height: 14px;
+      background: var(--color-primary);
+      border-radius: 2px;
+    }
+
+    /* ===== Callout Box ===== */
+    .callout {
+      display: flex;
+      gap: 14px;
+      padding: 16px 18px;
+      border-radius: var(--radius-md);
+      margin: 16px 0;
+      border: 1px solid;
+      font-size: 14px;
+      line-height: 1.65;
+    }
+
+    .callout-icon { font-size: 18px; flex-shrink: 0; margin-top: 1px; }
+
+    .callout-insight {
+      background: var(--color-accent-blue-light);
+      border-color: var(--color-accent-blue);
+      color: var(--color-text);
+    }
+
+    .callout-warning {
+      background: var(--color-accent-amber-light);
+      border-color: var(--color-accent-amber);
+      color: var(--color-text);
+    }
+
+    .callout strong {
+      display: block;
+      font-size: 13px;
+      font-weight: 700;
+      margin-bottom: 4px;
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+    }
+
+    /* ===== Footer ===== */
+    .footer {
+      margin-top: 40px;
+      padding: 28px 0;
+      border-top: 1px solid var(--color-border-light);
+      text-align: center;
+      font-size: 12.5px;
+      color: var(--color-text-muted);
+      line-height: 1.8;
+    }
+
+    /* ===== Back to Top ===== */
+    .back-to-top {
+      position: fixed;
+      bottom: 28px; right: 28px;
+      width: 38px; height: 38px;
+      background: var(--color-text);
+      color: var(--color-bg);
+      border: none;
+      border-radius: 50%;
+      cursor: pointer;
+      font-size: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      opacity: 0;
+      visibility: hidden;
+      transition: all 0.2s ease;
+      z-index: 99;
+      box-shadow: var(--shadow-lg);
+    }
+
+    .back-to-top.visible { opacity: 1; visibility: visible; }
+    .back-to-top:hover { background: var(--color-primary-dark); }
+
+    /* ===== Mobile Header ===== */
+    .mobile-header {
+      display: none;
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      height: 52px;
+      background: var(--color-bg);
+      border-bottom: 1px solid var(--color-border);
+      padding: 0 16px;
+      align-items: center;
+      gap: 12px;
+      z-index: 201;
+      transition: background 0.3s ease, border-color 0.3s ease;
+    }
+
+    .mobile-header-title {
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--color-text);
+    }
+
+    .hamburger-btn {
+      width: 36px; height: 36px;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      gap: 5px;
+      background: none; border: none; cursor: pointer; padding: 6px;
+    }
+
+    .hamburger-btn span {
+      display: block; width: 20px; height: 2px;
+      background: var(--color-text); border-radius: 2px;
+      transition: all 0.3s ease;
+    }
+
+    .sidebar-backdrop {
+      display: none;
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,0.4);
+      z-index: 150;
+    }
+
+    .sidebar-backdrop.open { display: block; }
+
+    /* ===== Responsive ===== */
+    @media (max-width: 1024px) {
+      .mobile-header { display: flex; }
+      .sidebar {
+        transform: translateX(-100%);
+        transition: transform 0.3s ease;
+        z-index: 200;
+      }
+      .sidebar.open { transform: translateX(0); }
+      .main { margin-left: 0; padding-top: 52px; }
+      .content { padding: 28px 24px 64px; }
+      .hero h1 { font-size: 28px; }
+      .section-title { font-size: 22px; }
+      .tab-nav {
+        position: sticky;
+        top: 52px;
+        background: var(--color-bg);
+        z-index: 50;
+        padding-top: 4px;
+      }
+    }
+
+    @media (max-width: 640px) {
+      .content { padding: 20px 16px 48px; }
+      .hero h1 { font-size: 24px; }
+      .hero-stats { gap: 12px; }
+      .hero-stat { min-width: 100px; padding: 12px 14px; }
+      .hero-stat-value { font-size: 22px; }
+      .tab-btn { padding: 8px 14px; font-size: 12px; }
+      .tech-table { font-size: 12px; display: block; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+      .tech-table thead { display: table; width: 100%; table-layout: fixed; }
+      .tech-table tbody { display: table; width: 100%; table-layout: fixed; }
+      .tech-table th, .tech-table td { padding: 8px 10px; }
+      .badge { font-size: 10px; padding: 2px 6px; }
+      .diagram-container { padding: 16px 12px; }
+      .feature-card .badge { display: block; margin-bottom: 6px; width: fit-content; }
+    }
+
+    /* ===== Print ===== */
+    @media print {
+      .sidebar, .back-to-top, .theme-toggle { display: none; }
+      .main { margin-left: 0; }
+    }
+
+    /* ===== Mermaid overrides ===== */
+    .mermaid svg { max-width: 100%; height: auto; }
+  </style>
+</head>
+<body>
+
+  <!-- Mobile Header -->
+  <header class="mobile-header">
+    <button class="hamburger-btn" onclick="toggleSidebar()" aria-label="메뉴">
+      <span></span><span></span><span></span>
+    </button>
+    <span class="mobile-header-title">Claude Code</span>
+  </header>
+  <div class="sidebar-backdrop" onclick="toggleSidebar()"></div>
+
+  <!-- Sidebar -->
+  <nav class="sidebar">
+    <div class="sidebar-header">
+      <h2>Claude Code</h2>
+      <span>Hidden Features</span>
+    </div>
+    <div class="sidebar-nav">
+      <a href="index.html">
+        <span class="nav-icon">&#9670;</span> Hub
+      </a>
+      <div class="nav-section">Core</div>
+      <a href="overview.html">
+        <span class="nav-icon">&#9672;</span> Architecture
+      </a>
+      <a href="query-engine.html">
+        <span class="nav-icon">&#9889;</span> Query Engine
+      </a>
+      <a href="memory.html">
+        <span class="nav-icon">&#9731;</span> Memory
+      </a>
+      <a href="agents.html">
+        <span class="nav-icon">&#9733;</span> Agents
+      </a>
+      <div class="nav-section">Systems</div>
+      <a href="tools.html">
+        <span class="nav-icon">&#9881;</span> Tools
+      </a>
+      <a href="cli-ui.html">
+        <span class="nav-icon">&#9618;</span> CLI / UI
+      </a>
+      <a href="system-prompt.html">
+        <span class="nav-icon">&#9998;</span> System Prompt
+      </a>
+      <a href="security.html">
+        <span class="nav-icon">&#9888;</span> Security
+      </a>
+      <a href="hidden-features.html" class="active">
+        <span class="nav-icon">&#9873;</span> Hidden Features
+      </a>
+    </div>
+    <div class="deep-dive-cta">
+      <a href="/claude-code-unpack-docs/deep/ko/">
+        <span class="cta-badge">Deep Dive</span>
+        <div class="cta-title">심층 분석 보기 &rarr;</div>
+        <div class="cta-desc">구현 원리, 설계 철학, 내부 동작을 50+ 페이지로 상세히 분석합니다.</div>
+      </a>
+    </div>
+    </div>
+    <div class="sidebar-footer">
+      <button class="theme-toggle" onclick="toggleTheme()">
+        <span class="theme-icon">&#9789;</span>
+        <span class="theme-label">Dark Mode</span>
+      </button>
+    </div>
+  </nav>
+
+  <!-- Main Content -->
+  <div class="main">
+    <div class="content">
+
+      <!-- Hero -->
+      <div class="hero">
+        <div class="hero-eyebrow">Hidden Features</div>
+        <h1>Feature Flags &amp; Unreleased Features</h1>
+        <p class="hero-desc">
+          44개 피처 플래그, 모델 코드명, 미출시 기능 분석
+        </p>
+        <div class="hero-stats">
+          <div class="hero-stat">
+            <span class="hero-stat-value">44</span>
+            <span class="hero-stat-label">Feature Flags</span>
+          </div>
+          <div class="hero-stat">
+            <span class="hero-stat-value">12</span>
+            <span class="hero-stat-label">Compile-time</span>
+          </div>
+          <div class="hero-stat">
+            <span class="hero-stat-value">15+</span>
+            <span class="hero-stat-label">Runtime</span>
+          </div>
+          <div class="hero-stat">
+            <span class="hero-stat-value">5+</span>
+            <span class="hero-stat-label">Unreleased</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tab System -->
+      <section class="section">
+        <div class="tabs-container">
+          <div class="tab-nav">
+            <button class="tab-btn active" data-tab="feature-flags" onclick="switchTab('feature-flags')">
+              기능 플래그
+            </button>
+            <button class="tab-btn" data-tab="model-codenames" onclick="switchTab('model-codenames')">
+              모델 코드명
+            </button>
+            <button class="tab-btn" data-tab="unreleased-features" onclick="switchTab('unreleased-features')">
+              미출시 기능
+            </button>
+            <button class="tab-btn" data-tab="config-system" onclick="switchTab('config-system')">
+              설정 시스템
+            </button>
+          </div>
+
+          <!-- Tab 1: Feature Flags -->
+          <div id="feature-flags" class="tab-pane active">
+            <div class="section-header">
+              <div class="section-badge" style="background:var(--color-accent-red-light);color:var(--color-accent-red);">&#9873; 기능 플래그</div>
+              <h2 class="section-title">Feature Flags (기능 플래그)</h2>
+              <p class="section-desc">
+                44개의 피처 플래그는 컴파일 타임(공개 빌드에서 제거)과 런타임(GrowthBook 원격 제어)으로 분류됩니다.
+              </p>
+            </div>
+
+            <h3 style="font-size: 18px; font-weight: 700; margin: 28px 0 16px; color: var(--color-text);">컴파일 타임 플래그 (12개)</h3>
+            <p style="font-size: 14px; color: var(--color-text-secondary); margin-bottom: 16px;">공개 빌드에서 완전히 제거되는 기능:</p>
+
+            <div style="overflow-x: auto;">
+              <table class="tech-table">
+                <thead>
+                  <tr>
+                    <th>플래그</th>
+                    <th>기능</th>
+                    <th>타입</th>
+                    <th>상태</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td><code>KAIROS</code></td>
+                    <td>자율 데몬 모드</td>
+                    <td><span class="badge badge-compile">Compile-time</span></td>
+                    <td><span class="badge badge-gated">Gated</span></td>
+                  </tr>
+                  <tr>
+                    <td><code>COORDINATOR_MODE</code></td>
+                    <td>멀티 에이전트 오케스트레이션</td>
+                    <td><span class="badge badge-compile">Compile-time</span></td>
+                    <td><span class="badge badge-gated">Gated</span></td>
+                  </tr>
+                  <tr>
+                    <td><code>VOICE_MODE</code></td>
+                    <td>Push-to-talk 음성 인터페이스</td>
+                    <td><span class="badge badge-compile">Compile-time</span></td>
+                    <td><span class="badge badge-gated">Gated</span></td>
+                  </tr>
+                  <tr>
+                    <td><code>ULTRAPLAN</code></td>
+                    <td>30분 원격 계획 세션</td>
+                    <td><span class="badge badge-compile">Compile-time</span></td>
+                    <td><span class="badge badge-gated">Gated</span></td>
+                  </tr>
+                  <tr>
+                    <td><code>BUDDY</code></td>
+                    <td>터미널 펫 (18종, 희귀도)</td>
+                    <td><span class="badge badge-compile">Compile-time</span></td>
+                    <td><span class="badge badge-gated">Gated</span></td>
+                  </tr>
+                  <tr>
+                    <td><code>BRIDGE_MODE</code></td>
+                    <td>Claude.ai WebSocket 연결</td>
+                    <td><span class="badge badge-compile">Compile-time</span></td>
+                    <td><span class="badge badge-gated">Gated</span></td>
+                  </tr>
+                  <tr>
+                    <td><code>WORKTREE_MODE</code></td>
+                    <td>Git worktree 격리</td>
+                    <td><span class="badge badge-compile">Compile-time</span></td>
+                    <td><span class="badge badge-gated">Gated</span></td>
+                  </tr>
+                  <tr>
+                    <td><code>PLAN_MODE</code></td>
+                    <td>읽기 전용 계획 도구</td>
+                    <td><span class="badge badge-compile">Compile-time</span></td>
+                    <td><span class="badge badge-gated">Gated</span></td>
+                  </tr>
+                  <tr>
+                    <td><code>VIM_MODE</code></td>
+                    <td>Vi/Vim 키바인딩</td>
+                    <td><span class="badge badge-compile">Compile-time</span></td>
+                    <td><span class="badge badge-gated">Gated</span></td>
+                  </tr>
+                  <tr>
+                    <td><code>NATIVE_CLIENT_ATTESTATION</code></td>
+                    <td>Zig HTTP 레벨 DRM 해시</td>
+                    <td><span class="badge badge-compile">Compile-time</span></td>
+                    <td><span class="badge badge-active">Active</span></td>
+                  </tr>
+                  <tr>
+                    <td><code>ANTI_DISTILLATION_CC</code></td>
+                    <td>가짜 도구 주입</td>
+                    <td><span class="badge badge-compile">Compile-time</span></td>
+                    <td><span class="badge badge-active">Active</span></td>
+                  </tr>
+                  <tr>
+                    <td><code>DESKTOP_MOBILE_IDE_INTEGRATION</code></td>
+                    <td>Desktop/Mobile/IDE 브릿지</td>
+                    <td><span class="badge badge-compile">Compile-time</span></td>
+                    <td><span class="badge badge-gated">Gated</span></td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <h3 style="font-size: 18px; font-weight: 700; margin: 28px 0 16px; color: var(--color-text);">런타임 플래그 — GrowthBook (15+)</h3>
+            <p style="font-size: 14px; color: var(--color-text-secondary); margin-bottom: 16px;"><code>tengu_</code> 접두사를 사용하며 원격 제어:</p>
+
+            <div style="overflow-x: auto;">
+              <table class="tech-table">
+                <thead>
+                  <tr>
+                    <th>플래그</th>
+                    <th>제어 대상</th>
+                    <th>타입</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td><code>tengu_anti_distill_fake_tool_injection</code></td>
+                    <td>가짜 도구 주입 on/off</td>
+                    <td><span class="badge badge-runtime">Runtime</span></td>
+                  </tr>
+                  <tr>
+                    <td><code>tengu_attribution_header</code></td>
+                    <td>클라이언트 인증 헤더 on/off</td>
+                    <td><span class="badge badge-runtime">Runtime</span></td>
+                  </tr>
+                  <tr>
+                    <td><code>tengu_classifier_sensitivity</code></td>
+                    <td>Auto-mode 권한 분류기 strictness (0.5-1.0)</td>
+                    <td><span class="badge badge-runtime">Runtime</span></td>
+                  </tr>
+                  <tr>
+                    <td><code>tengu_distillation_protection</code></td>
+                    <td>Anti-distillation guards on/off</td>
+                    <td><span class="badge badge-runtime">Runtime</span></td>
+                  </tr>
+                  <tr>
+                    <td><code>tengu_attestation_enabled</code></td>
+                    <td>클라이언트 디바이스 attestation 요구</td>
+                    <td><span class="badge badge-runtime">Runtime</span></td>
+                  </tr>
+                  <tr>
+                    <td><code>tengu_model_routing_region</code></td>
+                    <td>특정 모델 엔드포인트로 요청 라우팅</td>
+                    <td><span class="badge badge-runtime">Runtime</span></td>
+                  </tr>
+                  <tr>
+                    <td><code>tengu_rate_limit_tier</code></td>
+                    <td>고객 세그먼트별 rate limits 동적 조정</td>
+                    <td><span class="badge badge-runtime">Runtime</span></td>
+                  </tr>
+                  <tr>
+                    <td><code>tengu_security_classifier_auto</code></td>
+                    <td>보안 분류기 자동 모드</td>
+                    <td><span class="badge badge-runtime">Runtime</span></td>
+                  </tr>
+                  <tr>
+                    <td><code>tengu_experimental_voice_mode</code></td>
+                    <td>Voice Mode 실험 기능</td>
+                    <td><span class="badge badge-runtime">Runtime</span></td>
+                  </tr>
+                  <tr>
+                    <td><code>tengu_bridge_mode_rollout</code></td>
+                    <td>Bridge Mode 단계적 출시</td>
+                    <td><span class="badge badge-runtime">Runtime</span></td>
+                  </tr>
+                  <tr>
+                    <td><code>tengu_ultraplan_availability</code></td>
+                    <td>UltraPlan 가용성 제어</td>
+                    <td><span class="badge badge-runtime">Runtime</span></td>
+                  </tr>
+                  <tr>
+                    <td><code>tengu_buddy_cosmetic_unlock</code></td>
+                    <td>Buddy 스킨 & 아이템 해금</td>
+                    <td><span class="badge badge-runtime">Runtime</span></td>
+                  </tr>
+                  <tr>
+                    <td><code>tengu_worktree_max_count</code></td>
+                    <td>최대 worktree 갯수 제한</td>
+                    <td><span class="badge badge-runtime">Runtime</span></td>
+                  </tr>
+                  <tr>
+                    <td><code>tengu_otel_sampling_rate</code></td>
+                    <td>OpenTelemetry 샘플링 비율</td>
+                    <td><span class="badge badge-runtime">Runtime</span></td>
+                  </tr>
+                  <tr>
+                    <td><code>tengu_ide_integration_level</code></td>
+                    <td>IDE 통합 수준 (CLI 전용/IDE 포함)</td>
+                    <td><span class="badge badge-runtime">Runtime</span></td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <div class="feature-card">
+              <h4>피처 플래그의 의미</h4>
+              <p>
+                44개 플래그는 Claude Code의 진화 로드맵을 명시:<br/><strong>현재 상태:</strong> 반응형 단일 에이전트 코딩 어시스턴트<br/><strong>미래 상태:</strong> 자율적, 멀티모달(음성/텍스트), 멀티에이전트 개발 플랫폼<br/><strong>배포 전략:</strong> 컴파일 타임 플래그 12개는 공개 빌드에서 완전 제거 (dead code elimination). 런타임 플래그 15+개는 GrowthBook으로 Anthropic이 원격 제어 (재배포 불필요).
+              </p>
+              <p style="font-size: 13px; color: var(--color-text-secondary); margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--color-border);">
+                <strong>주의:</strong> KAIROS, VOICE_MODE, BUDDY, ULTRAPLAN은 디렉토리가 존재하지만 소스에서 inline <code>feature()</code> 호출로 게이트되지 않습니다. 대신 모듈 진입점(예: <code>isVoiceGrowthBookEnabled()</code>)에서 다양한 게이팅 메커니즘을 사용합니다.
+              </p>
+            </div>
+
+            <div class="diagram-container">
+              <div class="diagram-title">피처 플래그 분포</div>
+              <pre class="mermaid">
+pie title "피처 플래그 분포"
+    "컴파일 타임 (12)" : 12
+    "런타임 GrowthBook (15+)" : 17
+    "베타 API (15+)" : 15
+              </pre>
+            </div>
+          </div>
+
+          <!-- Tab 2: Model Codenames -->
+          <div id="model-codenames" class="tab-pane">
+            <div class="section-header">
+              <div class="section-badge" style="background:var(--color-accent-blue-light);color:var(--color-accent-blue);">&#9733; 모델 코드명</div>
+              <h2 class="section-title">Model Codenames (모델 코드명)</h2>
+              <p class="section-desc">
+                유출된 소스코드에서 발견된 Claude 모델의 내부 코드네임. 공식적으로 문서화되지 않았지만 소스에 여러 곳에서 등장합니다.
+              </p>
+            </div>
+
+            <div style="overflow-x: auto;">
+              <table class="tech-table">
+                <thead>
+                  <tr>
+                    <th>코드네임</th>
+                    <th>타입</th>
+                    <th>상세</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td><strong>Capybara</strong></td>
+                    <td>프로젝트 코드네임</td>
+                    <td>Sonnet v8 (1M 컨텍스트), "fast mode" 변형, 거짓 주장률 29-30%</td>
+                  </tr>
+                  <tr>
+                    <td><strong>Fennec</strong></td>
+                    <td>프로젝트 코드네임</td>
+                    <td>Opus 4.6 전신, 마이그레이션 경로가 소스코드에 존재</td>
+                  </tr>
+                  <tr>
+                    <td><strong>Numbat</strong></td>
+                    <td>프로젝트 코드네임</td>
+                    <td>차기 미출시 모델, 출시 일정이 소스코드에 임베딩됨</td>
+                  </tr>
+                  <tr>
+                    <td><strong>Tengu</strong></td>
+                    <td>피처 플래그 프리픽스</td>
+                    <td>Claude Code 프로젝트 자체의 내부 이름, <code>tengu_*</code> 플래그와 텔레메트리에 사용 (모델 식별자 아님)</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <h3 style="font-size: 18px; font-weight: 700; margin: 28px 0 16px; color: var(--color-text);">Capybara (Sonnet v8)</h3>
+            <div class="feature-card">
+              <h4>1. 1M 컨텍스트 윈도우</h4>
+              <p>
+                Capybara는 Sonnet v8의 내부 코드네임, 1M 토큰 컨텍스트 윈도우.<br/><strong>역할:</strong> Claude Code의 "fast mode" 구동 모델로 소스에서 발견.<br/><strong>트레이드오프:</strong> 거짓 주장률 29-30% (v4의 16.7% → 회귀). 속도 최적화로 인한 정확도 손실 시사.<br/><strong>용도:</strong> 반응성이 중요한 상황에서 속도 우선 선택 옵션.
+              </p>
+            </div>
+
+            <h3 style="font-size: 18px; font-weight: 700; margin: 28px 0 16px; color: var(--color-text);">Fennec (Pre-Opus 4.6)</h3>
+            <div class="feature-card">
+              <h4>2. 모델 마이그레이션 경로</h4>
+              <p>
+                Fennec은 Opus 4.6의 직계 전신 (공식 미공개).<br/><strong>발견 증거:</strong> 소스코드에 Fennec → Opus 마이그레이션 경로 존재 (resolveModelId 함수의 model mapping).<br/><strong>의미:</strong> Anthropic의 체계적 모델 업그레이드 프로세스 증명. 버전 전환 시 기존 설정/행동 호환성 유지 메커니즘.
+              </p>
+            </div>
+
+            <h3 style="font-size: 18px; font-weight: 700; margin: 28px 0 16px; color: var(--color-text);">Numbat (미출시 모델)</h3>
+            <div class="feature-card">
+              <h4>3. 공개적으로 발표되지 않은 차세대 모델</h4>
+              <p>
+                Numbat은 미발표 차세대 모델의 내부 코드네임.<br/><strong>발견:</strong><ul><li>출시 일정이 소스코드에 embedded (feature flag gates 존재)</li><li>model_routing_logic에서 Numbat 조건부 분기</li><li>다른 system prompt instructions (능력/제약 프로파일)</li><li>resolveModelId에서 "numbat" → 예약된 API ID 매핑</li></ul><strong>의미:</strong> Numbat은 이미 내부 개발 중이며 출시 준비 단계.
+              </p>
+            </div>
+
+            <h3 style="font-size: 18px; font-weight: 700; margin: 28px 0 16px; color: var(--color-text);">Tengu (프로젝트 코드네임 및 피처 플래그 프리픽스)</h3>
+            <div class="feature-card">
+              <h4>4. Claude Code 자체의 코드네임</h4>
+              <p>
+                Tengu는 모델이 아닌 <strong>Claude Code 프로젝트 자체의 내부 코드네임</strong>이자 <strong>피처 플래그 프리픽스</strong>.
+                <code>tengu_</code> 접두사가 모든 시스템에 일관적 네임스페이스 제공:
+              </p>
+              <ul>
+                <li>GrowthBook feature flags (tengu_anti_distill_fake_tool_injection 등)</li>
+                <li>OpenTelemetry 텔레메트리 이벤트</li>
+                <li>환경 변수 (TENGU_DEBUG=1)</li>
+                <li>설정 키 (tengu_log_tool_metrics)</li>
+              </ul>
+              <p><strong>효과:</strong> Claude Code 특정 기능을 다른 Anthropic 제품과 구분. Tengu는 모델 식별자가 아닌 기능 플래그 네임스페이스입니다.</p>
+            </div>
+
+            <div style="margin: 28px 0;">
+              <h4 style="font-size: 15px; font-weight: 700; margin-bottom: 12px; color: var(--color-text);">Tengu 사용처</h4>
+              <table class="tech-table">
+                <thead>
+                  <tr>
+                    <th>사용처</th>
+                    <th>예시</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>피처 플래그</td>
+                    <td><code>tengu_anti_distill_fake_tool_injection</code></td>
+                  </tr>
+                  <tr>
+                    <td>텔레메트리 이벤트</td>
+                    <td><code>tengu_</code> 접두사 분석 이벤트</td>
+                  </tr>
+                  <tr>
+                    <td>GrowthBook 플래그</td>
+                    <td><code>tengu_attribution_header</code></td>
+                  </tr>
+                  <tr>
+                    <td>설정 키</td>
+                    <td>다양한 <code>tengu_</code> 접두사 설정</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Tab 3: Unreleased Features -->
+          <div id="unreleased-features" class="tab-pane">
+            <div class="section-header">
+              <div class="section-badge" style="background:var(--color-accent-purple-light);color:var(--color-accent-purple);">&#9873; 미출시 기능</div>
+              <h2 class="section-title">Unreleased Features (미출시 기능)</h2>
+              <p class="section-desc">
+                주요 컴파일 타임 플래그 뒤에 숨겨진 완전히 구현된 시스템들입니다. 각 기능은 별도 구조와 아키텍처를 가지고 있습니다.
+              </p>
+            </div>
+
+            <div class="feature-card">
+              <h4>1. KAIROS — 자율 데몬 모드</h4>
+              <p style="font-size: 13.5px; color: var(--color-text-secondary); margin: 10px 0;">
+                <span class="badge badge-compile">Compile-time</span>
+                <span class="badge badge-gated">Gated</span>
+              </p>
+              <p>
+                가장 중요한 숨겨진 기능입니다. 완전히 구현되었지만 컴파일 타임 플래그로 비활성화되었습니다.
+                <code>&lt;tick&gt;</code> 프롬프트 시스템으로 주기적으로 작업 상태를 평가하고,
+                <code>autoDream</code>으로 유휴 시 메모리를 자동 통합합니다.
+                KAIROS는 Claude Code가 완전히 자율적인 개발 데몬이 될 수 있음을 보여줍니다.
+              </p>
+            </div>
+
+            <div class="feature-card">
+              <h4>2. VOICE_MODE — Push-to-Talk 음성 인터페이스</h4>
+              <p style="font-size: 13.5px; color: var(--color-text-secondary); margin: 10px 0;">
+                <span class="badge badge-compile">Compile-time</span>
+                <span class="badge badge-gated">Gated</span>
+              </p>
+              <p>
+                <code>src/voice/</code> 디렉토리에 완전히 구현된 오디오 파이프라인:
+              </p>
+              <ul>
+                <li>키보드 단축키로 마이크 활성화 (Alt+Space 또는 Cmd+Space)</li>
+                <li><code>voiceStreamSTT.ts</code>를 통한 스트리밍 오디오 처리</li>
+                <li>Text-to-speech synthesis로 응답 전달</li>
+                <li>웨이크 워드 및 명령 구문 인식</li>
+              </ul>
+            </div>
+
+            <div class="feature-card">
+              <h4>3. ULTRAPLAN — 원격 계획 세션 (최대 30분)</h4>
+              <p style="font-size: 13.5px; color: var(--color-text-secondary); margin: 10px 0;">
+                <span class="badge badge-compile">Compile-time</span>
+                <span class="badge badge-gated">Gated</span>
+              </p>
+              <p>
+                현재 Plan Mode를 복잡한 아키텍처 결정을 위해 설계된 원격, 장기 실행 변형으로 확장합니다:
+              </p>
+              <ul>
+                <li><strong>로컬 vs 원격:</strong> UltraPlan은 Anthropic 인프라에서 원격 실행</li>
+                <li><strong>지속 시간:</strong> 최대 30분 (로컬은 2-5분)</li>
+                <li><strong>실행 방식:</strong> 여러 반복 호출로 문제를 반복적으로 분석</li>
+                <li><strong>용도:</strong> 마이크로서비스 아키텍처, 프레임워크 마이그레이션, 보안 강화</li>
+              </ul>
+            </div>
+
+            <div class="feature-card">
+              <h4>4. BUDDY — 터미널 펫 시스템</h4>
+              <p style="font-size: 13.5px; color: var(--color-text-secondary); margin: 10px 0;">
+                <span class="badge badge-compile">Compile-time</span>
+                <span class="badge badge-gated">Gated</span>
+              </p>
+              <p>
+                가장 예상치 못한 발견입니다. Claude Code 옆에 나타나는 18종의 가상 반려동물:
+              </p>
+              <ul>
+                <li><strong>희귀도 시스템:</strong> Common (50%) → Uncommon (30%) → Rare (15%) → Legendary (5%)</li>
+                <li><strong>레벨 시스템:</strong> 완료된 작업을 통해 XP 획득</li>
+                <li><strong>업적 시스템:</strong> 마일스톤에 대한 특수 화장품 해금</li>
+                <li><strong>계절 이벤트:</strong> 제한된 시간 종 스폰 및 변형</li>
+                <li><strong>순수 장식:</strong> 핵심 기능에 영향 없음, 기능 플래그로 비활성화 가능</li>
+              </ul>
+            </div>
+
+            <div class="feature-card">
+              <h4>5. BRIDGE_MODE — Claude.ai 지속 연결</h4>
+              <p style="font-size: 13.5px; color: var(--color-text-secondary); margin: 10px 0;">
+                <span class="badge badge-compile">Compile-time</span>
+                <span class="badge badge-gated">Gated</span>
+              </p>
+              <p>
+                Claude.ai에 대한 WebSocket 연결로 지속적인 백그라운드 세션과 원격 접근을 활성화합니다:
+              </p>
+              <ul>
+                <li><strong>지속적인 배경 세션:</strong> 웹 UI에서 시작하고 CLI/모바일에서 상태 확인</li>
+                <li><strong>원격 도구 실행:</strong> Claude.ai에서 파일 시스템 작업 또는 시스템 명령 실행</li>
+                <li><strong>크로스 플랫폼 연속성:</strong> 웹에서 시작 → CLI에서 계속 → 모바일에서 완료</li>
+                <li><strong>자동 재연결:</strong> Exponential backoff (1s → 30s max), 30초마다 heartbeat</li>
+              </ul>
+            </div>
+
+            <div class="feature-card">
+              <h4>6. WORKTREE_MODE — Git Worktree 격리</h4>
+              <p style="font-size: 13.5px; color: var(--color-text-secondary); margin: 10px 0;">
+                <span class="badge badge-compile">Compile-time</span>
+                <span class="badge badge-gated">Gated</span>
+              </p>
+              <p>
+                Git worktree를 사용하여 안전한 기능 개발과 병렬 작업을 지원합니다:
+              </p>
+              <ul>
+                <li>각 worktree는 <code>.claude/worktrees/</code>에 격리됨</li>
+                <li>동시 코드 편집 시 충돌 없음</li>
+                <li>독립적인 빌드, 테스트 실행 가능</li>
+                <li>tmux 세션 통합으로 병렬 작업 지원</li>
+              </ul>
+            </div>
+
+            <div class="feature-card">
+              <h4>7. PLAN_MODE — 읽기 전용 계획 도구</h4>
+              <p style="font-size: 13.5px; color: var(--color-text-secondary); margin: 10px 0;">
+                <span class="badge badge-compile">Compile-time</span>
+                <span class="badge badge-gated">Gated</span>
+              </p>
+              <p>
+                계획 단계 중 우발적 실행을 방지하기 위한 읽기 전용 제약:
+              </p>
+              <ul>
+                <li><code>.claude/plans/</code> 디렉토리에 YAML frontmatter가 있는 Markdown 파일로 저장</li>
+                <li>계획 중 Edit, Write, NotebookEdit, Bash 도구 차단</li>
+                <li>Read, Glob, Grep은 허용 (정보 수집)</li>
+                <li>드래프트 → 검토 → 승인 → 실행 워크플로우</li>
+              </ul>
+            </div>
+
+            <div class="feature-card">
+              <h4>8. VIM_MODE — Vi/Vim 키바인딩</h4>
+              <p style="font-size: 13.5px; color: var(--color-text-secondary); margin: 10px 0;">
+                <span class="badge badge-compile">Compile-time</span>
+                <span class="badge badge-gated">Gated</span>
+              </p>
+              <p>
+                Claude Code 터미널 입력에 포괄적인 Vi/Vim 키바인딩 추가:
+              </p>
+              <ul>
+                <li><strong>모달 편집:</strong> Normal (navigation) ↔ Insert ↔ Visual (selection)</li>
+                <li><strong>네비게이션:</strong> hjkl, w, b, ^, $, G, gg</li>
+                <li><strong>편집 작업:</strong> d, c, y, p, u, Ctrl-R</li>
+                <li><strong>커맨드 모드:</strong> :w, :q, :set, :%s///g</li>
+              </ul>
+            </div>
+
+            <div class="callout callout-insight">
+              <span class="callout-icon">&#128269;</span>
+              <div>
+                <strong>아키텍처 패턴</strong>
+                각 미출시 기능은 격리된 <code>src/feature-name/</code> 디렉토리에 완전 구현되며, compile-time flag로 빌드 시 포함/제외.<br/><strong>배포 전략:</strong> 컴파일 타임 플래그 (KAIROS=true/false로 conditional compilation) + GrowthBook 런타임 제어 (이미 빌드된 기능의 on/off). 이 이중 계층으로 새 버전 배포 없이도 기능 제어 가능. 각 기능은 독립적 마이그레이션 경로, 롤백 가능.
+              </div>
+            </div>
+
+            <div class="diagram-container">
+              <div class="diagram-title">미출시 기능 구현 상태</div>
+              <pre class="mermaid">
+graph TB
+    KAIROS["KAIROS<br/>자율 데몬"]
+    VOICE["VOICE_MODE<br/>음성 인터페이스"]
+    ULTRAPLAN["ULTRAPLAN<br/>원격 계획"]
+    BUDDY["BUDDY<br/>터미널 펫"]
+    BRIDGE["BRIDGE_MODE<br/>지속 연결"]
+    WORKTREE["WORKTREE_MODE<br/>워크트리 격리"]
+    PLAN["PLAN_MODE<br/>계획 도구"]
+    VIM["VIM_MODE<br/>Vim 키바인딩"]
+
+    KAIROS -->|autoDream| MEMORY["메모리 통합"]
+    VOICE -->|음성| STT["STT 처리"]
+    ULTRAPLAN -->|원격| API["Anthropic API"]
+    BUDDY -->|렌더링| UI["터미널 UI"]
+    BRIDGE -->|WebSocket| REMOTE["Claude.ai"]
+    WORKTREE -->|격리| GIT["Git 저장소"]
+    PLAN -->|읽기전용| TOOLS["도구 시스템"]
+    VIM -->|키매핑| INPUT["입력 처리"]
+
+    style KAIROS fill:#f5f3ff,stroke:#8b5cf6,color:#5b21b6
+    style VOICE fill:#fef3c7,stroke:#d97706,color:#92400e
+    style ULTRAPLAN fill:#eff6ff,stroke:#3b82f6,color:#1e40af
+    style BUDDY fill:#ecfdf5,stroke:#10b981,color:#065f46
+    style BRIDGE fill:#f0fdfa,stroke:#14b8a6,color:#115e59
+    style WORKTREE fill:#fef2f2,stroke:#ef4444,color:#991b1b
+    style PLAN fill:#fffbeb,stroke:#f59e0b,color:#92400e
+    style VIM fill:#eef2ff,stroke:#6366f1,color:#4338ca
+              </pre>
+            </div>
+
+            <h3 style="font-size: 18px; font-weight: 700; margin: 28px 0 16px; color: var(--color-text);">추가 기능들</h3>
+
+            <div class="feature-card">
+              <h4>OpenTelemetry 통합</h4>
+              <p>
+                Datadog 또는 자체 호스팅 OTEL collector로 내보내지는 포괄적인 observability.
+                PII-free diagnostic logging으로 프라이버시를 보호하면서 완전한 성능 추적을 제공합니다.
+              </p>
+            </div>
+
+            <div class="feature-card">
+              <h4>Desktop / Mobile / IDE 통합</h4>
+              <p>
+                Claude Code는 터미널을 넘어 확장됩니다:
+              </p>
+              <ul>
+                <li><strong>Desktop:</strong> 윈도우 관리, 클립보드 통합, 전역 hotkeys</li>
+                <li><strong>Mobile:</strong> iOS/Android companion app, 파일 공유, 음성 입력</li>
+                <li><strong>Browser:</strong> Chrome Extension으로 GitHub PR inline review</li>
+                <li><strong>IDE:</strong> VS Code 확장, JetBrains 플러그인</li>
+                <li><strong>Apps:</strong> Slack bot, GitHub app</li>
+              </ul>
+            </div>
+
+            <div class="feature-card">
+              <h4>GrowthBook 원격 구성</h4>
+              <p>
+                단순 기능 플래그를 넘어 전체 원격 구성 및 긴급 제어를 제공합니다.
+                Anthropic은 staged rollouts로 기능을 점진적 배포하고,
+                긴급 상황에 모든 installations에서 즉시 기능을 비활성화할 수 있습니다.
+              </p>
+            </div>
+          </div>
+
+          <!-- Tab 4: Configuration System -->
+          <div id="config-system" class="tab-pane">
+            <div class="section-header">
+              <div class="section-badge" style="background:var(--color-accent-indigo-light);color:var(--color-accent-indigo);">&#9881; 설정 시스템</div>
+              <h2 class="section-title">Configuration System (설정 시스템)</h2>
+              <p class="section-desc">
+                다층 설정 구조와 GrowthBook 원격 피처 플래그를 통한 동적 제어 시스템
+              </p>
+            </div>
+
+            <div class="feature-cards">
+              <div class="feature-card">
+                <h4>1. GrowthBook Feature Flags</h4>
+                <p>
+                  GrowthBook 클라이언트가 런타임에 기능 플래그를 평가합니다.
+                  tengu_ 접두사가 붙은 모든 플래그는 원격 구성에 대해 평가되며,
+                  Anthropic의 GrowthBook 대시보드의 변경 사항이 새 버전을 푸시하지 않고도
+                  모든 Claude Code 설치 전체에 적용됩니다.
+                </p>
+              </div>
+              <div class="feature-card">
+                <h4>2. Configuration Layers</h4>
+                <p>
+                  구성은 우선순위가 있는 여러 레이어를 통해 흐릅니다:
+                  <ul>
+                    <li>1) CLI 플래그 (최우선)</li>
+                    <li>2) 환경 변수 (CLAUDE_CODE_*)</li>
+                    <li>3) 프로젝트 설정 (.claude/settings.json)</li>
+                    <li>4) 사용자 설정 (~/.claude/settings.json)</li>
+                    <li>5) GrowthBook 원격 플래그</li>
+                    <li>6) 컴파일된 기본값 (최하위)</li>
+                  </ul>
+                </p>
+              </div>
+              <div class="feature-card">
+                <h4>3. Gradual Module Loading</h4>
+                <p>
+                  Claude Code는 첫 응답 시간(TTFR)을 최소화하기 위해 빠른 경로 최적화를 사용합니다:
+                  <ul>
+                    <li>--version 및 --help: 0 모듈 로딩, 즉시 응답</li>
+                    <li>전체 트리 지연 로딩: REPL 모드와 대화형 세션에만 필요</li>
+                  </ul>
+                  이 최적화는 콜드 스타트에서 인지된 성능을 극적으로 향상시킵니다.
+                </p>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </section>
+
+      <!-- Footer -->
+            <footer class="footer">
+        <p>
+          <a href="https://github.com/hi-space/claude-code-unpack-docs" target="_blank" rel="noopener noreferrer"
+             style="color:var(--color-text-muted);text-decoration:none;border-bottom:1px solid var(--color-border);">
+            hi-space/claude-code-unpack-docs
+          </a>
+          &middot; &copy; 2026 All rights reserved.
+        </p>
+      </footer>
+
+    </div>
+  </div>
+
+  <!-- Back to Top -->
+  <button class="back-to-top" onclick="window.scrollTo({top:0,behavior:'smooth'})" title="Back to top">&#8593;</button>
+
+  <script>
+    // ===== Mermaid Init =====
+    const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+    mermaid.initialize({
+      startOnLoad: false,
+      theme: isDark ? 'dark' : 'neutral',
+      fontFamily: "'Noto Sans KR', system-ui, sans-serif",
+      flowchart: { curve: 'basis', padding: 16 },
+      themeVariables: isDark ? {
+        primaryColor: '#422006',
+        primaryBorderColor: '#f59e0b',
+        primaryTextColor: '#fbbf24',
+        lineColor: '#6b7085',
+        secondaryColor: '#172554',
+        tertiaryColor: '#2e1065'
+      } : {
+        primaryColor: '#fef3c7',
+        primaryBorderColor: '#d97706',
+        primaryTextColor: '#92400e',
+        lineColor: '#9ca3af',
+        secondaryColor: '#eff6ff',
+        tertiaryColor: '#f5f3ff'
+      }
+    });
+
+    // Render only visible mermaid diagrams (skip display:none tabs)
+    function renderMermaidInView() {
+      const pending = document.querySelectorAll('.mermaid:not([data-processed])');
+      const visible = Array.from(pending).filter(el => el.offsetParent !== null);
+      if (visible.length) mermaid.run({ nodes: visible });
+    }
+    renderMermaidInView();
+
+    // CDN fallback
+    window.addEventListener('load', () => {
+      if (typeof mermaid === 'undefined') {
+        document.querySelectorAll('.diagram-container').forEach(c => {
+          const fb = document.createElement('div');
+          fb.style.cssText = 'text-align:center;padding:40px;color:var(--color-text-muted);font-size:14px;';
+          fb.textContent = 'Diagram requires internet for Mermaid.js';
+          c.querySelector('.mermaid')?.replaceWith(fb);
+        });
+      }
+    });
+
+    // ===== Theme Toggle =====
+    function toggleTheme() {
+      const html = document.documentElement;
+      const current = html.getAttribute('data-theme');
+      const next = current === 'dark' ? 'light' : 'dark';
+      html.setAttribute('data-theme', next);
+      localStorage.setItem('claude-docs-theme', next);
+      updateThemeUI(next);
+      location.reload();
+    }
+
+    function updateThemeUI(theme) {
+      const icon = document.querySelector('.theme-icon');
+      const label = document.querySelector('.theme-label');
+      if (theme === 'dark') {
+        icon.innerHTML = '&#9788;';
+        label.textContent = 'Light Mode';
+      } else {
+        icon.innerHTML = '&#9789;';
+        label.textContent = 'Dark Mode';
+      }
+    }
+
+    // Restore theme on load
+    (function() {
+      const saved = localStorage.getItem('claude-docs-theme');
+      if (saved) {
+        document.documentElement.setAttribute('data-theme', saved);
+        updateThemeUI(saved);
+      } else if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
+        document.documentElement.setAttribute('data-theme', 'dark');
+        updateThemeUI('dark');
+      }
+    })();
+
+    // ===== Tab System =====
+    function switchTab(tabId) {
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === tabId));
+      document.querySelectorAll('.tab-pane').forEach(p => p.classList.toggle('active', p.id === tabId));
+      history.replaceState(null, '', '#tab=' + tabId);
+      // Render mermaid diagrams that were hidden during initial load
+      const pane = document.getElementById(tabId);
+      if (pane) {
+        const pending = pane.querySelectorAll('.mermaid:not([data-processed])');
+        if (pending.length) mermaid.run({ nodes: pending });
+      }
+    }
+
+    // Restore tab from URL hash
+    (function() {
+      const hash = location.hash;
+      if (hash.startsWith('#tab=')) switchTab(hash.slice(5));
+    })();
+
+    // ===== Mobile Sidebar =====
+    function toggleSidebar() {
+      document.querySelector('.sidebar').classList.toggle('open');
+      document.querySelector('.sidebar-backdrop').classList.toggle('open');
+    }
+
+    // ===== Back to Top =====
+    const backBtn = document.querySelector('.back-to-top');
+    window.addEventListener('scroll', () => {
+      backBtn.classList.toggle('visible', window.scrollY > 400);
+    });
+
+    // ===== Active Nav Tracking =====
+    const sections = document.querySelectorAll('.section, .hero');
+    const navLinks = document.querySelectorAll('.sidebar-nav a');
+
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          navLinks.forEach(link => {
+            const href = link.getAttribute('href');
+            if (href === 'hidden-features.html' || href === '#hidden-features') {
+              link.classList.add('active');
+            }
+          });
+        }
+      });
+    }, { rootMargin: '-10% 0px -70% 0px' });
+
+    sections.forEach(s => observer.observe(s));
+  </script>
+
+</body>
+</html>

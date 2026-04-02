@@ -1,0 +1,1043 @@
+<!DOCTYPE html>
+<html lang="ko" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Claude Code Architecture Overview</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <!-- no mermaid needed on hub page -->
+  <style>
+    /* ===== CSS Reset & Variables ===== */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --color-bg: #ffffff;
+      --color-bg-secondary: #f8f9fb;
+      --color-bg-tertiary: #f1f3f5;
+      --color-bg-card: #ffffff;
+      --color-border: #e5e7eb;
+      --color-border-light: #f0f1f3;
+      --color-text: #1a1a2e;
+      --color-text-secondary: #6b7280;
+      --color-text-muted: #9ca3af;
+      --color-primary: #d97706;
+      --color-primary-light: #fef3c7;
+      --color-primary-dark: #b45309;
+      --color-accent-blue: #3b82f6;
+      --color-accent-blue-light: #eff6ff;
+      --color-accent-green: #10b981;
+      --color-accent-green-light: #ecfdf5;
+      --color-accent-purple: #8b5cf6;
+      --color-accent-purple-light: #f5f3ff;
+      --color-accent-red: #ef4444;
+      --color-accent-red-light: #fef2f2;
+      --color-accent-teal: #14b8a6;
+      --color-accent-teal-light: #f0fdfa;
+      --color-accent-indigo: #6366f1;
+      --color-accent-indigo-light: #eef2ff;
+      --color-accent-amber: #f59e0b;
+      --color-accent-amber-light: #fffbeb;
+      --sidebar-width: 260px;
+      --font-sans: 'Noto Sans KR', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      --font-mono: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', 'Consolas', monospace;
+      --shadow-sm: 0 1px 2px rgba(0,0,0,0.04);
+      --shadow-md: 0 4px 12px rgba(0,0,0,0.06);
+      --shadow-lg: 0 8px 24px rgba(0,0,0,0.08);
+      --shadow-xl: 0 12px 32px rgba(0,0,0,0.10);
+      --radius-sm: 6px;
+      --radius-md: 10px;
+      --radius-lg: 14px;
+      --radius-xl: 20px;
+    }
+
+    [data-theme="dark"] {
+      --color-bg: #0f1117;
+      --color-bg-secondary: #1a1b23;
+      --color-bg-tertiary: #22232d;
+      --color-bg-card: #1a1b23;
+      --color-border: #2d2e3a;
+      --color-border-light: #23242f;
+      --color-text: #e4e5ea;
+      --color-text-secondary: #9ca0af;
+      --color-text-muted: #6b7085;
+      --color-primary: #f59e0b;
+      --color-primary-light: #422006;
+      --color-primary-dark: #fbbf24;
+      --color-accent-blue-light: #172554;
+      --color-accent-green-light: #052e16;
+      --color-accent-purple-light: #2e1065;
+      --color-accent-red-light: #450a0a;
+      --color-accent-teal-light: #042f2e;
+      --color-accent-indigo-light: #1e1b4b;
+      --color-accent-amber-light: #451a03;
+      --shadow-sm: 0 1px 2px rgba(0,0,0,0.2);
+      --shadow-md: 0 4px 12px rgba(0,0,0,0.3);
+      --shadow-lg: 0 8px 24px rgba(0,0,0,0.35);
+      --shadow-xl: 0 12px 32px rgba(0,0,0,0.4);
+    }
+
+    html { scroll-behavior: smooth; font-size: 16px; }
+
+    body {
+      font-family: var(--font-sans);
+      color: var(--color-text);
+      background: var(--color-bg);
+      line-height: 1.7;
+      -webkit-font-smoothing: antialiased;
+      transition: background 0.3s ease, color 0.3s ease;
+    }
+
+    /* ===== Sidebar ===== */
+    .sidebar {
+      position: fixed;
+      top: 0; left: 0;
+      width: var(--sidebar-width);
+      height: 100vh;
+      background: var(--color-bg);
+      border-right: 1px solid var(--color-border);
+      padding: 28px 0;
+      overflow-y: auto;
+      z-index: 100;
+      display: flex;
+      flex-direction: column;
+      transition: background 0.3s ease, border-color 0.3s ease;
+    }
+
+    .sidebar-header {
+      padding: 0 20px 20px;
+      border-bottom: 1px solid var(--color-border-light);
+      margin-bottom: 12px;
+    }
+
+    .sidebar-header h2 {
+      font-size: 15px;
+      font-weight: 800;
+      color: var(--color-text);
+      letter-spacing: -0.02em;
+    }
+
+    .sidebar-header span {
+      font-size: 11.5px;
+      color: var(--color-text-muted);
+      font-weight: 500;
+    }
+
+    .sidebar-nav { flex: 1; padding: 0 10px; }
+
+    .sidebar-nav .nav-section {
+      font-size: 10.5px;
+      font-weight: 700;
+      color: var(--color-text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      padding: 14px 12px 6px;
+    }
+
+    .sidebar-nav a {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 8px 12px;
+      color: var(--color-text-secondary);
+      text-decoration: none;
+      font-size: 13px;
+      font-weight: 500;
+      border-radius: var(--radius-sm);
+      transition: all 0.15s ease;
+      margin-bottom: 1px;
+    }
+
+    .sidebar-nav a:hover {
+      color: var(--color-text);
+      background: var(--color-bg-secondary);
+    }
+
+    .sidebar-nav a.active {
+      color: var(--color-primary-dark);
+      background: var(--color-primary-light);
+      font-weight: 700;
+    }
+
+    .sidebar-nav a .nav-icon {
+      width: 20px; height: 20px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 13px;
+      flex-shrink: 0;
+    }
+
+    .deep-dive-cta {
+      margin: 16px 10px 8px;
+      padding: 10px 12px;
+      background: linear-gradient(135deg, var(--color-accent-blue-light), transparent);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-md);
+      transition: all 0.2s ease;
+    }
+    .deep-dive-cta:hover {
+      border-color: var(--color-accent-blue);
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.06);
+    }
+    .deep-dive-cta a {
+      text-decoration: none !important;
+      display: block;
+      gap: 0;
+      padding: 0 !important;
+      margin: 0 !important;
+      background: none !important;
+    }
+    .deep-dive-cta a:hover {
+      background: none !important;
+    }
+    .deep-dive-cta .cta-badge {
+      display: inline-block;
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--color-accent-blue);
+      background: var(--color-accent-blue-light);
+      padding: 2px 8px;
+      border-radius: 4px;
+      margin-bottom: 6px;
+    }
+    .deep-dive-cta .cta-title {
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--color-accent-blue);
+      margin-bottom: 4px;
+    }
+    .deep-dive-cta .cta-desc {
+      font-size: 11.5px;
+      line-height: 1.55;
+      color: var(--color-text-secondary);
+    }
+
+    .sidebar-footer {
+      padding: 16px 20px;
+      border-top: 1px solid var(--color-border-light);
+    }
+
+    .theme-toggle {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 12.5px;
+      color: var(--color-text-secondary);
+      background: var(--color-bg-secondary);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-sm);
+      padding: 7px 12px;
+      cursor: pointer;
+      width: 100%;
+      transition: all 0.15s ease;
+      font-family: var(--font-sans);
+    }
+
+    .theme-toggle:hover {
+      color: var(--color-text);
+      border-color: #d1d5db;
+    }
+
+    /* ===== Main Content ===== */
+    .main {
+      margin-left: var(--sidebar-width);
+      min-height: 100vh;
+    }
+
+    .content {
+      max-width: 920px;
+      margin: 0 auto;
+      padding: 40px 40px 80px;
+    }
+
+    /* ===== Hero ===== */
+    .hero {
+      margin-bottom: 48px;
+      padding: 40px 0 36px;
+      border-bottom: 1px solid var(--color-border-light);
+    }
+
+    .hero-eyebrow {
+      font-size: 12.5px;
+      font-weight: 700;
+      color: var(--color-primary);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      margin-bottom: 14px;
+    }
+
+    .hero h1 {
+      font-size: 36px;
+      font-weight: 800;
+      letter-spacing: -0.035em;
+      line-height: 1.15;
+      margin-bottom: 14px;
+      color: var(--color-text);
+    }
+
+    .hero-desc {
+      font-size: 16px;
+      color: var(--color-text-secondary);
+      line-height: 1.7;
+      max-width: 640px;
+    }
+
+    .hero-stats {
+      display: flex;
+      gap: 28px;
+      margin-top: 28px;
+      flex-wrap: wrap;
+    }
+
+    .hero-stat {
+      display: flex;
+      flex-direction: column;
+      padding: 16px 20px;
+      background: var(--color-bg-secondary);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-md);
+      min-width: 130px;
+      transition: all 0.2s ease;
+    }
+
+    .hero-stat:hover {
+      border-color: var(--color-primary);
+      box-shadow: var(--shadow-md);
+      transform: translateY(-2px);
+    }
+
+    .hero-stat-value {
+      font-size: 26px;
+      font-weight: 800;
+      color: var(--color-text);
+      letter-spacing: -0.02em;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .hero-stat-label {
+      font-size: 12px;
+      color: var(--color-text-muted);
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      margin-top: 2px;
+    }
+
+    /* ===== Section ===== */
+    .section {
+      margin-bottom: 56px;
+      scroll-margin-top: 24px;
+    }
+
+    .section-header {
+      margin-bottom: 28px;
+    }
+
+    .section-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 11.5px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      padding: 4px 12px;
+      border-radius: 20px;
+      margin-bottom: 10px;
+    }
+
+    .section-title {
+      font-size: 26px;
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      line-height: 1.25;
+      margin-bottom: 10px;
+    }
+
+    .section-desc {
+      font-size: 15px;
+      color: var(--color-text-secondary);
+      line-height: 1.7;
+      max-width: 680px;
+    }
+
+    /* ===== Category Cards Grid ===== */
+    .category-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 14px;
+      margin-top: 24px;
+    }
+
+    .category-card {
+      display: flex;
+      align-items: flex-start;
+      gap: 14px;
+      padding: 20px;
+      background: var(--color-bg-card);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-md);
+      text-decoration: none;
+      color: inherit;
+      transition: all 0.2s ease;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .category-card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0;
+      width: 3px; height: 100%;
+      border-radius: 3px 0 0 3px;
+      opacity: 0;
+      transition: opacity 0.2s ease;
+    }
+
+    .category-card:hover {
+      border-color: #d1d5db;
+      box-shadow: var(--shadow-lg);
+      transform: translateY(-2px);
+    }
+
+    .category-card:hover::before {
+      opacity: 1;
+    }
+
+    .category-card .card-icon {
+      font-size: 22px;
+      width: 42px; height: 42px;
+      display: flex; align-items: center; justify-content: center;
+      border-radius: var(--radius-sm);
+      flex-shrink: 0;
+    }
+
+    .category-card .card-info { flex: 1; }
+
+    .category-card .card-info h3 {
+      font-size: 14.5px;
+      font-weight: 700;
+      margin-bottom: 5px;
+      letter-spacing: -0.01em;
+    }
+
+    .category-card .card-info p {
+      font-size: 12.5px;
+      color: var(--color-text-secondary);
+      line-height: 1.55;
+    }
+
+    .category-card .card-arrow {
+      font-size: 14px;
+      color: var(--color-text-muted);
+      align-self: center;
+      transition: transform 0.2s ease;
+    }
+
+    .category-card:hover .card-arrow {
+      transform: translateX(3px);
+    }
+
+    /* Card accent colors */
+    .card-overview::before { background: var(--color-primary); }
+    .card-overview .card-icon { background: var(--color-primary-light); color: var(--color-primary-dark); }
+    .card-memory::before { background: var(--color-accent-green); }
+    .card-memory .card-icon { background: var(--color-accent-green-light); color: var(--color-accent-green); }
+    .card-agents::before { background: var(--color-accent-purple); }
+    .card-agents .card-icon { background: var(--color-accent-purple-light); color: var(--color-accent-purple); }
+    .card-security::before { background: var(--color-accent-red); }
+    .card-security .card-icon { background: var(--color-accent-red-light); color: var(--color-accent-red); }
+    .card-tools::before { background: var(--color-accent-blue); }
+    .card-tools .card-icon { background: var(--color-accent-blue-light); color: var(--color-accent-blue); }
+    .card-prompt::before { background: var(--color-accent-teal); }
+    .card-prompt .card-icon { background: var(--color-accent-teal-light); color: var(--color-accent-teal); }
+    .card-hidden::before { background: var(--color-accent-indigo); }
+    .card-hidden .card-icon { background: var(--color-accent-indigo-light); color: var(--color-accent-indigo); }
+
+    /* ===== Callout Box ===== */
+    .callout {
+      display: flex;
+      gap: 14px;
+      padding: 16px 18px;
+      border-radius: var(--radius-md);
+      margin: 16px 0;
+      border: 1px solid;
+      font-size: 14px;
+      line-height: 1.65;
+    }
+
+    .callout-icon { font-size: 18px; flex-shrink: 0; margin-top: 1px; }
+
+    .callout-insight {
+      background: var(--color-accent-blue-light);
+      border-color: var(--color-accent-blue);
+      color: var(--color-text);
+    }
+
+    .callout-warning {
+      background: var(--color-accent-amber-light);
+      border-color: var(--color-accent-amber);
+      color: var(--color-text);
+    }
+
+    .callout-security {
+      background: var(--color-accent-red-light);
+      border-color: var(--color-accent-red);
+      color: var(--color-text);
+    }
+
+    .callout strong {
+      display: block;
+      font-size: 13px;
+      font-weight: 700;
+      margin-bottom: 4px;
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+    }
+
+    .callout-info {
+      background: var(--color-accent-blue-light);
+      border-color: var(--color-accent-blue);
+      color: var(--color-text);
+    }
+
+    /* ===== Feature Cards ===== */
+    .feature-cards {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      margin: 24px 0;
+    }
+
+    .feature-card {
+      background: var(--color-bg-card);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-md);
+      padding: 20px;
+      margin: 0;
+      transition: all 0.15s ease;
+    }
+
+    .feature-card:hover {
+      border-color: #d1d5db;
+      box-shadow: var(--shadow-lg);
+    }
+
+    .feature-card h4 {
+      font-size: 15px;
+      font-weight: 700;
+      margin-bottom: 8px;
+      color: var(--color-text);
+    }
+
+    .feature-card p {
+      font-size: 14px;
+      color: var(--color-text-secondary);
+      line-height: 1.8;
+    }
+
+    .feature-card code {
+      font-family: var(--font-mono);
+      font-size: 12px;
+      background: var(--color-bg-tertiary);
+      padding: 2px 6px;
+      border-radius: 4px;
+      color: var(--color-primary-dark);
+    }
+
+    .feature-card ul {
+      margin: 10px 0 0 0;
+      padding-left: 20px;
+      list-style: disc;
+    }
+
+    .feature-card li {
+      font-size: 13.5px;
+      color: var(--color-text-secondary);
+      line-height: 1.7;
+      margin-bottom: 4px;
+    }
+
+    /* ===== Footer ===== */
+    .footer {
+      margin-top: 40px;
+      padding: 28px 0;
+      border-top: 1px solid var(--color-border-light);
+      text-align: center;
+      font-size: 12.5px;
+      color: var(--color-text-muted);
+      line-height: 1.8;
+    }
+
+    /* ===== Mobile Header ===== */
+    .mobile-header {
+      display: none;
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      height: 52px;
+      background: var(--color-bg);
+      border-bottom: 1px solid var(--color-border);
+      padding: 0 16px;
+      align-items: center;
+      gap: 12px;
+      z-index: 201;
+      transition: background 0.3s ease, border-color 0.3s ease;
+    }
+
+    .mobile-header-title {
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--color-text);
+    }
+
+    .hamburger-btn {
+      width: 36px; height: 36px;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      gap: 5px;
+      background: none; border: none; cursor: pointer; padding: 6px;
+    }
+
+    .hamburger-btn span {
+      display: block; width: 20px; height: 2px;
+      background: var(--color-text); border-radius: 2px;
+      transition: all 0.3s ease;
+    }
+
+    .sidebar-backdrop {
+      display: none;
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,0.4);
+      z-index: 150;
+    }
+
+    .sidebar-backdrop.open { display: block; }
+
+    /* ===== Back to Top ===== */
+    .back-to-top {
+      position: fixed;
+      bottom: 28px; right: 28px;
+      width: 38px; height: 38px;
+      background: var(--color-text);
+      color: var(--color-bg);
+      border: none;
+      border-radius: 50%;
+      cursor: pointer;
+      font-size: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      opacity: 0;
+      visibility: hidden;
+      transition: all 0.2s ease;
+      z-index: 99;
+      box-shadow: var(--shadow-lg);
+    }
+
+    .back-to-top.visible { opacity: 1; visibility: visible; }
+    .back-to-top:hover { background: var(--color-primary-dark); }
+
+    /* ===== Responsive ===== */
+    @media (max-width: 1024px) {
+      .mobile-header { display: flex; }
+      .sidebar {
+        transform: translateX(-100%);
+        transition: transform 0.3s ease;
+        z-index: 200;
+      }
+      .sidebar.open { transform: translateX(0); }
+      .main { margin-left: 0; padding-top: 52px; }
+      .content { padding: 28px 24px 64px; }
+      .hero h1 { font-size: 28px; }
+      .section-title { font-size: 22px; }
+    }
+
+    @media (max-width: 640px) {
+      .content { padding: 20px 16px 48px; }
+      .hero h1 { font-size: 24px; }
+      .hero-stats { gap: 12px; }
+      .hero-stat { min-width: 100px; padding: 12px 14px; }
+      .hero-stat-value { font-size: 22px; }
+      .category-grid { grid-template-columns: 1fr; }
+    }
+
+    /* ===== Print ===== */
+    @media print {
+      .sidebar, .back-to-top, .theme-toggle { display: none; }
+      .main { margin-left: 0; }
+      .category-card { break-inside: avoid; }
+    }
+
+  </style>
+</head>
+<body>
+
+  <!-- Mobile Header -->
+  <header class="mobile-header">
+    <button class="hamburger-btn" onclick="toggleSidebar()" aria-label="메뉴">
+      <span></span><span></span><span></span>
+    </button>
+    <span class="mobile-header-title">Claude Code</span>
+  </header>
+  <div class="sidebar-backdrop" onclick="toggleSidebar()"></div>
+
+  <!-- Sidebar -->
+  <nav class="sidebar">
+    <div class="sidebar-header">
+      <h2>Claude Code</h2>
+      <span>Architecture Overview</span>
+    </div>
+    <div class="sidebar-nav">
+      <a href="index.html" class="active">
+        <span class="nav-icon">&#9670;</span> Hub
+      </a>
+      <div class="nav-section">Core</div>
+      <a href="overview.html">
+        <span class="nav-icon">&#9672;</span> Architecture
+      </a>
+      <a href="query-engine.html">
+        <span class="nav-icon">&#9889;</span> Query Engine
+      </a>
+      <a href="memory.html">
+        <span class="nav-icon">&#9731;</span> Memory
+      </a>
+      <a href="agents.html">
+        <span class="nav-icon">&#9733;</span> Agents
+      </a>
+      <div class="nav-section">Systems</div>
+      <a href="tools.html">
+        <span class="nav-icon">&#9881;</span> Tools
+      </a>
+      <a href="cli-ui.html">
+        <span class="nav-icon">&#9618;</span> CLI / UI
+      </a>
+      <a href="system-prompt.html">
+        <span class="nav-icon">&#9998;</span> System Prompt
+      </a>
+      <a href="security.html">
+        <span class="nav-icon">&#9888;</span> Security
+      </a>
+      <a href="hidden-features.html">
+        <span class="nav-icon">&#9873;</span> Hidden Features
+      </a>
+    </div>
+    <div class="deep-dive-cta">
+      <a href="/claude-code-unpack-docs/deep/ko/">
+        <span class="cta-badge">Deep Dive</span>
+        <div class="cta-title">심층 분석 보기 &rarr;</div>
+        <div class="cta-desc">구현 원리, 설계 철학, 내부 동작을 50+ 페이지로 상세히 분석합니다.</div>
+      </a>
+    </div>
+    </div>
+    <div class="sidebar-footer">
+      <button class="theme-toggle" onclick="toggleTheme()">
+        <span class="theme-icon">&#9789;</span>
+        <span class="theme-label">Dark Mode</span>
+      </button>
+    </div>
+  </nav>
+
+  <!-- Main Content -->
+  <div class="main">
+    <div class="content">
+
+      <!-- Hero -->
+      <div class="hero">
+        <div class="hero-eyebrow">Reverse Engineering Analysis</div>
+        <h1>Claude Code<br>Architecture Overview</h1>
+        <p class="hero-desc">
+          Anthropic의 공식 CLI 도구인 Claude Code의 내부 아키텍처를 역공학 분석한 결과물입니다.
+          유출된 소스맵에서 복원된 ~1,900개 TypeScript 파일을 기반으로 핵심 시스템을 분석합니다.
+        </p>
+        <div class="hero-stats">
+          <div class="hero-stat">
+            <span class="hero-stat-value">~1,900</span>
+            <span class="hero-stat-label">TypeScript Files</span>
+          </div>
+          <div class="hero-stat">
+            <span class="hero-stat-value">512K</span>
+            <span class="hero-stat-label">Lines of Code</span>
+          </div>
+          <div class="hero-stat">
+            <span class="hero-stat-value">23+</span>
+            <span class="hero-stat-label">Built-in Tools</span>
+          </div>
+          <div class="hero-stat">
+            <span class="hero-stat-value">44</span>
+            <span class="hero-stat-label">Feature Flags</span>
+          </div>
+          <div class="hero-stat">
+            <span class="hero-stat-value">6</span>
+            <span class="hero-stat-label">Transport Types</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- The Leak: 유출 경위 -->
+      <section class="section" id="the-leak">
+        <div class="section-header">
+          <div class="section-badge" style="background:var(--color-accent-red-light);color:var(--color-accent-red);">&#128274; The Leak</div>
+          <h2 class="section-title">The Leak: 유출 경위</h2>
+          <p class="section-desc">
+            2026년 3월 31일, Claude Code npm 패키지에서 59.8MB 소스맵 파일이 발견되어 전체 소스코드가 노출된 사건
+          </p>
+        </div>
+
+        <div class="hero-stats" style="margin-bottom:28px;">
+          <div class="hero-stat">
+            <span class="hero-stat-value">59.8 MB</span>
+            <span class="hero-stat-label">Source Map</span>
+          </div>
+          <div class="hero-stat">
+            <span class="hero-stat-value">~1,900</span>
+            <span class="hero-stat-label">TS Files</span>
+          </div>
+          <div class="hero-stat">
+            <span class="hero-stat-value">~512K</span>
+            <span class="hero-stat-label">Lines of Code</span>
+          </div>
+          <div class="hero-stat">
+            <span class="hero-stat-value">44</span>
+            <span class="hero-stat-label">Feature Flags</span>
+          </div>
+        </div>
+
+        <div class="callout callout-warning">
+          <span class="callout-icon">&#9888;&#65039;</span>
+          <div>
+            <strong>무슨 일이 있었나</strong>
+            @anthropic-ai/claude-code npm 패키지 버전 2.1.88에 59.8MB JavaScript 소스맵 파일(.map)이 포함되어 있었습니다.
+            이 소스맵은 Cloudflare R2 버킷에 호스팅된 난독화되지 않은 zip 아카이브를 가리키고 있었으며,
+            약 1,900개 파일에 걸친 512,000줄의 TypeScript 코드가 노출되었습니다.
+          </div>
+        </div>
+
+        <div class="callout callout-info">
+          <span class="callout-icon">&#128269;</span>
+          <div>
+            <strong>원인</strong>
+            두 가지 요인이 결합된 결과였습니다:
+            <ul>
+              <li>Bun의 기본 동작 — Bun은 번들링 시 기본적으로 소스맵을 생성합니다.</li>
+              <li>.npmignore 누락 — 생성된 .map 파일을 제외하는 항목이 없어 npm 패키지에 그대로 포함되었습니다.</li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="feature-cards">
+          <div class="feature-card">
+            <h4>유출 규모</h4>
+            <ul>
+              <li>패키지 버전: @anthropic-ai/claude-code@2.1.88</li>
+              <li>소스맵 크기: 59.8 MB</li>
+              <li>TypeScript 파일 수: ~1,900개</li>
+              <li>코드 줄 수: ~512,000줄</li>
+              <li>발견 시각: 2026년 3월 31일 ET 오전 4:23</li>
+              <li>50K GitHub 스타 달성 시간: ~2시간 (역대 최단)</li>
+            </ul>
+          </div>
+          <div class="feature-card">
+            <h4>44개 피처 플래그 발견</h4>
+            <p>
+              미출시 기능을 제어하는 44개의 피처 플래그가 발견되었습니다.
+              이 중에는 KAIROS(자율 데몬 모드), 음성 입력, UltraPlan 같은
+              아직 공개되지 않은 주요 기능들이 포함되어 있습니다.
+            </p>
+          </div>
+          <div class="feature-card">
+            <h4>KAIROS: 자율 데몬 모드</h4>
+            <p>
+              완전히 구현되어 있지만 컴파일 타임 플래그로 비활성화된 자율 에이전트 데몬입니다.
+              &lt;tick&gt; 프롬프트 시스템으로 주기적으로 작업 상태를 평가하고,
+              autoDream으로 유휴 시 메모리를 자동 통합합니다.
+            </p>
+          </div>
+          <div class="feature-card">
+            <h4>안티 디스틸레이션 메커니즘</h4>
+            <p>경쟁사 모델 디스틸레이션을 방지하기 위한 3중 방어:</p>
+            <ul>
+              <li>Client Attestation (Zig 레벨 해시)</li>
+              <li>Anti-Distillation (가짜 도구 주입)</li>
+              <li>Reasoning Summarization (서버측 추론 요약)</li>
+            </ul>
+          </div>
+          <div class="feature-card">
+            <h4>내부 모델 코드네임</h4>
+            <p>발견된 내부 모델 코드네임:</p>
+            <ul>
+              <li>Capybara: Sonnet v8 (1M 컨텍스트)</li>
+              <li>Fennec: Opus 전임자</li>
+              <li>Numbat: 미출시 모델</li>
+              <li>Tengu: 개발 중인 모델</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <!-- Category Cards -->
+      <section class="section" id="sections">
+        <div class="section-header">
+          <div class="section-badge" style="background:var(--color-accent-blue-light);color:var(--color-accent-blue);">&#9776; Documentation</div>
+          <h2 class="section-title">Documentation Map</h2>
+          <p class="section-desc">
+            각 섹션을 클릭하면 해당 시스템의 상세 분석 페이지로 이동합니다.
+            아키텍처 다이어그램, 코드 분석, 인사이트가 포함되어 있습니다.
+          </p>
+        </div>
+
+        <div class="category-grid">
+          <a href="overview.html" class="category-card card-overview">
+            <div class="card-icon">&#9672;</div>
+            <div class="card-info">
+              <h3>Architecture Overview</h3>
+              <p>기술 스택, 소스 트리 구조, QueryEngine 심층 분석, React+Ink 터미널 렌더링, GrowthBook 통합</p>
+            </div>
+            <span class="card-arrow">&#8594;</span>
+          </a>
+
+          <a href="memory.html" class="category-card card-memory">
+            <div class="card-icon">&#9731;</div>
+            <div class="card-info">
+              <h3>Memory System</h3>
+              <p>3-Layer 자가 치유 메모리, MEMORY.md 포인터 시스템, 5단계 컨텍스트 압축, 토큰 예산 할당</p>
+            </div>
+            <span class="card-arrow">&#8594;</span>
+          </a>
+
+          <a href="agents.html" class="category-card card-agents">
+            <div class="card-icon">&#9733;</div>
+            <div class="card-info">
+              <h3>Multi-Agent System</h3>
+              <p>Coordinator 모드, 5+ SubAgent 유형, KAIROS 자율 데몬, AsyncLocalStorage 격리, 파일 기반 Mailbox IPC</p>
+            </div>
+            <span class="card-arrow">&#8594;</span>
+          </a>
+
+          <a href="security.html" class="category-card card-security">
+            <div class="card-icon">&#9888;</div>
+            <div class="card-info">
+              <h3>Security & Permissions</h3>
+              <p>3-Layer 권한 파이프라인, AI Classifier, 안티 디스틸레이션, Client Attestation DRM, Undercover Mode</p>
+            </div>
+            <span class="card-arrow">&#8594;</span>
+          </a>
+
+          <a href="tools.html" class="category-card card-tools">
+            <div class="card-icon">&#9881;</div>
+            <div class="card-info">
+              <h3>Tool System</h3>
+              <p>23+ 빌트인 도구 카탈로그, Tool Dispatch 파이프라인, 동시성 파티셔닝, Deferred Loading, MCP 연동</p>
+            </div>
+            <span class="card-arrow">&#8594;</span>
+          </a>
+
+          <a href="system-prompt.html" class="category-card card-prompt">
+            <div class="card-icon">&#9998;</div>
+            <div class="card-info">
+              <h3>System Prompt</h3>
+              <p>110+ 명령어 블록 동적 조립, 프롬프트 캐싱 전략, 안전 규칙, 행동 지시문, 캐시 경계 설계</p>
+            </div>
+            <span class="card-arrow">&#8594;</span>
+          </a>
+
+          <a href="hidden-features.html" class="category-card card-hidden">
+            <div class="card-icon">&#9873;</div>
+            <div class="card-info">
+              <h3>Hidden Features</h3>
+              <p>44개 피처 플래그, 모델 코드명 (Capybara, Fennec, Tengu), KAIROS/음성/UltraPlan 미출시 기능</p>
+            </div>
+            <span class="card-arrow">&#8594;</span>
+          </a>
+        </div>
+      </section>
+
+      <!-- Footer -->
+            <footer class="footer">
+        <p>
+          <a href="https://github.com/hi-space/claude-code-unpack-docs" target="_blank" rel="noopener noreferrer"
+             style="color:var(--color-text-muted);text-decoration:none;border-bottom:1px solid var(--color-border);">
+            hi-space/claude-code-unpack-docs
+          </a>
+          &middot; &copy; 2026 All rights reserved.
+        </p>
+      </footer>
+
+    </div>
+  </div>
+
+  <!-- Back to Top -->
+  <button class="back-to-top" onclick="window.scrollTo({top:0,behavior:'smooth'})" title="Back to top">&#8593;</button>
+
+  <script>
+    // ===== Theme Toggle =====
+    function toggleTheme() {
+      const html = document.documentElement;
+      const current = html.getAttribute('data-theme');
+      const next = current === 'dark' ? 'light' : 'dark';
+      html.setAttribute('data-theme', next);
+      localStorage.setItem('claude-docs-theme', next);
+      updateThemeUI(next);
+    }
+
+    function updateThemeUI(theme) {
+      const icon = document.querySelector('.theme-icon');
+      const label = document.querySelector('.theme-label');
+      if (theme === 'dark') {
+        icon.innerHTML = '&#9788;';
+        label.textContent = 'Light Mode';
+      } else {
+        icon.innerHTML = '&#9789;';
+        label.textContent = 'Dark Mode';
+      }
+    }
+
+    // Restore theme on load
+    (function() {
+      const saved = localStorage.getItem('claude-docs-theme');
+      if (saved) {
+        document.documentElement.setAttribute('data-theme', saved);
+        updateThemeUI(saved);
+      } else if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
+        document.documentElement.setAttribute('data-theme', 'dark');
+        updateThemeUI('dark');
+      }
+    })();
+
+    // ===== Mobile Sidebar =====
+    function toggleSidebar() {
+      document.querySelector('.sidebar').classList.toggle('open');
+      document.querySelector('.sidebar-backdrop').classList.toggle('open');
+    }
+
+    // ===== Back to Top =====
+    const backBtn = document.querySelector('.back-to-top');
+    window.addEventListener('scroll', () => {
+      backBtn.classList.toggle('visible', window.scrollY > 400);
+    });
+
+    // ===== Active Nav Tracking =====
+    const sections = document.querySelectorAll('.section, .hero');
+    const navLinks = document.querySelectorAll('.sidebar-nav a');
+
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          const id = entry.target.id || entry.target.closest('[id]')?.id;
+          if (!id) return;
+          navLinks.forEach(link => {
+            const href = link.getAttribute('href');
+            if (href.startsWith('#')) {
+              link.classList.toggle('active', href === '#' + id);
+            }
+          });
+        }
+      });
+    }, { rootMargin: '-10% 0px -70% 0px' });
+
+    sections.forEach(s => observer.observe(s));
+  </script>
+
+</body>
+</html>

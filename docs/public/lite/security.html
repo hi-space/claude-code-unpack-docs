@@ -1,0 +1,1350 @@
+<!DOCTYPE html>
+<html lang="ko" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Security &amp; Permissions - Claude Code</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@11.4.1/dist/mermaid.min.js"></script>
+  <style>
+    /* ===== CSS Reset & Variables ===== */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --color-bg: #ffffff;
+      --color-bg-secondary: #f8f9fb;
+      --color-bg-tertiary: #f1f3f5;
+      --color-bg-card: #ffffff;
+      --color-border: #e5e7eb;
+      --color-border-light: #f0f1f3;
+      --color-text: #1a1a2e;
+      --color-text-secondary: #6b7280;
+      --color-text-muted: #9ca3af;
+      --color-primary: #d97706;
+      --color-primary-light: #fef3c7;
+      --color-primary-dark: #b45309;
+      --color-accent-blue: #3b82f6;
+      --color-accent-blue-light: #eff6ff;
+      --color-accent-green: #10b981;
+      --color-accent-green-light: #ecfdf5;
+      --color-accent-purple: #8b5cf6;
+      --color-accent-purple-light: #f5f3ff;
+      --color-accent-red: #ef4444;
+      --color-accent-red-light: #fef2f2;
+      --color-accent-teal: #14b8a6;
+      --color-accent-teal-light: #f0fdfa;
+      --color-accent-indigo: #6366f1;
+      --color-accent-indigo-light: #eef2ff;
+      --color-accent-amber: #f59e0b;
+      --color-accent-amber-light: #fffbeb;
+      --sidebar-width: 260px;
+      --font-sans: 'Noto Sans KR', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      --font-mono: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', 'Consolas', monospace;
+      --shadow-sm: 0 1px 2px rgba(0,0,0,0.04);
+      --shadow-md: 0 4px 12px rgba(0,0,0,0.06);
+      --shadow-lg: 0 8px 24px rgba(0,0,0,0.08);
+      --shadow-xl: 0 12px 32px rgba(0,0,0,0.10);
+      --radius-sm: 6px;
+      --radius-md: 10px;
+      --radius-lg: 14px;
+      --radius-xl: 20px;
+    }
+
+    [data-theme="dark"] {
+      --color-bg: #0f1117;
+      --color-bg-secondary: #1a1b23;
+      --color-bg-tertiary: #22232d;
+      --color-bg-card: #1a1b23;
+      --color-border: #2d2e3a;
+      --color-border-light: #23242f;
+      --color-text: #e4e5ea;
+      --color-text-secondary: #9ca0af;
+      --color-text-muted: #6b7085;
+      --color-primary: #f59e0b;
+      --color-primary-light: #422006;
+      --color-primary-dark: #fbbf24;
+      --color-accent-blue-light: #172554;
+      --color-accent-green-light: #052e16;
+      --color-accent-purple-light: #2e1065;
+      --color-accent-red-light: #450a0a;
+      --color-accent-teal-light: #042f2e;
+      --color-accent-indigo-light: #1e1b4b;
+      --color-accent-amber-light: #451a03;
+      --shadow-sm: 0 1px 2px rgba(0,0,0,0.2);
+      --shadow-md: 0 4px 12px rgba(0,0,0,0.3);
+      --shadow-lg: 0 8px 24px rgba(0,0,0,0.35);
+      --shadow-xl: 0 12px 32px rgba(0,0,0,0.4);
+    }
+
+    html { scroll-behavior: smooth; font-size: 16px; }
+
+    body {
+      font-family: var(--font-sans);
+      color: var(--color-text);
+      background: var(--color-bg);
+      line-height: 1.7;
+      -webkit-font-smoothing: antialiased;
+      transition: background 0.3s ease, color 0.3s ease;
+    }
+
+    /* ===== Sidebar ===== */
+    .sidebar {
+      position: fixed;
+      top: 0; left: 0;
+      width: var(--sidebar-width);
+      height: 100vh;
+      background: var(--color-bg);
+      border-right: 1px solid var(--color-border);
+      padding: 28px 0;
+      overflow-y: auto;
+      z-index: 100;
+      display: flex;
+      flex-direction: column;
+      transition: background 0.3s ease, border-color 0.3s ease;
+    }
+
+    .sidebar-header {
+      padding: 0 20px 20px;
+      border-bottom: 1px solid var(--color-border-light);
+      margin-bottom: 12px;
+    }
+
+    .sidebar-header h2 {
+      font-size: 15px;
+      font-weight: 800;
+      color: var(--color-text);
+      letter-spacing: -0.02em;
+    }
+
+    .sidebar-header span {
+      font-size: 11.5px;
+      color: var(--color-text-muted);
+      font-weight: 500;
+    }
+
+    .sidebar-nav { flex: 1; padding: 0 10px; }
+
+    .sidebar-nav .nav-section {
+      font-size: 10.5px;
+      font-weight: 700;
+      color: var(--color-text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      padding: 14px 12px 6px;
+    }
+
+    .sidebar-nav a {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 8px 12px;
+      color: var(--color-text-secondary);
+      text-decoration: none;
+      font-size: 13px;
+      font-weight: 500;
+      border-radius: var(--radius-sm);
+      transition: all 0.15s ease;
+      margin-bottom: 1px;
+    }
+
+    .sidebar-nav a:hover {
+      color: var(--color-text);
+      background: var(--color-bg-secondary);
+    }
+
+    .sidebar-nav a.active {
+      color: var(--color-primary-dark);
+      background: var(--color-primary-light);
+      font-weight: 700;
+    }
+
+    .sidebar-nav a .nav-icon {
+      width: 20px; height: 20px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 13px;
+      flex-shrink: 0;
+    }
+
+    .deep-dive-cta {
+      margin: 16px 10px 8px;
+      padding: 10px 12px;
+      background: linear-gradient(135deg, var(--color-accent-blue-light), transparent);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-md);
+      transition: all 0.2s ease;
+    }
+    .deep-dive-cta:hover {
+      border-color: var(--color-accent-blue);
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.06);
+    }
+    .deep-dive-cta a {
+      text-decoration: none !important;
+      display: block;
+      gap: 0;
+      padding: 0 !important;
+      margin: 0 !important;
+      background: none !important;
+    }
+    .deep-dive-cta a:hover {
+      background: none !important;
+    }
+    .deep-dive-cta .cta-badge {
+      display: inline-block;
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--color-accent-blue);
+      background: var(--color-accent-blue-light);
+      padding: 2px 8px;
+      border-radius: 4px;
+      margin-bottom: 6px;
+    }
+    .deep-dive-cta .cta-title {
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--color-accent-blue);
+      margin-bottom: 4px;
+    }
+    .deep-dive-cta .cta-desc {
+      font-size: 11.5px;
+      line-height: 1.55;
+      color: var(--color-text-secondary);
+    }
+
+    .sidebar-footer {
+      padding: 16px 20px;
+      border-top: 1px solid var(--color-border-light);
+    }
+
+    .theme-toggle {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 12.5px;
+      color: var(--color-text-secondary);
+      background: var(--color-bg-secondary);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-sm);
+      padding: 7px 12px;
+      cursor: pointer;
+      width: 100%;
+      transition: all 0.15s ease;
+      font-family: var(--font-sans);
+    }
+
+    .theme-toggle:hover {
+      color: var(--color-text);
+      border-color: #d1d5db;
+    }
+
+    /* ===== Main Content ===== */
+    .main {
+      margin-left: var(--sidebar-width);
+      min-height: 100vh;
+    }
+
+    .content {
+      max-width: 920px;
+      margin: 0 auto;
+      padding: 40px 40px 80px;
+    }
+
+    /* ===== Hero ===== */
+    .hero {
+      margin-bottom: 48px;
+      padding: 40px 0 36px;
+      border-bottom: 1px solid var(--color-border-light);
+    }
+
+    .hero-eyebrow {
+      font-size: 12.5px;
+      font-weight: 700;
+      color: var(--color-primary);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      margin-bottom: 14px;
+    }
+
+    .hero h1 {
+      font-size: 36px;
+      font-weight: 800;
+      letter-spacing: -0.035em;
+      line-height: 1.15;
+      margin-bottom: 14px;
+      color: var(--color-text);
+    }
+
+    .hero-desc {
+      font-size: 16px;
+      color: var(--color-text-secondary);
+      line-height: 1.7;
+      max-width: 640px;
+    }
+
+    .hero-stats {
+      display: flex;
+      gap: 28px;
+      margin-top: 28px;
+      flex-wrap: wrap;
+    }
+
+    .hero-stat {
+      display: flex;
+      flex-direction: column;
+      padding: 16px 20px;
+      background: var(--color-bg-secondary);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-md);
+      min-width: 130px;
+      transition: all 0.2s ease;
+    }
+
+    .hero-stat:hover {
+      border-color: var(--color-primary);
+      box-shadow: var(--shadow-md);
+      transform: translateY(-2px);
+    }
+
+    .hero-stat-value {
+      font-size: 26px;
+      font-weight: 800;
+      color: var(--color-text);
+      letter-spacing: -0.02em;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .hero-stat-label {
+      font-size: 12px;
+      color: var(--color-text-muted);
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      margin-top: 2px;
+    }
+
+    /* ===== Section ===== */
+    .section {
+      margin-bottom: 56px;
+      scroll-margin-top: 24px;
+    }
+
+    .section-header {
+      margin-bottom: 28px;
+    }
+
+    .section-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 11.5px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      padding: 4px 12px;
+      border-radius: 20px;
+      margin-bottom: 10px;
+    }
+
+    .section-title {
+      font-size: 26px;
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      line-height: 1.25;
+      margin-bottom: 10px;
+    }
+
+    .section-desc {
+      font-size: 15px;
+      color: var(--color-text-secondary);
+      line-height: 1.7;
+      max-width: 680px;
+    }
+
+    /* ===== Diagram Container ===== */
+    .diagram-container {
+      background: var(--color-bg-secondary);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-lg);
+      padding: 28px 24px;
+      margin: 24px 0;
+      overflow-x: auto;
+    }
+
+    .diagram-container .mermaid {
+      display: flex;
+      justify-content: center;
+    }
+
+    .diagram-title {
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--color-text-secondary);
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .diagram-title::before {
+      content: '';
+      display: inline-block;
+      width: 3px; height: 14px;
+      background: var(--color-primary);
+      border-radius: 2px;
+    }
+
+    /* ===== Feature Cards ===== */
+    .feature-cards {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      margin: 24px 0;
+    }
+
+    .feature-card {
+      background: var(--color-bg-card);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-md);
+      padding: 20px;
+      margin: 0;
+      transition: all 0.15s ease;
+    }
+
+    .feature-card:hover {
+      border-color: #d1d5db;
+      box-shadow: var(--shadow-lg);
+    }
+
+    .feature-card h4 {
+      font-size: 15px;
+      font-weight: 700;
+      margin-bottom: 8px;
+      color: var(--color-text);
+    }
+
+    .feature-card p {
+      font-size: 14px;
+      color: var(--color-text-secondary);
+      line-height: 1.8;
+    }
+
+    .feature-card code {
+      font-family: var(--font-mono);
+      font-size: 12px;
+      background: var(--color-bg-tertiary);
+      padding: 2px 6px;
+      border-radius: 4px;
+      color: var(--color-primary-dark);
+    }
+
+    .feature-card ul {
+      margin: 10px 0 0 0;
+      padding-left: 20px;
+      list-style: disc;
+    }
+
+    .feature-card li {
+      font-size: 13.5px;
+      color: var(--color-text-secondary);
+      line-height: 1.7;
+      margin-bottom: 4px;
+    }
+
+    /* ===== Section Accent Colors ===== */
+    .accent-red .section-badge { background: var(--color-accent-red-light); color: var(--color-accent-red); }
+    .accent-amber .section-badge { background: var(--color-accent-amber-light); color: var(--color-accent-amber); }
+    .accent-purple .section-badge { background: var(--color-accent-purple-light); color: var(--color-accent-purple); }
+    .accent-indigo .section-badge { background: var(--color-accent-indigo-light); color: var(--color-accent-indigo); }
+    .accent-teal .section-badge { background: var(--color-accent-teal-light); color: var(--color-accent-teal); }
+
+
+    /* ===== Table ===== */
+    .tech-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 20px 0;
+      font-size: 13.5px;
+    }
+
+    .tech-table th {
+      text-align: left;
+      padding: 10px 14px;
+      font-weight: 700;
+      font-size: 11.5px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--color-text-muted);
+      border-bottom: 2px solid var(--color-border);
+      background: var(--color-bg-secondary);
+    }
+
+    .tech-table td {
+      padding: 10px 14px;
+      border-bottom: 1px solid var(--color-border-light);
+      color: var(--color-text-secondary);
+    }
+
+    .tech-table td:first-child {
+      font-weight: 600;
+      color: var(--color-text);
+    }
+
+    .tech-table tr:hover td {
+      background: var(--color-bg-secondary);
+    }
+
+    .tech-table code {
+      font-family: var(--font-mono);
+      font-size: 12px;
+      background: var(--color-bg-tertiary);
+      padding: 2px 6px;
+      border-radius: 4px;
+      color: var(--color-primary-dark);
+    }
+
+    /* ===== Callout Box ===== */
+    .callout {
+      display: flex;
+      gap: 14px;
+      padding: 16px 18px;
+      border-radius: var(--radius-md);
+      margin: 16px 0;
+      border: 1px solid;
+      font-size: 14px;
+      line-height: 1.65;
+    }
+
+    .callout-icon { font-size: 18px; flex-shrink: 0; margin-top: 1px; }
+
+    .callout-insight {
+      background: var(--color-accent-blue-light);
+      border-color: var(--color-accent-blue);
+      color: var(--color-text);
+    }
+
+    .callout-warning {
+      background: var(--color-accent-amber-light);
+      border-color: var(--color-accent-amber);
+      color: var(--color-text);
+    }
+
+    .callout-security {
+      background: var(--color-accent-red-light);
+      border-color: var(--color-accent-red);
+      color: var(--color-text);
+    }
+
+    .callout strong {
+      display: block;
+      font-size: 13px;
+      font-weight: 700;
+      margin-bottom: 4px;
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+    }
+
+    /* ===== Footer ===== */
+    .footer {
+      margin-top: 40px;
+      padding: 28px 0;
+      border-top: 1px solid var(--color-border-light);
+      text-align: center;
+      font-size: 12.5px;
+      color: var(--color-text-muted);
+      line-height: 1.8;
+    }
+
+    /* ===== Mobile Header ===== */
+    .mobile-header {
+      display: none;
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      height: 52px;
+      background: var(--color-bg);
+      border-bottom: 1px solid var(--color-border);
+      padding: 0 16px;
+      align-items: center;
+      gap: 12px;
+      z-index: 201;
+      transition: background 0.3s ease, border-color 0.3s ease;
+    }
+
+    .mobile-header-title {
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--color-text);
+    }
+
+    .hamburger-btn {
+      width: 36px; height: 36px;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      gap: 5px;
+      background: none; border: none; cursor: pointer; padding: 6px;
+    }
+
+    .hamburger-btn span {
+      display: block; width: 20px; height: 2px;
+      background: var(--color-text); border-radius: 2px;
+      transition: all 0.3s ease;
+    }
+
+    .sidebar-backdrop {
+      display: none;
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,0.4);
+      z-index: 150;
+    }
+
+    .sidebar-backdrop.open { display: block; }
+
+    /* ===== Back to Top ===== */
+    .back-to-top {
+      position: fixed;
+      bottom: 28px; right: 28px;
+      width: 38px; height: 38px;
+      background: var(--color-text);
+      color: var(--color-bg);
+      border: none;
+      border-radius: 50%;
+      cursor: pointer;
+      font-size: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      opacity: 0;
+      visibility: hidden;
+      transition: all 0.2s ease;
+      z-index: 99;
+      box-shadow: var(--shadow-lg);
+    }
+
+    .back-to-top.visible { opacity: 1; visibility: visible; }
+    .back-to-top:hover { background: var(--color-primary-dark); }
+
+    /* ===== Responsive ===== */
+    @media (max-width: 1024px) {
+      .mobile-header { display: flex; }
+      .sidebar {
+        transform: translateX(-100%);
+        transition: transform 0.3s ease;
+        z-index: 200;
+      }
+      .sidebar.open { transform: translateX(0); }
+      .main { margin-left: 0; padding-top: 52px; }
+      .content { padding: 28px 24px 64px; }
+      .hero h1 { font-size: 28px; }
+      .section-title { font-size: 22px; }
+    }
+
+    @media (max-width: 640px) {
+      .content { padding: 20px 16px 48px; }
+      .hero h1 { font-size: 24px; }
+      .hero-stats { gap: 12px; }
+      .hero-stat { min-width: 100px; padding: 12px 14px; }
+      .hero-stat-value { font-size: 22px; }
+      .diagram-container { padding: 16px 12px; }
+    }
+
+    /* ===== Print ===== */
+    @media print {
+      .sidebar, .back-to-top, .theme-toggle { display: none; }
+      .main { margin-left: 0; }
+    }
+
+    /* ===== Mermaid overrides ===== */
+    .mermaid svg { max-width: 100%; height: auto; }
+  </style>
+</head>
+<body>
+
+  <!-- Mobile Header -->
+  <header class="mobile-header">
+    <button class="hamburger-btn" onclick="toggleSidebar()" aria-label="메뉴">
+      <span></span><span></span><span></span>
+    </button>
+    <span class="mobile-header-title">Claude Code</span>
+  </header>
+  <div class="sidebar-backdrop" onclick="toggleSidebar()"></div>
+
+  <!-- Sidebar -->
+  <nav class="sidebar">
+    <div class="sidebar-header">
+      <h2>Claude Code</h2>
+      <span>Architecture Overview</span>
+    </div>
+    <div class="sidebar-nav">
+      <a href="index.html">
+        <span class="nav-icon">&#9670;</span> Hub
+      </a>
+      <div class="nav-section">Core</div>
+      <a href="overview.html">
+        <span class="nav-icon">&#9672;</span> Architecture
+      </a>
+      <a href="query-engine.html">
+        <span class="nav-icon">&#9889;</span> Query Engine
+      </a>
+      <a href="memory.html">
+        <span class="nav-icon">&#9731;</span> Memory
+      </a>
+      <a href="agents.html">
+        <span class="nav-icon">&#9733;</span> Agents
+      </a>
+      <div class="nav-section">Systems</div>
+      <a href="tools.html">
+        <span class="nav-icon">&#9881;</span> Tools
+      </a>
+      <a href="cli-ui.html">
+        <span class="nav-icon">&#9618;</span> CLI / UI
+      </a>
+      <a href="system-prompt.html">
+        <span class="nav-icon">&#9998;</span> System Prompt
+      </a>
+      <a href="security.html" class="active">
+        <span class="nav-icon">&#9888;</span> Security
+      </a>
+      <a href="hidden-features.html">
+        <span class="nav-icon">&#9873;</span> Hidden Features
+      </a>
+    </div>
+    <div class="deep-dive-cta">
+      <a href="/claude-code-unpack-docs/deep/ko/">
+        <span class="cta-badge">Deep Dive</span>
+        <div class="cta-title">심층 분석 보기 &rarr;</div>
+        <div class="cta-desc">구현 원리, 설계 철학, 내부 동작을 50+ 페이지로 상세히 분석합니다.</div>
+      </a>
+    </div>
+    </div>
+    <div class="sidebar-footer">
+      <button class="theme-toggle" onclick="toggleTheme()">
+        <span class="theme-icon">&#9789;</span>
+        <span class="theme-label">Dark Mode</span>
+      </button>
+    </div>
+  </nav>
+
+  <!-- Main Content -->
+  <div class="main">
+    <div class="content">
+
+      <!-- Hero -->
+      <div class="hero">
+        <div class="hero-eyebrow">Security</div>
+        <h1>Security &amp; Permission Model</h1>
+        <p class="hero-desc">
+          3-Layer 권한 파이프라인, AI Classifier, 안티 디스틸레이션, Client Attestation DRM, Undercover Mode를 통한 다층 방어 아키텍처
+        </p>
+        <div class="hero-stats">
+          <div class="hero-stat">
+            <span class="hero-stat-value">3</span>
+            <span class="hero-stat-label">Permission Layers</span>
+          </div>
+          <div class="hero-stat">
+            <span class="hero-stat-value">6</span>
+            <span class="hero-stat-label">Risk Categories</span>
+          </div>
+          <div class="hero-stat">
+            <span class="hero-stat-value">4</span>
+            <span class="hero-stat-label">Defense Mechanisms</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Section 1: 3-Layer Permission Model -->
+      <section class="section accent-red" id="permission-model">
+        <div class="section-header">
+          <div class="section-badge">&#9888; Permission Pipeline</div>
+          <h2 class="section-title">3-Layer Permission Model</h2>
+          <p class="section-desc">
+            Claude Code는 모든 도구 호출을 실행 전에 평가하는 3단계 보안 아키텍처를 구현합니다. 자동 모드에서는 보조 Claude 모델이 분류기로서 위험을 평가합니다.
+          </p>
+          <div class="callout callout-insight" style="margin-top: 16px;">
+            <span class="callout-icon">ℹ️</span>
+            <div>
+              <strong>Bash 도구 권한 흐름</strong>
+              아래 3-계층 모델은 <strong>Bash 도구</strong>의 권한 흐름을 설명합니다. 다른 도구들(Read, Write, Edit 등)은 서로 다른 권한 모델을 사용합니다 — 각 도구의 설명서를 참고하세요. Bash는 임의의 쉘 명령을 실행할 수 있기 때문에 가장 복잡한 권한 시스템을 가지고 있습니다.
+            </div>
+          </div>
+        </div>
+
+        <div class="feature-cards">
+          <div class="feature-card">
+            <h4>1. 1단계: 고정 허용목록</h4>
+            <p>
+              무조건 안전하게 실행할 수 있는 읽기 전용 도구의 하드코딩된 목록입니다: <strong>Read, Glob, Grep, ToolSearch, AskUserQuestion, TodoRead</strong>. 이 도구들은 시스템 상태를 변경하지 않으므로 추가 검증 없이 자동으로 허용됩니다.<br/><strong>핵심:</strong> 1단계는 고속 패스(fast-path)로 기능하여 매번 분류기 호출 오버헤드를 피합니다.
+            </p>
+          </div>
+          <div class="feature-card">
+            <h4>2. 2단계: 사용자 설정 규칙</h4>
+            <p>
+              <code>~/.claude/settings.json</code>에서 특정 도구 패턴에 대한 항상 허용 규칙을 설정할 수 있습니다.<br/>예: <code>Bash: npm test</code>, <code>Write: src/test/**</code> 패턴으로 반복적인 권한 요청을 회피합니다.<br/><strong>중요:</strong> 이 단계에서도 deny 규칙은 절대 우회할 수 없습니다 (deny-first 원칙).
+            </p>
+          </div>
+          <div class="feature-card">
+            <h4>3. 3단계: AI Classifier (2-Stage)</h4>
+            <p>
+              자동 모드에서만 활성화되는 보조 분류기 (Claude Sonnet 4.6)가 각 도구 호출의 위험을 평가합니다.<br/>1단계: 빠른 판단 → 2단계: 불확실한 경우 깊이 있는 분석을 수행합니다.<br/><strong>핵심 설계:</strong> 분류기는 사용자 메시지와 도구 호출만 받습니다 (어시스턴트 추론 제외) - 이는 모델의 "설득"으로부터 독립적인 판단을 보장합니다.<br/><strong>가용성:</strong> 분류기는 <strong>오직 Anthropic 공식 빌드에서만 활성화됩니다</strong>. 타사 빌드에서는 분류기가 <code>{ matches: false }</code>를 반환하므로 3단계가 실질적으로 작동하지 않습니다.
+            </p>
+          </div>
+          <div class="feature-card">
+            <h4>4. 위험 카테고리 (6가지)</h4>
+            <p>분류기는 각 도구 호출을 6개 차원에서 평가합니다:</p>
+            <ul>
+              <li><strong>범위 확대</strong> - 사용자 요청 초과 (예: 파일 읽기 요청 → 전체 삭제)</li>
+              <li><strong>비신뢰 인프라</strong> - 원격 저장소, 외부 API, CI/CD 설정 변경</li>
+              <li><strong>데이터 누출</strong> - 민감 정보 접근 (.env, 크레덴셜, 개인키)</li>
+              <li><strong>권한 상승</strong> - sudo, 높은 권한 요구, 시스템 리소스 접근</li>
+              <li><strong>운영 위험</strong> - 시스템 안정성 영향 (rm -rf, 프로세스 종료)</li>
+              <li><strong>기타 위험</strong> - 일반 안전 우려</li>
+            </ul>
+          </div>
+          <div class="feature-card">
+            <h4>5. Context Stripping (의도적 축소)</h4>
+            <p>
+              분류기 API 요청에 포함되는 대화 컨텍스트는 의도적으로 필터링됩니다:<br/>
+              <strong>포함:</strong> 사용자 메시지만<br/>
+              <strong>제외:</strong> 어시스턴트 추론 텍스트, 이전 도구 결과<br/>
+              이는 분류기가 모델의 "설득력 있는 추론"으로부터 독립적인 판단을 하도록 하며, 주요 설계 혁신입니다.
+            </p>
+          </div>
+          <div class="feature-card">
+            <h4>6. Dangerous Permission Stripping</h4>
+            <p>
+              자동 모드 진입 시 위험한 권한 규칙(dangerous: true로 표시된)을 자동으로 제거합니다.<br/>
+              이는 사용자가 수동 모드에서 광범위한 권한을 설정해도 자동 모드에서는 AI Classifier 판단만 따르도록 보장합니다.<br/>
+              <strong>안전 보장:</strong> 자동 모드 종료 시 원래 권한이 자동 복원됩니다.
+            </p>
+          </div>
+          <div class="feature-card">
+            <h4>7. Denial Tracking Fallback</h4>
+            <p>
+              분류기가 반복적으로 같은 유형의 도구 호출을 거부하는 패턴이 감지되면 fallback이 작동합니다.<br/>
+              대신 사용자에게 직접 확인을 요청하여 분류기의 과도한 보수성을 보정합니다.<br/>
+              <strong>효과:</strong> 분류기가 과하게 엄격한 경우를 사용자가 오버라이드할 수 있는 escape hatch입니다.
+            </p>
+          </div>
+        </div>
+
+        <div class="diagram-container">
+          <div class="diagram-title">Permission Decision Pipeline</div>
+          <pre class="mermaid">
+flowchart TB
+    TC[도구 호출] --> L1{1단계:<br/>고정 허용목록}
+    L1 -->|"읽기 전용 도구"| Allow[✅ 자동 허용]
+    L1 -->|"허용목록에 없음"| L2{2단계:<br/>사용자 규칙}
+    L2 -->|"항상 허용 규칙 매치"| Allow
+    L2 -->|"규칙 매치 없음"| L3{3단계:<br/>분류기}
+    L3 -->|"안전"| Allow
+    L3 -->|"위험"| Ask[🔒 사용자에게 물음]
+    Ask -->|"승인"| Execute[도구 실행]
+    Ask -->|"거부"| Deny[❌ 거부]
+    Allow --> Execute
+
+    style TC fill:#fef2f2,stroke:#ef4444,color:#991b1b
+    style L1 fill:#eff6ff,stroke:#3b82f6,color:#1e40af
+    style L2 fill:#fef3c7,stroke:#d97706,color:#92400e
+    style L3 fill:#f5f3ff,stroke:#8b5cf6,color:#5b21b6
+    style Allow fill:#ecfdf5,stroke:#10b981,color:#065f46
+    style Ask fill:#fef3c7,stroke:#d97706,color:#92400e
+    style Execute fill:#ecfdf5,stroke:#10b981,color:#065f46
+    style Deny fill:#fef2f2,stroke:#ef4444,color:#991b1b
+          </pre>
+        </div>
+
+        <div style="margin-top: 32px;">
+          <h3 style="font-size: 16px; font-weight: 700; margin-bottom: 16px; color: var(--color-text);">샌드박스 격리</h3>
+          <p style="font-size: 14px; color: var(--color-text-secondary); margin-bottom: 16px;">
+            Bash 도구가 샌드박스 환경에서 동작하며 다음의 보호 메커니즘을 적용합니다:
+          </p>
+          <table class="tech-table">
+            <thead>
+              <tr>
+                <th>보호 메커니즘</th>
+                <th>설명</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>파일시스템 격리</td>
+                <td>워크스페이스 디렉토리로 제한, .env와 credentials 같은 보호된 경로 차단</td>
+              </tr>
+              <tr>
+                <td>네트워크 격리</td>
+                <td>아웃바운드 연결 제한, 신뢰할 수 있는 호스트 화이트리스트</td>
+              </tr>
+              <tr>
+                <td>타임아웃 적용</td>
+                <td>기본 2분, 최대 10분으로 runaway 프로세스 방지</td>
+              </tr>
+              <tr>
+                <td>환경 변수 정제</td>
+                <td>비정상적인 환경 변수 제거</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div style="margin-top: 40px;">
+          <h3 style="font-size: 16px; font-weight: 700; margin-bottom: 16px; color: var(--color-text);">추가 Bash 보안 계층</h3>
+          <p style="font-size: 14px; color: var(--color-text-secondary); margin-bottom: 16px;">
+            3-계층 권한 모델 외에도 Bash 명령은 추가 검증 검사를 거칩니다:
+          </p>
+
+          <div class="feature-cards">
+            <div class="feature-card">
+              <h4>Safe Wrapper 제거</h4>
+              <p>
+                안전한 래퍼 프로그램으로 시작하는 명령은 권한 매칭 전에 정규화됩니다:<br/>
+                <code>timeout</code>, <code>time</code>, <code>nice</code>, <code>nohup</code>, <code>stdbuf</code> 등의 래퍼가 제거됩니다.<br/>
+                또한 명령 시작의 환경 변수 할당(예: <code>NODE_ENV=production npm test</code>)도 안전한 변수 이름을 사용하면 제거됩니다.<br/>
+                <strong>예:</strong> <code>timeout 30 npm test</code>는 권한 매칭을 위해 <code>npm test</code>로 정규화되므로 deny 규칙을 우회할 수 없습니다.
+              </p>
+            </div>
+            <div class="feature-card">
+              <h4>출력 리다이렉션 검증</h4>
+              <p>
+                Bash 명령의 출력 리다이렉션(<code>&gt;</code>, <code>&gt;&gt;</code> 등)은 별도로 검증됩니다:<br/>
+                <strong>시스템 파일로의 리다이렉션 차단</strong> — 예: <code>&gt; /etc/passwd</code><br/>
+                <strong>워크스페이스 외 리다이렉션 승인 필요</strong><br/>
+                이는 공격 방지: <code>cat /etc/shadow &gt; /etc/passwd</code> — 비록 <code>cat</code이 허용되더라도 리다이렉션 대상이 독립적으로 검사됩니다.
+              </p>
+            </div>
+            <div class="feature-card">
+              <h4>복합 명령 보안</h4>
+              <p>
+                단일 Bash 호출에 여러 명령이 포함된 경우(<code>;</code>, <code>&amp;&amp;</code>, <code>||</code>, 파이프, 줄바꿈으로 구분):<br/>
+                <strong>각 서브명령이 개별적으로 검사됩니다</strong><br/>
+                <strong>복합 cd + git 차단</strong> — bare repository RCE 공격 방지. 예: <code>cd /malicious/dir &amp;&amp; git status</code> — 악의적인 디렉토리가 명령을 실행하도록 설정된 bare git repo를 포함할 수 있습니다.<br/>
+                deny 규칙이 모든 서브명령에 적용되므로 첫 번째 명령만 검사하지 않습니다.
+              </p>
+            </div>
+            <div class="feature-card">
+              <h4>Bash 의미 검사</h4>
+              <p>
+                권한 시스템은 악의적인 명령을 숨길 수 있는 bash 구문 패턴을 검증합니다:<br/>
+                <strong>명령 치환</strong> — <code>$(...)</code>, 백틱 패턴은 위험한 구성을 포함하면 플래그됩니다<br/>
+                <strong>eval 및 source</strong> — 강화된 검사 대상<br/>
+                <strong>이스케이프된 연산자 정규화</strong> — 예: <code>rm\ -rf</code>는 실제 형태로 정규화되어 매칭됩니다.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div class="callout callout-security" style="margin-top: 20px;">
+          <span class="callout-icon">&#128274;</span>
+          <div>
+            <strong>원격 설정</strong>
+            분류기 동작을 GrowthBook 피처 플래그로 원격 수정 가능합니다. Anthropic이 새 버전을 푸시할 필요 없이 모든 Claude Code 설치에서 권한 모델의 민감도를 조정할 수 있습니다.
+          </div>
+        </div>
+      </section>
+
+      <!-- Section 2: Bash Sandbox -->
+      <section class="section accent-amber" id="bash-sandbox">
+        <div class="section-header">
+          <div class="section-badge">&#9659; Infrastructure</div>
+          <h2 class="section-title">Bash Sandbox</h2>
+          <p class="section-desc">
+            Bash 도구 실행 환경의 격리 및 제한 메커니즘
+          </p>
+        </div>
+
+        <div class="feature-cards">
+          <div class="feature-card">
+            <h4>1. 파일시스템 격리</h4>
+            <p>
+              모든 파일 작업이 워크스페이스 디렉토리로 제한되며, 절대 경로나 심볼릭 링크로의 이스케이프 시도는 차단됩니다.<br/>
+              <strong>보호 목록:</strong> <code>.env</code>, <code>credentials.json</code>, <code>.ssh</code>, <code>.git</code> 등 민감한 경로는 읽기/쓰기 거부<br/>
+              <strong>우회 불가:</strong> 경로 해석이 권한 검사 전에 일어나므로 동적 우회가 불가능합니다.
+            </p>
+          </div>
+          <div class="feature-card">
+            <h4>2. 네트워크 격리</h4>
+            <p>
+              기본 정책: 모든 아웃바운드 연결 차단 (deny-by-default).<br/>
+              <strong>명시적 화이트리스트:</strong> npm, pip, 외부 API 호출 필요 시 사용자가 설정에서 허용 호스트를 지정합니다.<br/>
+              <strong>효과:</strong> 악성 코드가 데이터 유출, C2 통신, 랜섬웨어 다운로드를 시도해도 네트워크 계층에서 차단됩니다.
+            </p>
+          </div>
+          <div class="feature-card">
+            <h4>3. 타임아웃 및 리소스 제한</h4>
+            <p>
+              모든 Bash 명령에 타임아웃 강제: 기본 2분 → 최대 10분까지 사용자가 연장 가능.<br/>
+              <strong>리소스 제한:</strong> CPU, 메모리, 프로세스 수 상한선으로 runaway 프로세스 방지<br/>
+              <strong>효과:</strong> 무한 루프, fork bomb, 메모리 폭탄 공격이 Bash 도구 내에서 격리됩니다.
+            </p>
+          </div>
+        </div>
+
+        <div class="diagram-container">
+          <div class="diagram-title">Sandbox Architecture</div>
+          <pre class="mermaid">
+flowchart TB
+    subgraph CONFIG["샌드박스 설정"]
+        SS["샌드박스 설정<br/>(권한 모드별)"]
+        SS --> PR["경로 해석<br/>(허용 디렉토리)"]
+        SS --> NI["네트워크 격리<br/>(허용/거부 목록)"]
+        SS --> PP["보호 경로<br/>(.env, credentials 등)"]
+    end
+
+    subgraph ENFORCE["적용"]
+        BASH["Bash 도구"] --> CHECK{"허용 경로에<br/>포함?"}
+        CHECK -->|"yes"| RUN["실행"]
+        CHECK -->|"no"| REJECT["거부"]
+        WRITE["Write 도구"] --> PCHECK{"보호<br/>경로?"}
+        PCHECK -->|"yes"| REJECT
+        PCHECK -->|"no"| RUN
+    end
+
+    CONFIG --> ENFORCE
+
+    style CONFIG fill:#fffbeb,stroke:#f59e0b,color:#78350f
+    style ENFORCE fill:#fef3c7,stroke:#d97706,color:#92400e
+    style REJECT fill:#fef2f2,stroke:#ef4444,color:#991b1b
+    style RUN fill:#ecfdf5,stroke:#10b981,color:#065f46
+          </pre>
+        </div>
+      </section>
+
+      <!-- Section 3: Anti-Distillation -->
+      <section class="section accent-purple" id="anti-distillation">
+        <div class="section-header">
+          <div class="section-badge">&#9733; Defense</div>
+          <h2 class="section-title">Anti-Distillation Mechanism</h2>
+          <p class="section-desc">
+            경쟁사가 API 트래픽을 녹화/재생하여 Claude Code의 능력을 디스틸레이션하는 것을 방지하기 위한 다중 레이어 시스템
+          </p>
+        </div>
+
+        <div class="feature-cards">
+          <div class="feature-card">
+            <h4>1. 가짜 도구 주입</h4>
+            <p>
+              <strong>클라이언트 부분 (신호만):</strong> <code>ANTI_DISTILLATION_CC</code> 컴파일 플래그 + GrowthBook 런타임 플래그 모두 활성화 시 API 요청에 <code>anti_distillation: ['fake_tools']</code> 파라미터를 포함합니다.<br/>
+              <strong>서버 부분 (실제 주입):</strong> 서버가 응답에 실제 도구 옆에 디코이 도구 정의를 주입합니다 (완전히 동일한 JSON Schema).<br/>
+              <strong>핵심:</strong> 클라이언트는 신호만 보냅니다. 실제 가짜 도구 생성 및 주입은 <strong>서버에서만</strong> 발생합니다.<br/>
+              <strong>독성화 효과:</strong> 트래픽을 캡처한 공격자의 모델은 가짜 도구를 학습하여 실제 환경에서 오작동합니다 (canary trap).
+            </p>
+          </div>
+          <div class="feature-card">
+            <h4>2. Two-Gate Authorization (컴파일 + 런타임)</h4>
+            <p>
+              <strong>Gate 1 (컴파일 타임):</strong> <code>ANTI_DISTILLATION_CC</code> 플래그 (빌드 시 설정)<br/>
+              <strong>Gate 2 (런타임):</strong> GrowthBook <code>tengu_anti_distill_fake_tool_injection</code> (원격 제어)<br/>
+              <strong>설계 철학:</strong> 둘 다 열려야만 작동 - 컴파일 플래그는 제3자 빌드에서 완전히 제거(dead-code elimination), GrowthBook은 새 빌드 없이 긴급 비활성화 가능합니다.
+            </p>
+          </div>
+          <div class="feature-card">
+            <h4>3. First-Party Session Detection</h4>
+            <p>
+              가짜 도구 주입은 Anthropic 공식 CLI 세션 (Client Attestation 검증)에서만 활성화됩니다.<br/>
+              <strong>대상:</strong> 공식 바이너리에서의 정품 API 호출만<br/>
+              <strong>효과:</strong> 비인가 클라이언트는 보호를 받지 않으므로 Anthropic 입장에서는 비용 절감, 공격자는 탐지됨.
+            </p>
+          </div>
+          <div class="feature-card">
+            <h4>4. 추론 요약 (서버 사이드)</h4>
+            <p>
+              <strong>완전히 서버 사이드:</strong> Claude Code 클라이언트는 요약 로직을 포함하지 않습니다.<br/>
+              도구 호출 사이 어시스턴트의 상세 추론 텍스트를 Anthropic 서버에서 자동으로 핵심 요약으로 압축합니다.<br/>
+              <strong>프로세스:</strong> ConnectorTextBuffer 수집 → SummarizationEngine 압축 → CryptoSigner 서명 첨부<br/>
+              <strong>클라이언트의 역할:</strong> 요청 파라미터(<code>anti_distillation: ['fake_tools']</code> 등)를 설정하여 서버에 보호 적용을 신호합니다.<br/>
+              <strong>효과:</strong> 네트워크 레벨에서 캡처된 데이터는 요약본만 포함 - 상세 추론 체인은 보호되어 학습 가치 저하.
+            </p>
+          </div>
+          <div class="feature-card">
+            <h4>5. Combined Defense Matrix (3-Layer)</h4>
+            <p>
+              <strong>Layer 1 (전송):</strong> Client Attestation DRM - 비인가 API 접근 차단<br/>
+              <strong>Layer 2 (애플리케이션):</strong> 가짜 도구 주입 - 캡처된 도구 스키마 독성화<br/>
+              <strong>Layer 3 (서버):</strong> 추론 요약 - 캡처된 추론 체인 가치 저하<br/>
+              <strong>결과:</strong> 공격자는 (1) API 접근 불가 또는 (2) 독성 데이터 또는 (3) 요약본만 획득.
+            </p>
+          </div>
+        </div>
+
+        <div class="diagram-container">
+          <div class="diagram-title">Fake Tool Injection</div>
+          <pre class="mermaid">
+flowchart LR
+    A["API 요청"] --> B{"ANTI_DISTILLATION_CC<br/>플래그 활성?"}
+    B -->|Yes| C["시스템 프롬프트에<br/>가짜 도구 정의 주입"]
+    B -->|No| D["일반 요청"]
+    C --> E["API가 anti_distillation:<br/>fake_tools 와 함께<br/>요청 전송"]
+    E --> F["서버가 응답에<br/>디코이 도구 포함"]
+
+    style A fill:#f5f3ff,stroke:#8b5cf6,color:#5b21b6
+    style B fill:#fef3c7,stroke:#d97706,color:#92400e
+    style C fill:#fef2f2,stroke:#ef4444,color:#991b1b
+    style E fill:#f5f3ff,stroke:#8b5cf6,color:#5b21b6
+    style F fill:#eff6ff,stroke:#3b82f6,color:#1e40af
+          </pre>
+        </div>
+      </section>
+
+      <!-- Section 4: Client Attestation DRM -->
+      <section class="section accent-indigo" id="client-attestation">
+        <div class="section-header">
+          <div class="section-badge">&#128274; Cryptography</div>
+          <h2 class="section-title">Client Attestation DRM</h2>
+          <p class="section-desc">
+            API 호출을 위한 DRM으로 요청이 위조되거나 수정된 클라이언트가 아닌 정품 Claude Code 바이너리에서 온 것인지 확인
+          </p>
+        </div>
+
+        <div class="feature-cards">
+          <div class="feature-card">
+            <h4>1. Zig 레벨 구현 (JS 런타임 아래)</h4>
+            <p>
+              해시 계산이 Bun의 네이티브 Zig 레이어(HTTP 스택)에서 실행되므로 JavaScript 런타임이 접근 불가합니다.<br/>
+              <strong>우회 불가능:</strong> JS 디버거, 몽키패칭, fetch() 오버라이드 모두 작동 안 함<br/>
+              <strong>수정 비용:</strong> 해시 로직 변경 시 Bun 전체 재컴파일 필요 (source 접근 + Zig 컴파일러 필요).
+            </p>
+          </div>
+          <div class="feature-card">
+            <h4>2. 기술 상세 (구현 세부)</h4>
+            <p>
+              <strong>플레이스홀더:</strong> JS에서 <code>cch=00000</code> 헤더 설정<br/>
+              <strong>계산:</strong> Zig 레이어에서 HMAC-SHA256 계산, 요청 바디 + 타임스탬프 기반<br/>
+              <strong>제어:</strong> 컴파일 플래그 <code>NATIVE_CLIENT_ATTESTATION</code> + 환경 변수 <code>CLAUDE_CODE_ATTRIBUTION_HEADER=disabled</code> + GrowthBook <code>tengu_attribution_header</code> (3단계 제어).
+            </p>
+          </div>
+          <div class="feature-card">
+            <h4>3. 왜 Zig인가? (설계 이유)</h4>
+            <p>
+              <strong>격리:</strong> JS 런타임 아래 실행되므로 디버거/패칭 불가능<br/>
+              <strong>성능:</strong> 네이티브 HMAC 계산 → 무시할 수준의 레이턴시 추가<br/>
+              <strong>변조 저항:</strong> 컴파일된 바이너리 내 secret key 임베딩 + Zig 재컴파일 필수<br/>
+              <strong>핵심 혁신:</strong> 암호화 검사를 런타임 전에 컴파일 바이너리에 고정.
+            </p>
+          </div>
+          <div class="feature-card">
+            <h4>4. 우회 벡터 (의도적 탈출 해치)</h4>
+            <p>
+              <strong>개발용:</strong> 환경 변수 <code>CLAUDE_CODE_ATTRIBUTION_HEADER=disabled</code> 설정 시 헤더 계산 스킵<br/>
+              <strong>긴급 전역 비활성화:</strong> GrowthBook <code>tengu_attribution_header=false</code>로 새 빌드 없이 원격 제어<br/>
+              <strong>설계 철학:</strong> 이 두 escape hatch는 의도적 - 개발/테스트 유연성과 배포 후 버그 대응을 위함.
+            </p>
+          </div>
+          <div class="feature-card">
+            <h4>5. 안티 디스틸레이션과의 관계</h4>
+            <p>
+              클라이언트 인증은 3-레이어 안티 디스틸레이션 체계의 <strong>전송 레벨 게이트</strong>입니다.<br/>
+              <strong>상호 보완:</strong> <br/>
+              • 클라이언트 인증 → 비인가 접근 차단 (수비)<br/>
+              • 가짜 도구 → 캡처 도구 스키마 독성화 (독성)<br/>
+              • 추론 요약 → 캡처 추론 체인 가치 저하 (감소)<br/>
+              공격자가 모든 3개 방어를 동시에 우회할 수 없습니다.
+            </p>
+          </div>
+        </div>
+
+        <div class="diagram-container">
+          <div class="diagram-title">Client Attestation Sequence</div>
+          <pre class="mermaid">
+sequenceDiagram
+    participant JS as JavaScript 런타임
+    participant Zig as Bun/Zig HTTP 스택
+    participant API as Claude API 서버
+
+    JS->>JS: API 요청 준비
+    JS->>JS: 헤더 플레이스홀더 cch=00000 설정
+
+    JS->>Zig: 네이티브 HTTP 전송으로 핸드오프
+    Note over Zig: JavaScript 런타임 아래
+
+    Zig->>Zig: 암호화 해시 계산
+    Zig->>Zig: 플레이스홀더를 실제 해시로 교체
+
+    Zig->>API: 계산된 cch= 헤더와 함께 요청 전송
+    API->>API: 해시 검증
+    API-->>Zig: 수락 / 거부
+          </pre>
+        </div>
+      </section>
+
+      <!-- Section 5: Undercover Mode -->
+      <section class="section accent-teal" id="undercover-mode">
+        <div class="section-header">
+          <div class="section-badge">&#128583; Privacy</div>
+          <h2 class="section-title">Undercover Mode</h2>
+          <p class="section-desc">
+            외부 또는 공개 컨텍스트에서 동작할 때 Claude Code의 출력에서 모든 내부 Anthropic 메타데이터를 제거
+          </p>
+        </div>
+
+        <div class="feature-cards">
+          <div class="feature-card">
+            <h4>1. 제거되는 정보 (6가지)</h4>
+            <p>
+              공개 또는 오픈소스 레포지토리에서 자동 실행 시 다음 우발적 노출 방지:<br/>
+              <ul>
+              <li>내부 모델 코드네임 (Capybara, Fennec, Numbat, Tengu)</li>
+              <li>미출시 모델 버전 번호</li>
+              <li>내부 Anthropic 레포지토리 이름</li>
+              <li>내부 인프라 및 도구 참조</li>
+              <li>Slack 채널/이슈/메세지</li>
+              <li>Anthropic 내부 단축 링크</li>
+              </ul>
+            </p>
+          </div>
+          <div class="feature-card">
+            <h4>2. 활성화 메커니즘 (3가지)</h4>
+            <p>
+              <strong>자동 (기본값):</strong> 외부 빌드에서 자동으로 ON<br/>
+              <strong>강제:</strong> 환경 변수 <code>CLAUDE_CODE_UNDERCOVER=1</code> 설정<br/>
+              <strong>구현:</strong> 외부 빌드에서 필터링 로직이 dead-code elimination으로 제거되어, 호출 시 항상 trivial return (no-op)만 수행.
+            </p>
+          </div>
+          <div class="feature-card">
+            <h4>3. 비활성화 불가 (강제)</h4>
+            <p>
+              외부 빌드에서는 언더커버 모드 비활성화 불가능 (우회 방법 없음).<br/>
+              <strong>구현:</strong> 필터링 로직이 dead-code elimination으로 완전 제거 → 호출 불가능한 no-op으로 축소<br/>
+              <strong>설계 철학:</strong> 컴파일 타임 제거로 "비활성화할 코드 자체 없음" - 가장 강력한 보안.
+            </p>
+          </div>
+          <div class="feature-card">
+            <h4>4. 다른 보안 메커니즘과의 관계</h4>
+            <p>
+              언더커버 모드는 4-계층 보안 스택의 정보 누출 방지 레벨입니다:<br/>
+              <strong>Layer 1:</strong> 권한 모델 (Permission) - 비인가 액션 차단<br/>
+              <strong>Layer 2:</strong> Client Attestation - 비인가 API 접근 차단<br/>
+              <strong>Layer 3:</strong> Anti-Distillation - 학습 데이터 도용 방지<br/>
+              <strong>Layer 4:</strong> Undercover Mode - 내부 메타데이터 유출 방지 (이 계층).
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <!-- Footer -->
+            <footer class="footer">
+        <p>
+          <a href="https://github.com/hi-space/claude-code-unpack-docs" target="_blank" rel="noopener noreferrer"
+             style="color:var(--color-text-muted);text-decoration:none;border-bottom:1px solid var(--color-border);">
+            hi-space/claude-code-unpack-docs
+          </a>
+          &middot; &copy; 2026 All rights reserved.
+        </p>
+      </footer>
+
+    </div>
+  </div>
+
+  <!-- Back to Top -->
+  <button class="back-to-top" onclick="window.scrollTo({top:0,behavior:'smooth'})" title="Back to top">&#8593;</button>
+
+  <script>
+    // ===== Mermaid Init =====
+    const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+    mermaid.initialize({
+      startOnLoad: true,
+      theme: isDark ? 'dark' : 'neutral',
+      fontFamily: "'Noto Sans KR', system-ui, sans-serif",
+      flowchart: { curve: 'basis', padding: 16 },
+      sequence: { actorMargin: 40, messageFontSize: 13 },
+      themeVariables: isDark ? {
+        primaryColor: '#422006',
+        primaryBorderColor: '#f59e0b',
+        primaryTextColor: '#fbbf24',
+        lineColor: '#6b7085',
+        secondaryColor: '#172554',
+        tertiaryColor: '#2e1065'
+      } : {
+        primaryColor: '#fef3c7',
+        primaryBorderColor: '#d97706',
+        primaryTextColor: '#92400e',
+        lineColor: '#9ca3af',
+        secondaryColor: '#eff6ff',
+        tertiaryColor: '#f5f3ff'
+      }
+    });
+
+    // CDN fallback
+    window.addEventListener('load', () => {
+      if (typeof mermaid === 'undefined') {
+        document.querySelectorAll('.diagram-container').forEach(c => {
+          const fb = document.createElement('div');
+          fb.style.cssText = 'text-align:center;padding:40px;color:var(--color-text-muted);font-size:14px;';
+          fb.textContent = 'Diagram requires internet for Mermaid.js';
+          c.querySelector('.mermaid')?.replaceWith(fb);
+        });
+      }
+    });
+
+
+    // ===== Theme Toggle =====
+    function toggleTheme() {
+      const html = document.documentElement;
+      const current = html.getAttribute('data-theme');
+      const next = current === 'dark' ? 'light' : 'dark';
+      html.setAttribute('data-theme', next);
+      localStorage.setItem('claude-docs-theme', next);
+      updateThemeUI(next);
+      // Re-render mermaid with new theme
+      location.reload();
+    }
+
+    function updateThemeUI(theme) {
+      const icon = document.querySelector('.theme-icon');
+      const label = document.querySelector('.theme-label');
+      if (theme === 'dark') {
+        icon.innerHTML = '&#9788;';
+        label.textContent = 'Light Mode';
+      } else {
+        icon.innerHTML = '&#9789;';
+        label.textContent = 'Dark Mode';
+      }
+    }
+
+    // Restore theme on load
+    (function() {
+      const saved = localStorage.getItem('claude-docs-theme');
+      if (saved) {
+        document.documentElement.setAttribute('data-theme', saved);
+        updateThemeUI(saved);
+      } else if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
+        document.documentElement.setAttribute('data-theme', 'dark');
+        updateThemeUI('dark');
+      }
+    })();
+
+    // ===== Mobile Sidebar =====
+    function toggleSidebar() {
+      document.querySelector('.sidebar').classList.toggle('open');
+      document.querySelector('.sidebar-backdrop').classList.toggle('open');
+    }
+
+    // ===== Back to Top =====
+    const backBtn = document.querySelector('.back-to-top');
+    window.addEventListener('scroll', () => {
+      backBtn.classList.toggle('visible', window.scrollY > 400);
+    });
+
+    // ===== Active Nav Tracking =====
+    const sections = document.querySelectorAll('.section, .hero');
+    const navLinks = document.querySelectorAll('.sidebar-nav a');
+
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          const id = entry.target.id || entry.target.closest('[id]')?.id;
+          if (!id) return;
+          navLinks.forEach(link => {
+            const href = link.getAttribute('href');
+            if (href.startsWith('#')) {
+              link.classList.toggle('active', href === '#' + id);
+            }
+          });
+        }
+      });
+    }, { rootMargin: '-10% 0px -70% 0px' });
+
+    sections.forEach(s => observer.observe(s));
+  </script>
+
+</body>
+</html>

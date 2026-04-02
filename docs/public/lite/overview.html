@@ -1,0 +1,1081 @@
+<!DOCTYPE html>
+<html lang="ko" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Claude Code Architecture Overview</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@11.4.1/dist/mermaid.min.js"></script>
+  <style>
+    /* ===== CSS Reset & Variables ===== */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --color-bg: #ffffff;
+      --color-bg-secondary: #f8f9fb;
+      --color-bg-tertiary: #f1f3f5;
+      --color-bg-card: #ffffff;
+      --color-border: #e5e7eb;
+      --color-border-light: #f0f1f3;
+      --color-text: #1a1a2e;
+      --color-text-secondary: #6b7280;
+      --color-text-muted: #9ca3af;
+      --color-primary: #d97706;
+      --color-primary-light: #fef3c7;
+      --color-primary-dark: #b45309;
+      --color-accent-blue: #3b82f6;
+      --color-accent-blue-light: #eff6ff;
+      --color-accent-green: #10b981;
+      --color-accent-green-light: #ecfdf5;
+      --color-accent-purple: #8b5cf6;
+      --color-accent-purple-light: #f5f3ff;
+      --color-accent-red: #ef4444;
+      --color-accent-red-light: #fef2f2;
+      --color-accent-teal: #14b8a6;
+      --color-accent-teal-light: #f0fdfa;
+      --color-accent-indigo: #6366f1;
+      --color-accent-indigo-light: #eef2ff;
+      --color-accent-amber: #f59e0b;
+      --color-accent-amber-light: #fffbeb;
+      --sidebar-width: 260px;
+      --font-sans: 'Noto Sans KR', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      --font-mono: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', 'Consolas', monospace;
+      --shadow-sm: 0 1px 2px rgba(0,0,0,0.04);
+      --shadow-md: 0 4px 12px rgba(0,0,0,0.06);
+      --shadow-lg: 0 8px 24px rgba(0,0,0,0.08);
+      --shadow-xl: 0 12px 32px rgba(0,0,0,0.10);
+      --radius-sm: 6px;
+      --radius-md: 10px;
+      --radius-lg: 14px;
+      --radius-xl: 20px;
+    }
+
+    [data-theme="dark"] {
+      --color-bg: #0f1117;
+      --color-bg-secondary: #1a1b23;
+      --color-bg-tertiary: #22232d;
+      --color-bg-card: #1a1b23;
+      --color-border: #2d2e3a;
+      --color-border-light: #23242f;
+      --color-text: #e4e5ea;
+      --color-text-secondary: #9ca0af;
+      --color-text-muted: #6b7085;
+      --color-primary: #f59e0b;
+      --color-primary-light: #422006;
+      --color-primary-dark: #fbbf24;
+      --color-accent-blue-light: #172554;
+      --color-accent-green-light: #052e16;
+      --color-accent-purple-light: #2e1065;
+      --color-accent-red-light: #450a0a;
+      --color-accent-teal-light: #042f2e;
+      --color-accent-indigo-light: #1e1b4b;
+      --color-accent-amber-light: #451a03;
+      --shadow-sm: 0 1px 2px rgba(0,0,0,0.2);
+      --shadow-md: 0 4px 12px rgba(0,0,0,0.3);
+      --shadow-lg: 0 8px 24px rgba(0,0,0,0.35);
+      --shadow-xl: 0 12px 32px rgba(0,0,0,0.4);
+    }
+
+    html { scroll-behavior: smooth; font-size: 16px; }
+
+    body {
+      font-family: var(--font-sans);
+      color: var(--color-text);
+      background: var(--color-bg);
+      line-height: 1.7;
+      -webkit-font-smoothing: antialiased;
+      transition: background 0.3s ease, color 0.3s ease;
+    }
+
+    /* ===== Sidebar ===== */
+    .sidebar {
+      position: fixed;
+      top: 0; left: 0;
+      width: var(--sidebar-width);
+      height: 100vh;
+      background: var(--color-bg);
+      border-right: 1px solid var(--color-border);
+      padding: 28px 0;
+      overflow-y: auto;
+      z-index: 100;
+      display: flex;
+      flex-direction: column;
+      transition: background 0.3s ease, border-color 0.3s ease;
+    }
+
+    .sidebar-header {
+      padding: 0 20px 20px;
+      border-bottom: 1px solid var(--color-border-light);
+      margin-bottom: 12px;
+    }
+
+    .sidebar-header h2 {
+      font-size: 15px;
+      font-weight: 800;
+      color: var(--color-text);
+      letter-spacing: -0.02em;
+    }
+
+    .sidebar-header span {
+      font-size: 11.5px;
+      color: var(--color-text-muted);
+      font-weight: 500;
+    }
+
+    .sidebar-nav { flex: 1; padding: 0 10px; }
+
+    .sidebar-nav .nav-section {
+      font-size: 10.5px;
+      font-weight: 700;
+      color: var(--color-text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      padding: 14px 12px 6px;
+    }
+
+    .sidebar-nav a {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 8px 12px;
+      color: var(--color-text-secondary);
+      text-decoration: none;
+      font-size: 13px;
+      font-weight: 500;
+      border-radius: var(--radius-sm);
+      transition: all 0.15s ease;
+      margin-bottom: 1px;
+    }
+
+    .sidebar-nav a:hover {
+      color: var(--color-text);
+      background: var(--color-bg-secondary);
+    }
+
+    .sidebar-nav a.active {
+      color: var(--color-primary-dark);
+      background: var(--color-primary-light);
+      font-weight: 700;
+    }
+
+    .sidebar-nav a .nav-icon {
+      width: 20px; height: 20px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 13px;
+      flex-shrink: 0;
+    }
+
+    .deep-dive-cta {
+      margin: 16px 10px 8px;
+      padding: 10px 12px;
+      background: linear-gradient(135deg, var(--color-accent-blue-light), transparent);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-md);
+      transition: all 0.2s ease;
+    }
+    .deep-dive-cta:hover {
+      border-color: var(--color-accent-blue);
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.06);
+    }
+    .deep-dive-cta a {
+      text-decoration: none !important;
+      display: block;
+      gap: 0;
+      padding: 0 !important;
+      margin: 0 !important;
+      background: none !important;
+    }
+    .deep-dive-cta a:hover {
+      background: none !important;
+    }
+    .deep-dive-cta .cta-badge {
+      display: inline-block;
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--color-accent-blue);
+      background: var(--color-accent-blue-light);
+      padding: 2px 8px;
+      border-radius: 4px;
+      margin-bottom: 6px;
+    }
+    .deep-dive-cta .cta-title {
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--color-accent-blue);
+      margin-bottom: 4px;
+    }
+    .deep-dive-cta .cta-desc {
+      font-size: 11.5px;
+      line-height: 1.55;
+      color: var(--color-text-secondary);
+    }
+
+    .sidebar-footer {
+      padding: 16px 20px;
+      border-top: 1px solid var(--color-border-light);
+    }
+
+    .theme-toggle {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 12.5px;
+      color: var(--color-text-secondary);
+      background: var(--color-bg-secondary);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-sm);
+      padding: 7px 12px;
+      cursor: pointer;
+      width: 100%;
+      transition: all 0.15s ease;
+      font-family: var(--font-sans);
+    }
+
+    .theme-toggle:hover {
+      color: var(--color-text);
+      border-color: #d1d5db;
+    }
+
+    /* ===== Main Content ===== */
+    .main {
+      margin-left: var(--sidebar-width);
+      min-height: 100vh;
+    }
+
+    .content {
+      max-width: 920px;
+      margin: 0 auto;
+      padding: 40px 40px 80px;
+    }
+
+    /* ===== Hero ===== */
+    .hero {
+      margin-bottom: 48px;
+      padding: 40px 0 36px;
+      border-bottom: 1px solid var(--color-border-light);
+    }
+
+    .hero-eyebrow {
+      font-size: 12.5px;
+      font-weight: 700;
+      color: var(--color-primary);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      margin-bottom: 14px;
+    }
+
+    .hero h1 {
+      font-size: 36px;
+      font-weight: 800;
+      letter-spacing: -0.035em;
+      line-height: 1.15;
+      margin-bottom: 14px;
+      color: var(--color-text);
+    }
+
+    .hero-desc {
+      font-size: 16px;
+      color: var(--color-text-secondary);
+      line-height: 1.7;
+      max-width: 640px;
+    }
+
+    .hero-stats {
+      display: flex;
+      gap: 28px;
+      margin-top: 28px;
+      flex-wrap: wrap;
+    }
+
+    .hero-stat {
+      display: flex;
+      flex-direction: column;
+      padding: 16px 20px;
+      background: var(--color-bg-secondary);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-md);
+      min-width: 130px;
+      transition: all 0.2s ease;
+    }
+
+    .hero-stat:hover {
+      border-color: var(--color-primary);
+      box-shadow: var(--shadow-md);
+      transform: translateY(-2px);
+    }
+
+    .hero-stat-value {
+      font-size: 26px;
+      font-weight: 800;
+      color: var(--color-text);
+      letter-spacing: -0.02em;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .hero-stat-label {
+      font-size: 12px;
+      color: var(--color-text-muted);
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      margin-top: 2px;
+    }
+
+    /* ===== Section ===== */
+    .section {
+      margin-bottom: 56px;
+      scroll-margin-top: 24px;
+    }
+
+    .section-header {
+      margin-bottom: 28px;
+    }
+
+    .section-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 11.5px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      padding: 4px 12px;
+      border-radius: 20px;
+      margin-bottom: 10px;
+    }
+
+    .section-title {
+      font-size: 26px;
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      line-height: 1.25;
+      margin-bottom: 10px;
+    }
+
+    .section-desc {
+      font-size: 15px;
+      color: var(--color-text-secondary);
+      line-height: 1.7;
+      max-width: 680px;
+    }
+
+    /* ===== Diagram Container ===== */
+    .diagram-container {
+      background: var(--color-bg-secondary);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-lg);
+      padding: 28px 24px;
+      margin: 24px 0;
+      overflow-x: auto;
+    }
+
+    .diagram-container .mermaid {
+      display: flex;
+      justify-content: center;
+    }
+
+    .diagram-title {
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--color-text-secondary);
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .diagram-title::before {
+      content: '';
+      display: inline-block;
+      width: 3px; height: 14px;
+      background: var(--color-primary);
+      border-radius: 2px;
+    }
+
+    /* ===== Tech Stack Table ===== */
+    .tech-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 20px 0;
+      font-size: 13.5px;
+    }
+
+    .tech-table th {
+      text-align: left;
+      padding: 10px 14px;
+      font-weight: 700;
+      font-size: 11.5px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--color-text-muted);
+      border-bottom: 2px solid var(--color-border);
+      background: var(--color-bg-secondary);
+    }
+
+    .tech-table td {
+      padding: 10px 14px;
+      border-bottom: 1px solid var(--color-border-light);
+      color: var(--color-text-secondary);
+    }
+
+    .tech-table td:first-child {
+      font-weight: 600;
+      color: var(--color-text);
+    }
+
+    .tech-table tr:hover td {
+      background: var(--color-bg-secondary);
+    }
+
+    .tech-table code {
+      font-family: var(--font-mono);
+      font-size: 12px;
+      background: var(--color-bg-tertiary);
+      padding: 2px 6px;
+      border-radius: 4px;
+      color: var(--color-primary-dark);
+    }
+
+    /* ===== Callout Box ===== */
+    .callout {
+      display: flex;
+      gap: 14px;
+      padding: 16px 18px;
+      border-radius: var(--radius-md);
+      margin: 16px 0;
+      border: 1px solid;
+      font-size: 14px;
+      line-height: 1.65;
+    }
+
+    .callout-icon { font-size: 18px; flex-shrink: 0; margin-top: 1px; }
+
+    .callout-insight {
+      background: var(--color-accent-blue-light);
+      border-color: var(--color-accent-blue);
+      color: var(--color-text);
+    }
+
+    .callout-warning {
+      background: var(--color-accent-amber-light);
+      border-color: var(--color-accent-amber);
+      color: var(--color-text);
+    }
+
+    .callout-leak {
+      background: var(--color-accent-red-light);
+      border-color: var(--color-accent-red);
+      color: var(--color-text);
+    }
+
+    .callout strong {
+      display: block;
+      font-size: 13px;
+      font-weight: 700;
+      margin-bottom: 4px;
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+    }
+
+    /* ===== Source Tree ===== */
+    .tree-view { list-style:none; padding-left:0; margin:20px 0; background:var(--color-bg-secondary); border:1px solid var(--color-border); border-radius:var(--radius-md); padding:20px 24px; }
+    .tree-view ul { list-style:none; padding-left:20px; border-left:1px dashed var(--color-border); margin-left:6px; }
+    .tree-view li { padding:3px 0; font-family:var(--font-mono); font-size:13px; line-height:1.6; }
+    .tree-view .dir { color:var(--color-accent-blue); font-weight:600; }
+    .tree-view .file { color:var(--color-text-secondary); }
+    .tree-view .highlight { color:var(--color-primary-dark); font-weight:600; }
+    .tree-view .desc { color:var(--color-text-muted); font-size:12px; font-weight:400; margin-left:6px; }
+
+    /* ===== Feature Cards ===== */
+    .feature-cards { display:flex; flex-direction:column; gap:12px; margin:24px 0; }
+    .feature-card { background:var(--color-bg-card); border:1px solid var(--color-border); border-radius:var(--radius-md); padding:20px; margin:0; transition:all 0.15s ease; }
+    .feature-card:hover { border-color:#d1d5db; box-shadow:var(--shadow-lg); }
+    .feature-card h4 { font-size:15px; font-weight:700; margin-bottom:8px; color:var(--color-text); }
+    .feature-card p { font-size:14px; color:var(--color-text-secondary); line-height:1.8; }
+    .feature-card code { font-family:var(--font-mono); font-size:12px; background:var(--color-bg-tertiary); padding:2px 6px; border-radius:4px; color:var(--color-primary-dark); }
+
+    /* ===== Section accent colors ===== */
+    .accent-overview .section-badge { background: var(--color-primary-light); color: var(--color-primary-dark); }
+    .accent-stack .section-badge { background: var(--color-accent-blue-light); color: var(--color-accent-blue); }
+    .accent-source .section-badge { background: var(--color-accent-purple-light); color: var(--color-accent-purple); }
+    .accent-query .section-badge { background: var(--color-accent-green-light); color: var(--color-accent-green); }
+    .accent-ui .section-badge { background: var(--color-accent-teal-light); color: var(--color-accent-teal); }
+    .accent-leak .section-badge { background: var(--color-accent-red-light); color: var(--color-accent-red); }
+    .accent-config .section-badge { background: var(--color-accent-indigo-light); color: var(--color-accent-indigo); }
+
+    /* ===== Footer ===== */
+    .footer {
+      margin-top: 40px;
+      padding: 28px 0;
+      border-top: 1px solid var(--color-border-light);
+      text-align: center;
+      font-size: 12.5px;
+      color: var(--color-text-muted);
+      line-height: 1.8;
+    }
+
+    /* ===== Mobile Header ===== */
+    .mobile-header {
+      display: none;
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      height: 52px;
+      background: var(--color-bg);
+      border-bottom: 1px solid var(--color-border);
+      padding: 0 16px;
+      align-items: center;
+      gap: 12px;
+      z-index: 201;
+      transition: background 0.3s ease, border-color 0.3s ease;
+    }
+
+    .mobile-header-title {
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--color-text);
+    }
+
+    .hamburger-btn {
+      width: 36px; height: 36px;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      gap: 5px;
+      background: none; border: none; cursor: pointer; padding: 6px;
+    }
+
+    .hamburger-btn span {
+      display: block; width: 20px; height: 2px;
+      background: var(--color-text); border-radius: 2px;
+      transition: all 0.3s ease;
+    }
+
+    .sidebar-backdrop {
+      display: none;
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,0.4);
+      z-index: 150;
+    }
+
+    .sidebar-backdrop.open { display: block; }
+
+    /* ===== Back to Top ===== */
+    .back-to-top {
+      position: fixed;
+      bottom: 28px; right: 28px;
+      width: 38px; height: 38px;
+      background: var(--color-text);
+      color: var(--color-bg);
+      border: none;
+      border-radius: 50%;
+      cursor: pointer;
+      font-size: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      opacity: 0;
+      visibility: hidden;
+      transition: all 0.2s ease;
+      z-index: 99;
+      box-shadow: var(--shadow-lg);
+    }
+
+    .back-to-top.visible { opacity: 1; visibility: visible; }
+    .back-to-top:hover { background: var(--color-primary-dark); }
+
+    /* ===== Responsive ===== */
+    @media (max-width: 1024px) {
+      .mobile-header { display: flex; }
+      .sidebar {
+        transform: translateX(-100%);
+        transition: transform 0.3s ease;
+        z-index: 200;
+      }
+      .sidebar.open { transform: translateX(0); }
+      .main { margin-left: 0; padding-top: 52px; }
+      .content { padding: 28px 24px 64px; }
+      .hero h1 { font-size: 28px; }
+      .section-title { font-size: 22px; }
+    }
+
+    @media (max-width: 640px) {
+      .content { padding: 20px 16px 48px; }
+      .hero h1 { font-size: 24px; }
+      .hero-stats { gap: 12px; }
+      .hero-stat { min-width: 100px; padding: 12px 14px; }
+      .hero-stat-value { font-size: 22px; }
+      .diagram-container { padding: 16px 12px; }
+    }
+
+    /* ===== Print ===== */
+    @media print {
+      .sidebar, .back-to-top, .theme-toggle { display: none; }
+      .main { margin-left: 0; }
+    }
+
+    /* ===== Mermaid overrides ===== */
+    .mermaid svg { max-width: 100%; height: auto; }
+  </style>
+</head>
+<body>
+
+  <!-- Mobile Header -->
+  <header class="mobile-header">
+    <button class="hamburger-btn" onclick="toggleSidebar()" aria-label="메뉴">
+      <span></span><span></span><span></span>
+    </button>
+    <span class="mobile-header-title">Claude Code</span>
+  </header>
+  <div class="sidebar-backdrop" onclick="toggleSidebar()"></div>
+
+  <!-- Sidebar -->
+  <nav class="sidebar">
+    <div class="sidebar-header">
+      <h2>Claude Code</h2>
+      <span>Architecture Overview</span>
+    </div>
+    <div class="sidebar-nav">
+      <a href="index.html">
+        <span class="nav-icon">&#9670;</span> Hub
+      </a>
+      <div class="nav-section">Core</div>
+      <a href="overview.html" class="active">
+        <span class="nav-icon">&#9672;</span> Architecture
+      </a>
+      <a href="query-engine.html">
+        <span class="nav-icon">&#9889;</span> Query Engine
+      </a>
+      <a href="memory.html">
+        <span class="nav-icon">&#9731;</span> Memory
+      </a>
+      <a href="agents.html">
+        <span class="nav-icon">&#9733;</span> Agents
+      </a>
+      <div class="nav-section">Systems</div>
+      <a href="tools.html">
+        <span class="nav-icon">&#9881;</span> Tools
+      </a>
+      <a href="cli-ui.html">
+        <span class="nav-icon">&#9618;</span> CLI / UI
+      </a>
+      <a href="system-prompt.html">
+        <span class="nav-icon">&#9998;</span> System Prompt
+      </a>
+      <a href="security.html">
+        <span class="nav-icon">&#9888;</span> Security
+      </a>
+      <a href="hidden-features.html">
+        <span class="nav-icon">&#9873;</span> Hidden Features
+      </a>
+    </div>
+    <div class="deep-dive-cta">
+      <a href="/claude-code-unpack-docs/deep/ko/">
+        <span class="cta-badge">Deep Dive</span>
+        <div class="cta-title">심층 분석 보기 &rarr;</div>
+        <div class="cta-desc">구현 원리, 설계 철학, 내부 동작을 50+ 페이지로 상세히 분석합니다.</div>
+      </a>
+    </div>
+    </div>
+    <div class="sidebar-footer">
+      <button class="theme-toggle" onclick="toggleTheme()">
+        <span class="theme-icon">&#9789;</span>
+        <span class="theme-label">Dark Mode</span>
+      </button>
+    </div>
+  </nav>
+
+  <!-- Main Content -->
+  <div class="main">
+    <div class="content">
+
+      <!-- Hero -->
+      <div class="hero">
+        <div class="hero-eyebrow">Architecture</div>
+        <h1>Architecture Overview</h1>
+        <p class="hero-desc">
+          Claude Code의 전체 아키텍처를 분석합니다. TypeScript + Bun + React/Ink로 구축된 터미널 AI 어시스턴트의 핵심 설계와 데이터 흐름을 상세히 살펴봅니다.
+        </p>
+        <div class="hero-stats">
+          <div class="hero-stat">
+            <span class="hero-stat-value">~1,900</span>
+            <span class="hero-stat-label">TypeScript Files</span>
+          </div>
+          <div class="hero-stat">
+            <span class="hero-stat-value">512K</span>
+            <span class="hero-stat-label">Lines of Code</span>
+          </div>
+          <div class="hero-stat">
+            <span class="hero-stat-value">7</span>
+            <span class="hero-stat-label">Core Systems</span>
+          </div>
+          <div class="hero-stat">
+            <span class="hero-stat-value">23+</span>
+            <span class="hero-stat-label">Built-in Tools</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- High-Level Architecture -->
+      <section class="section accent-overview" id="architecture">
+        <div class="section-header">
+          <div class="section-badge">&#9670; System Diagram</div>
+          <h2 class="section-title">High-Level Architecture</h2>
+          <p class="section-desc">
+            Claude Code는 7개의 핵심 시스템으로 구성됩니다. 사용자 입력은 CLI를 통해 Query Engine으로 전달되고,
+            API 호출과 Tool 실행의 반복 루프를 통해 응답을 생성합니다.
+          </p>
+        </div>
+
+        <div class="diagram-container">
+          <div class="diagram-title">System Architecture Flowchart</div>
+          <pre class="mermaid">
+flowchart TB
+    subgraph USER["&#128100; 사용자 계층"]
+        Input["사용자 입력"]
+    end
+
+    subgraph CLIUI["&#128187; CLI / UI 계층"]
+        CLI["CLI 부트스트랩<br/>(Bun 런타임)"]
+        INK["React + Ink<br/>(터미널 렌더러)"]
+    end
+
+    subgraph CORE["&#9889; 핵심 엔진"]
+        QE["Query Engine<br/>(대화 루프)"]
+        TS["도구 시스템<br/>(23+ 빌트인 도구)"]
+        MA["멀티 에이전트<br/>(코디네이터 / 서브에이전트)"]
+    end
+
+    subgraph MEMORY["&#129504; 메모리 시스템"]
+        MEM["MEMORY.md<br/>(영구 인덱스)"]
+        COMP["압축기<br/>(5단계)"]
+        BUDGET["토큰 예산<br/>(할당기)"]
+    end
+
+    subgraph PROMPT["&#9998; 시스템 프롬프트"]
+        ASM["조립기<br/>(110+ 블록)"]
+        CACHE["프롬프트 캐시<br/>(20K 접두사)"]
+    end
+
+    subgraph EXTERNAL["&#127760; 외부 시스템"]
+        MCP["MCP 시스템<br/>(6개 전송 방식)"]
+        API["Claude API<br/>(스트리밍)"]
+    end
+
+    subgraph SECURITY["&#128274; 보안"]
+        PERM["권한<br/>(3계층)"]
+        SB["Bash 샌드박스"]
+        AD["안티 디스틸레이션"]
+    end
+
+    Input --> CLI --> INK --> QE
+    QE -->|"스트리밍"| API
+    QE -->|"도구 호출"| TS
+    QE -->|"생성"| MA
+    QE -->|"컨텍스트"| MEMORY
+    QE -->|"프롬프트"| PROMPT
+    TS -->|"MCP 도구"| MCP
+    MA -->|"하위 쿼리"| QE
+    TS -.->|"검사"| PERM
+    QE -.->|"검사"| PERM
+    PERM -.->|"적용"| SB
+
+    style USER fill:#fef3c7,stroke:#d97706,color:#92400e
+    style CLIUI fill:#eef2ff,stroke:#6366f1,color:#4338ca
+    style CORE fill:#ecfdf5,stroke:#10b981,color:#065f46
+    style MEMORY fill:#f0fdfa,stroke:#14b8a6,color:#115e59
+    style PROMPT fill:#eff6ff,stroke:#3b82f6,color:#1e40af
+    style EXTERNAL fill:#f5f3ff,stroke:#8b5cf6,color:#5b21b6
+    style SECURITY fill:#fef2f2,stroke:#ef4444,color:#991b1b
+          </pre>
+        </div>
+      </section>
+
+      <!-- Technology Stack -->
+      <section class="section accent-stack" id="tech-stack">
+        <div class="section-header">
+          <div class="section-badge">&#9881; Stack</div>
+          <h2 class="section-title">Technology Stack</h2>
+          <p class="section-desc">Claude Code를 구성하는 핵심 기술들과 선택 이유</p>
+        </div>
+
+        <table class="tech-table">
+          <thead>
+            <tr>
+              <th>Component</th>
+              <th>Technology</th>
+              <th>Why</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Language</td>
+              <td>TypeScript</td>
+              <td>복잡한 도구 스키마 및 API 계약을 위한 타입 안정성</td>
+            </tr>
+            <tr>
+              <td>Runtime</td>
+              <td>Bun</td>
+              <td>1초 미만 콜드 스타트, Client Attestation을 위한 네이티브 Zig HTTP 스택</td>
+            </tr>
+            <tr>
+              <td>Terminal UI</td>
+              <td>React + Ink</td>
+              <td>복잡한 터미널 레이아웃을 위한 선언형 UI 구성</td>
+            </tr>
+            <tr>
+              <td>Bundler</td>
+              <td>Bun (built-in)</td>
+              <td>단일 파일 출력, 소스 맵 (유출의 원인)</td>
+            </tr>
+            <tr>
+              <td>Native Layer</td>
+              <td>Zig</td>
+              <td>HTTP 전송, 클라이언트 증명 DRM을 위한 암호화 해시</td>
+            </tr>
+            <tr>
+              <td>Feature Flags</td>
+              <td>GrowthBook</td>
+              <td>재배포 없이 원격 A/B 테스팅 및 킬스위치</td>
+            </tr>
+            <tr>
+              <td>Telemetry</td>
+              <td>OpenTelemetry</td>
+              <td>도구 호출 지연 시간 및 오류 추적을 위한 분산 추적</td>
+            </tr>
+            <tr>
+              <td>State</td>
+              <td>React Hooks + Context</td>
+              <td>세션 상태, 대화 기록, UI 상태 관리</td>
+            </tr>
+          </tbody>
+        </table>
+      </section>
+
+      <!-- Source Tree Structure -->
+      <section class="section accent-source" id="source-tree">
+        <div class="section-header">
+          <div class="section-badge">&#128193; Source</div>
+          <h2 class="section-title">Source Tree Structure</h2>
+          <p class="section-desc">유출된 소스맵에서 복원된 모듈 구조 (~1,900개 파일)</p>
+        </div>
+
+        <ul class="tree-view">
+          <li class="dir">src/</li>
+          <ul>
+            <li class="dir">cli/ <span class="desc"># CLI 진입점 및 인수 파싱</span></li>
+            <li class="dir">core/
+              <ul>
+                <li class="highlight">queryEngine.ts <span class="desc"># 핵심 대화 루프</span></li>
+                <li class="file">streamProcessor.ts <span class="desc"># 스트리밍 응답 핸들러</span></li>
+                <li class="file">tokenCounter.ts <span class="desc"># 토큰 계산 및 예산 관리</span></li>
+              </ul>
+            </li>
+            <li class="dir">prompt/
+              <ul>
+                <li class="file">systemPromptAssembler.ts <span class="desc"># 동적 프롬프트 조립</span></li>
+                <li class="file">instructionBlocks/ <span class="desc"># 110+ 개별 명령어 모듈</span></li>
+                <li class="file">cacheBreakDetector.ts <span class="desc"># 14개 캐시 무효화 벡터</span></li>
+              </ul>
+            </li>
+            <li class="dir">tools/ <span class="desc"># 184개 파일, 23+ 빌트인 도구</span>
+              <ul>
+                <li class="dir">definitions/ <span class="desc"># 개별 도구 구현</span></li>
+                <li class="dir">mcp/ <span class="desc"># MCP 프로토콜 브릿지</span></li>
+                <li class="dir">deferred/ <span class="desc"># 지연 스키마 로딩</span></li>
+              </ul>
+            </li>
+            <li class="dir">agents/
+              <ul>
+                <li class="file">coordinatorMode.ts <span class="desc"># 다중 워커 오케스트레이션</span></li>
+                <li class="highlight">kairos/ <span class="desc"># KAIROS 자율 데몬 (미출시)</span></li>
+              </ul>
+            </li>
+            <li class="dir">security/
+              <ul>
+                <li class="file">permissionChecker.ts <span class="desc"># 3계층 권한 평가</span></li>
+                <li class="file">toolUseClassifier.ts <span class="desc"># Sonnet 4.6 보안 분류기</span></li>
+                <li class="file">antiDistillation.ts <span class="desc"># 가짜 도구 주입</span></li>
+                <li class="highlight">clientAttestation.ts <span class="desc"># Zig 레벨 DRM</span></li>
+              </ul>
+            </li>
+            <li class="dir">memory/
+              <ul>
+                <li class="file">memoryMdLoader.ts <span class="desc"># MEMORY.md 파서</span></li>
+                <li class="file">conversationCompressor.ts <span class="desc"># 5-Layer 압축</span></li>
+                <li class="file">tokenBudgetAllocator.ts <span class="desc"># 동적 컨텍스트 할당</span></li>
+              </ul>
+            </li>
+            <li class="dir">config/ <span class="desc"># GrowthBook 피처 플래그</span></li>
+            <li class="dir">ui/ <span class="desc"># React/Ink 터미널 컴포넌트</span></li>
+            <li class="dir">skills/ <span class="desc"># 스킬 시스템</span></li>
+            <li class="dir">telemetry/ <span class="desc"># OpenTelemetry 분산 추적</span></li>
+          </ul>
+        </ul>
+      </section>
+
+      <!-- Key Discoveries -->
+      <section class="section accent-insights" id="insights">
+        <div class="section-header">
+          <div class="section-badge" style="background:var(--color-accent-green-light);color:var(--color-accent-green);">&#9733; Insights</div>
+          <h2 class="section-title">Key Discoveries</h2>
+          <p class="section-desc">소스 코드 분석에서 발견된 가장 주목할 만한 설계 결정들.</p>
+        </div>
+
+        <div class="callout callout-insight">
+          <span class="callout-icon">&#128269;</span>
+          <div>
+            <strong>Prompt-Based Orchestration</strong>
+            Coordinator Mode의 오케스트레이션 로직이 코드가 아닌 시스템 프롬프트에 있습니다.
+            "Do not rubber-stamp weak work" 같은 품질 관리 지시문이 프롬프트에 포함되어 있어,
+            코드 변경 없이 오케스트레이션 전략을 수정할 수 있습니다.
+          </div>
+        </div>
+
+        <div class="callout callout-warning">
+          <span class="callout-icon">&#9888;&#65039;</span>
+          <div>
+            <strong>KAIROS: 자율 데몬 모드</strong>
+            완전히 구현되어 있지만 컴파일 타임 플래그로 비활성화된 자율 에이전트 데몬.
+            <code>&lt;tick&gt;</code> 프롬프트 시스템으로 주기적으로 작업 상태를 평가하고,
+            <code>autoDream</code>으로 유휴 시 메모리를 자동 통합합니다.
+          </div>
+        </div>
+
+        <div class="callout callout-security">
+          <span class="callout-icon">&#128274;</span>
+          <div>
+            <strong>Multi-Layer DRM</strong>
+            Client Attestation(Zig 레벨 해시), Anti-Distillation(가짜 도구 주입),
+            Reasoning Summarization(서버측 추론 요약)의 3중 방어로 경쟁사의 모델 디스틸레이션을 방지합니다.
+          </div>
+        </div>
+      </section>
+
+      <!-- Footer -->
+            <footer class="footer">
+        <p>
+          <a href="https://github.com/hi-space/claude-code-unpack-docs" target="_blank" rel="noopener noreferrer"
+             style="color:var(--color-text-muted);text-decoration:none;border-bottom:1px solid var(--color-border);">
+            hi-space/claude-code-unpack-docs
+          </a>
+          &middot; &copy; 2026 All rights reserved.
+        </p>
+      </footer>
+
+    </div>
+  </div>
+
+  <!-- Back to Top -->
+  <button class="back-to-top" onclick="window.scrollTo({top:0,behavior:'smooth'})" title="Back to top">&#8593;</button>
+
+  <script>
+    // ===== Mermaid Init =====
+    const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+    mermaid.initialize({
+      startOnLoad: true,
+      theme: isDark ? 'dark' : 'neutral',
+      fontFamily: "'Noto Sans KR', system-ui, sans-serif",
+      flowchart: { curve: 'basis', padding: 16 },
+      themeVariables: isDark ? {
+        primaryColor: '#422006',
+        primaryBorderColor: '#f59e0b',
+        primaryTextColor: '#fbbf24',
+        lineColor: '#6b7085',
+        secondaryColor: '#172554',
+        tertiaryColor: '#2e1065'
+      } : {
+        primaryColor: '#fef3c7',
+        primaryBorderColor: '#d97706',
+        primaryTextColor: '#92400e',
+        lineColor: '#9ca3af',
+        secondaryColor: '#eff6ff',
+        tertiaryColor: '#f5f3ff'
+      }
+    });
+
+    // CDN fallback
+    window.addEventListener('load', () => {
+      if (typeof mermaid === 'undefined') {
+        document.querySelectorAll('.diagram-container').forEach(c => {
+          const fb = document.createElement('div');
+          fb.style.cssText = 'text-align:center;padding:40px;color:var(--color-text-muted);font-size:14px;';
+          fb.textContent = 'Diagram requires internet for Mermaid.js';
+          c.querySelector('.mermaid')?.replaceWith(fb);
+        });
+      }
+    });
+
+    // ===== Theme Toggle =====
+    function toggleTheme() {
+      const html = document.documentElement;
+      const current = html.getAttribute('data-theme');
+      const next = current === 'dark' ? 'light' : 'dark';
+      html.setAttribute('data-theme', next);
+      localStorage.setItem('claude-docs-theme', next);
+      updateThemeUI(next);
+      location.reload();
+    }
+
+    function updateThemeUI(theme) {
+      const icon = document.querySelector('.theme-icon');
+      const label = document.querySelector('.theme-label');
+      if (theme === 'dark') {
+        icon.innerHTML = '&#9788;';
+        label.textContent = 'Light Mode';
+      } else {
+        icon.innerHTML = '&#9789;';
+        label.textContent = 'Dark Mode';
+      }
+    }
+
+    // Restore theme on load
+    (function() {
+      const saved = localStorage.getItem('claude-docs-theme');
+      if (saved) {
+        document.documentElement.setAttribute('data-theme', saved);
+        updateThemeUI(saved);
+      } else if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
+        document.documentElement.setAttribute('data-theme', 'dark');
+        updateThemeUI('dark');
+      }
+    })();
+
+    // ===== Mobile Sidebar =====
+    function toggleSidebar() {
+      document.querySelector('.sidebar').classList.toggle('open');
+      document.querySelector('.sidebar-backdrop').classList.toggle('open');
+    }
+
+    // ===== Back to Top =====
+    const backBtn = document.querySelector('.back-to-top');
+    window.addEventListener('scroll', () => {
+      backBtn.classList.toggle('visible', window.scrollY > 400);
+    });
+
+    // ===== Active Nav Tracking =====
+    const sections = document.querySelectorAll('.section, .hero');
+    const navLinks = document.querySelectorAll('.sidebar-nav a');
+
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          const id = entry.target.id || entry.target.closest('[id]')?.id;
+          if (!id) return;
+          navLinks.forEach(link => {
+            const href = link.getAttribute('href');
+            if (href.startsWith('#')) {
+              link.classList.toggle('active', href === '#' + id);
+            }
+          });
+        }
+      });
+    }, { rootMargin: '-10% 0px -70% 0px' });
+
+    sections.forEach(s => observer.observe(s));
+  </script>
+
+</body>
+</html>

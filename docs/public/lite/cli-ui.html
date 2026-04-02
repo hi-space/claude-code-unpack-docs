@@ -1,0 +1,920 @@
+<!DOCTYPE html>
+<html lang="ko" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CLI / UI Architecture — Claude Code Architecture Overview</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@11.4.1/dist/mermaid.min.js"></script>
+  <style>
+    /* ===== CSS Reset & Variables ===== */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --color-bg: #ffffff;
+      --color-bg-secondary: #f8f9fb;
+      --color-bg-tertiary: #f1f3f5;
+      --color-bg-card: #ffffff;
+      --color-border: #e5e7eb;
+      --color-border-light: #f0f1f3;
+      --color-text: #1a1a2e;
+      --color-text-secondary: #6b7280;
+      --color-text-muted: #9ca3af;
+      --color-primary: #d97706;
+      --color-primary-light: #fef3c7;
+      --color-primary-dark: #b45309;
+      --color-accent-blue: #3b82f6;
+      --color-accent-blue-light: #eff6ff;
+      --color-accent-green: #10b981;
+      --color-accent-green-light: #ecfdf5;
+      --color-accent-purple: #8b5cf6;
+      --color-accent-purple-light: #f5f3ff;
+      --color-accent-red: #ef4444;
+      --color-accent-red-light: #fef2f2;
+      --color-accent-teal: #14b8a6;
+      --color-accent-teal-light: #f0fdfa;
+      --color-accent-indigo: #6366f1;
+      --color-accent-indigo-light: #eef2ff;
+      --color-accent-amber: #f59e0b;
+      --color-accent-amber-light: #fffbeb;
+      --sidebar-width: 260px;
+      --font-sans: 'Noto Sans KR', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      --font-mono: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', 'Consolas', monospace;
+      --shadow-sm: 0 1px 2px rgba(0,0,0,0.04);
+      --shadow-md: 0 4px 12px rgba(0,0,0,0.06);
+      --shadow-lg: 0 8px 24px rgba(0,0,0,0.08);
+      --shadow-xl: 0 12px 32px rgba(0,0,0,0.10);
+      --radius-sm: 6px;
+      --radius-md: 10px;
+      --radius-lg: 14px;
+      --radius-xl: 20px;
+    }
+
+    [data-theme="dark"] {
+      --color-bg: #0f1117;
+      --color-bg-secondary: #1a1b23;
+      --color-bg-tertiary: #22232d;
+      --color-bg-card: #1a1b23;
+      --color-border: #2d2e3a;
+      --color-border-light: #23242f;
+      --color-text: #e4e5ea;
+      --color-text-secondary: #9ca0af;
+      --color-text-muted: #6b7085;
+      --color-primary: #f59e0b;
+      --color-primary-light: #422006;
+      --color-primary-dark: #fbbf24;
+      --color-accent-blue-light: #172554;
+      --color-accent-green-light: #052e16;
+      --color-accent-purple-light: #2e1065;
+      --color-accent-red-light: #450a0a;
+      --color-accent-teal-light: #042f2e;
+      --color-accent-indigo-light: #1e1b4b;
+      --color-accent-amber-light: #451a03;
+      --shadow-sm: 0 1px 2px rgba(0,0,0,0.2);
+      --shadow-md: 0 4px 12px rgba(0,0,0,0.3);
+      --shadow-lg: 0 8px 24px rgba(0,0,0,0.35);
+      --shadow-xl: 0 12px 32px rgba(0,0,0,0.4);
+    }
+
+    html { scroll-behavior: smooth; font-size: 16px; }
+
+    body {
+      font-family: var(--font-sans);
+      color: var(--color-text);
+      background: var(--color-bg);
+      line-height: 1.7;
+      -webkit-font-smoothing: antialiased;
+      transition: background 0.3s ease, color 0.3s ease;
+    }
+
+    /* ===== Sidebar ===== */
+    .sidebar {
+      position: fixed;
+      top: 0; left: 0;
+      width: var(--sidebar-width);
+      height: 100vh;
+      background: var(--color-bg);
+      border-right: 1px solid var(--color-border);
+      padding: 28px 0;
+      overflow-y: auto;
+      z-index: 100;
+      display: flex;
+      flex-direction: column;
+      transition: background 0.3s ease, border-color 0.3s ease;
+    }
+
+    .sidebar-header {
+      padding: 0 20px 20px;
+      border-bottom: 1px solid var(--color-border-light);
+      margin-bottom: 12px;
+    }
+
+    .sidebar-header h2 {
+      font-size: 15px;
+      font-weight: 800;
+      color: var(--color-text);
+      letter-spacing: -0.02em;
+    }
+
+    .sidebar-header span {
+      font-size: 11.5px;
+      color: var(--color-text-muted);
+      font-weight: 500;
+    }
+
+    .sidebar-nav { flex: 1; padding: 0 10px; }
+
+    .sidebar-nav .nav-section {
+      font-size: 10.5px;
+      font-weight: 700;
+      color: var(--color-text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      padding: 14px 12px 6px;
+    }
+
+    .sidebar-nav a {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 8px 12px;
+      color: var(--color-text-secondary);
+      text-decoration: none;
+      font-size: 13px;
+      font-weight: 500;
+      border-radius: var(--radius-sm);
+      transition: all 0.15s ease;
+      margin-bottom: 1px;
+    }
+
+    .sidebar-nav a:hover {
+      color: var(--color-text);
+      background: var(--color-bg-secondary);
+    }
+
+    .sidebar-nav a.active {
+      color: var(--color-primary-dark);
+      background: var(--color-primary-light);
+      font-weight: 700;
+    }
+
+    .sidebar-nav a .nav-icon {
+      width: 20px; height: 20px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 13px;
+      flex-shrink: 0;
+    }
+
+    .deep-dive-cta {
+      margin: 16px 10px 8px;
+      padding: 10px 12px;
+      background: linear-gradient(135deg, var(--color-accent-blue-light), transparent);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-md);
+      transition: all 0.2s ease;
+    }
+    .deep-dive-cta:hover {
+      border-color: var(--color-accent-blue);
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.06);
+    }
+    .deep-dive-cta a {
+      text-decoration: none !important;
+      display: block;
+      gap: 0;
+      padding: 0 !important;
+      margin: 0 !important;
+      background: none !important;
+    }
+    .deep-dive-cta a:hover {
+      background: none !important;
+    }
+    .deep-dive-cta .cta-badge {
+      display: inline-block;
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--color-accent-blue);
+      background: var(--color-accent-blue-light);
+      padding: 2px 8px;
+      border-radius: 4px;
+      margin-bottom: 6px;
+    }
+    .deep-dive-cta .cta-title {
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--color-accent-blue);
+      margin-bottom: 4px;
+    }
+    .deep-dive-cta .cta-desc {
+      font-size: 11.5px;
+      line-height: 1.55;
+      color: var(--color-text-secondary);
+    }
+
+    .sidebar-footer {
+      padding: 16px 20px;
+      border-top: 1px solid var(--color-border-light);
+    }
+
+    .theme-toggle {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 12.5px;
+      color: var(--color-text-secondary);
+      background: var(--color-bg-secondary);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-sm);
+      padding: 7px 12px;
+      cursor: pointer;
+      width: 100%;
+      transition: all 0.15s ease;
+      font-family: var(--font-sans);
+    }
+
+    .theme-toggle:hover {
+      color: var(--color-text);
+      border-color: #d1d5db;
+    }
+
+    /* ===== Main Content ===== */
+    .main {
+      margin-left: var(--sidebar-width);
+      min-height: 100vh;
+    }
+
+    .content {
+      max-width: 920px;
+      margin: 0 auto;
+      padding: 40px 40px 80px;
+    }
+
+    /* ===== Hero ===== */
+    .hero {
+      margin-bottom: 48px;
+      padding: 40px 0 36px;
+      border-bottom: 1px solid var(--color-border-light);
+    }
+
+    .hero-eyebrow {
+      font-size: 12.5px;
+      font-weight: 700;
+      color: var(--color-primary);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      margin-bottom: 14px;
+    }
+
+    .hero h1 {
+      font-size: 36px;
+      font-weight: 800;
+      letter-spacing: -0.035em;
+      line-height: 1.15;
+      margin-bottom: 14px;
+      color: var(--color-text);
+    }
+
+    .hero-desc {
+      font-size: 16px;
+      color: var(--color-text-secondary);
+      line-height: 1.7;
+      max-width: 640px;
+    }
+
+    .hero-stats {
+      display: flex;
+      gap: 28px;
+      margin-top: 28px;
+      flex-wrap: wrap;
+    }
+
+    .hero-stat {
+      display: flex;
+      flex-direction: column;
+      padding: 16px 20px;
+      background: var(--color-bg-secondary);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-md);
+      min-width: 130px;
+      transition: all 0.2s ease;
+    }
+
+    .hero-stat:hover {
+      border-color: var(--color-primary);
+      box-shadow: var(--shadow-md);
+      transform: translateY(-2px);
+    }
+
+    .hero-stat-value {
+      font-size: 26px;
+      font-weight: 800;
+      color: var(--color-text);
+      letter-spacing: -0.02em;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .hero-stat-label {
+      font-size: 12px;
+      color: var(--color-text-muted);
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      margin-top: 2px;
+    }
+
+    /* ===== Section ===== */
+    .section {
+      margin-bottom: 56px;
+      scroll-margin-top: 24px;
+    }
+
+    .section-header {
+      margin-bottom: 28px;
+    }
+
+    .section-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 11.5px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      padding: 4px 12px;
+      border-radius: 20px;
+      margin-bottom: 10px;
+    }
+
+    .section-title {
+      font-size: 26px;
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      line-height: 1.25;
+      margin-bottom: 10px;
+    }
+
+    .section-desc {
+      font-size: 15px;
+      color: var(--color-text-secondary);
+      line-height: 1.7;
+      max-width: 680px;
+    }
+
+    /* ===== Diagram Container ===== */
+    .diagram-container {
+      background: var(--color-bg-secondary);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-lg);
+      padding: 28px 24px;
+      margin: 24px 0;
+      overflow-x: auto;
+    }
+
+    .diagram-container .mermaid {
+      display: flex;
+      justify-content: center;
+    }
+
+    .diagram-title {
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--color-text-secondary);
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .diagram-title::before {
+      content: '';
+      display: inline-block;
+      width: 3px; height: 14px;
+      background: var(--color-primary);
+      border-radius: 2px;
+    }
+
+    /* ===== Feature Cards ===== */
+    .feature-cards { display:flex; flex-direction:column; gap:12px; margin:24px 0; }
+    .feature-card { background:var(--color-bg-card); border:1px solid var(--color-border); border-radius:var(--radius-md); padding:20px; margin:0; transition:all 0.15s ease; }
+    .feature-card:hover { border-color:#d1d5db; box-shadow:var(--shadow-lg); }
+    .feature-card h4 { font-size:15px; font-weight:700; margin-bottom:8px; color:var(--color-text); }
+    .feature-card p { font-size:14px; color:var(--color-text-secondary); line-height:1.8; }
+    .feature-card code { font-family:var(--font-mono); font-size:12px; background:var(--color-bg-tertiary); padding:2px 6px; border-radius:4px; color:var(--color-primary-dark); }
+
+    .feature-card ul {
+      margin: 10px 0 0 0;
+      padding-left: 20px;
+      list-style: disc;
+    }
+
+    .feature-card li {
+      font-size: 13.5px;
+      color: var(--color-text-secondary);
+      line-height: 1.7;
+      margin-bottom: 4px;
+    }
+
+    /* ===== Section accent colors ===== */
+    .accent-cli .section-badge { background: var(--color-accent-teal-light); color: var(--color-accent-teal); }
+    .accent-state .section-badge { background: var(--color-accent-purple-light); color: var(--color-accent-purple); }
+
+    /* ===== Footer ===== */
+    .footer {
+      margin-top: 40px;
+      padding: 28px 0;
+      border-top: 1px solid var(--color-border-light);
+      text-align: center;
+      font-size: 12.5px;
+      color: var(--color-text-muted);
+      line-height: 1.8;
+    }
+
+    /* ===== Mobile Header ===== */
+    .mobile-header {
+      display: none;
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      height: 52px;
+      background: var(--color-bg);
+      border-bottom: 1px solid var(--color-border);
+      padding: 0 16px;
+      align-items: center;
+      gap: 12px;
+      z-index: 201;
+      transition: background 0.3s ease, border-color 0.3s ease;
+    }
+
+    .mobile-header-title {
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--color-text);
+    }
+
+    .hamburger-btn {
+      width: 36px; height: 36px;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      gap: 5px;
+      background: none; border: none; cursor: pointer; padding: 6px;
+    }
+
+    .hamburger-btn span {
+      display: block; width: 20px; height: 2px;
+      background: var(--color-text); border-radius: 2px;
+      transition: all 0.3s ease;
+    }
+
+    .sidebar-backdrop {
+      display: none;
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,0.4);
+      z-index: 150;
+    }
+
+    .sidebar-backdrop.open { display: block; }
+
+    /* ===== Back to Top ===== */
+    .back-to-top {
+      position: fixed;
+      bottom: 28px; right: 28px;
+      width: 38px; height: 38px;
+      background: var(--color-text);
+      color: var(--color-bg);
+      border: none;
+      border-radius: 50%;
+      cursor: pointer;
+      font-size: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      opacity: 0;
+      visibility: hidden;
+      transition: all 0.2s ease;
+      z-index: 99;
+      box-shadow: var(--shadow-lg);
+    }
+
+    .back-to-top.visible { opacity: 1; visibility: visible; }
+    .back-to-top:hover { background: var(--color-primary-dark); }
+
+    /* ===== Responsive ===== */
+    @media (max-width: 1024px) {
+      .mobile-header { display: flex; }
+      .sidebar {
+        transform: translateX(-100%);
+        transition: transform 0.3s ease;
+        z-index: 200;
+      }
+      .sidebar.open { transform: translateX(0); }
+      .main { margin-left: 0; padding-top: 52px; }
+      .content { padding: 28px 24px 64px; }
+      .hero h1 { font-size: 28px; }
+      .section-title { font-size: 22px; }
+    }
+
+    @media (max-width: 640px) {
+      .content { padding: 20px 16px 48px; }
+      .hero h1 { font-size: 24px; }
+      .hero-stats { gap: 12px; }
+      .hero-stat { min-width: 100px; padding: 12px 14px; }
+      .hero-stat-value { font-size: 22px; }
+      .diagram-container { padding: 16px 12px; }
+    }
+
+    /* ===== Print ===== */
+    @media print {
+      .sidebar, .back-to-top, .theme-toggle { display: none; }
+      .main { margin-left: 0; }
+    }
+
+    /* ===== Mermaid overrides ===== */
+    .mermaid svg { max-width: 100%; height: auto; }
+  </style>
+</head>
+<body>
+
+  <!-- Mobile Header -->
+  <header class="mobile-header">
+    <button class="hamburger-btn" onclick="toggleSidebar()" aria-label="메뉴">
+      <span></span><span></span><span></span>
+    </button>
+    <span class="mobile-header-title">Claude Code</span>
+  </header>
+  <div class="sidebar-backdrop" onclick="toggleSidebar()"></div>
+
+  <!-- Sidebar -->
+  <nav class="sidebar">
+    <div class="sidebar-header">
+      <h2>Claude Code</h2>
+      <span>Architecture Overview</span>
+    </div>
+    <div class="sidebar-nav">
+      <a href="index.html">
+        <span class="nav-icon">&#9670;</span> Hub
+      </a>
+      <div class="nav-section">Core</div>
+      <a href="overview.html">
+        <span class="nav-icon">&#9672;</span> Architecture
+      </a>
+      <a href="query-engine.html">
+        <span class="nav-icon">&#9889;</span> Query Engine
+      </a>
+      <a href="memory.html">
+        <span class="nav-icon">&#9731;</span> Memory
+      </a>
+      <a href="agents.html">
+        <span class="nav-icon">&#9733;</span> Agents
+      </a>
+      <div class="nav-section">Systems</div>
+      <a href="tools.html">
+        <span class="nav-icon">&#9881;</span> Tools
+      </a>
+      <a href="cli-ui.html" class="active">
+        <span class="nav-icon">&#9618;</span> CLI / UI
+      </a>
+      <a href="system-prompt.html">
+        <span class="nav-icon">&#9998;</span> System Prompt
+      </a>
+      <a href="security.html">
+        <span class="nav-icon">&#9888;</span> Security
+      </a>
+      <a href="hidden-features.html">
+        <span class="nav-icon">&#9873;</span> Hidden Features
+      </a>
+    </div>
+    <div class="deep-dive-cta">
+      <a href="/claude-code-unpack-docs/deep/ko/">
+        <span class="cta-badge">Deep Dive</span>
+        <div class="cta-title">심층 분석 보기 &rarr;</div>
+        <div class="cta-desc">구현 원리, 설계 철학, 내부 동작을 50+ 페이지로 상세히 분석합니다.</div>
+      </a>
+    </div>
+    </div>
+    <div class="sidebar-footer">
+      <button class="theme-toggle" onclick="toggleTheme()">
+        <span class="theme-icon">&#9789;</span>
+        <span class="theme-label">Dark Mode</span>
+      </button>
+    </div>
+  </nav>
+
+  <!-- Main Content -->
+  <div class="main">
+    <div class="content">
+
+      <!-- Hero -->
+      <div class="hero">
+        <div class="hero-eyebrow">CLI / UI</div>
+        <h1>CLI / UI Architecture</h1>
+        <p class="hero-desc">
+          React Fiber 터미널 렌더러, Progressive Module Loading, 3가지 Command 유형
+        </p>
+        <div class="hero-stats">
+          <div class="hero-stat">
+            <span class="hero-stat-value">1,722</span>
+            <span class="hero-stat-label">Lines (Ink Engine)</span>
+          </div>
+          <div class="hero-stat">
+            <span class="hero-stat-value">3</span>
+            <span class="hero-stat-label">Command Types</span>
+          </div>
+          <div class="hero-stat">
+            <span class="hero-stat-value">~500ms</span>
+            <span class="hero-stat-label">Parallel Start</span>
+          </div>
+          <div class="hero-stat">
+            <span class="hero-stat-value">Zero</span>
+            <span class="hero-stat-label">Fast-path Load</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Section 1: Feature Cards -->
+      <section class="section" id="features">
+        <div class="section-header">
+          <div class="section-badge">&#9889; Features</div>
+          <h2 class="section-title">Core CLI / UI Features</h2>
+          <p class="section-desc">
+            Claude Code의 터미널 렌더링 및 명령 시스템의 5가지 핵심 특성
+          </p>
+        </div>
+
+        <div class="feature-cards">
+          <div class="feature-card">
+            <h4>1. Custom Fiber Reconciler</h4>
+            <p>
+              커스텀 React Fiber 재조정자(약 1,722줄 Ink 엔진)는 HTML DOM 대신 ANSI escape code를 생성합니다. 아키텍처는 다음과 같습니다: JSX → Reconciler → ANSI Escape Sequences → Terminal Output. useState/useEffect를 터미널 렌더링에 맞게 적응시키고, <code>useLayoutEffect</code> (동기 커밋 페이즈)로 터미널/React 상태 불일치를 방지합니다.
+            </p>
+          </div>
+          <div class="feature-card">
+            <h4>2. Progressive Module Loading</h4>
+            <p>
+              CLI 진입점 검사: --version, --help → 즉시 출력, 모듈 로딩 0ms. REPL/대화형 세션만 전체 모듈 트리 lazy loading. 효과: 첫 응답 시간(TTFR)을 밀리초 단위로 최적화합니다. 버전 확인 같은 빠른 작업은 콜드 스타트 페널티 없습니다.
+            </p>
+          </div>
+          <div class="feature-card">
+            <h4>3. Parallel Prefetching</h4>
+            <p>
+              REPL 시작 시 3가지 독립적 작업을 Promise.all로 병렬화합니다:
+              <ul>
+                <li>MDM 구성 로드 (~200ms)</li>
+                <li>Keychain 자격증명 조회 (~500ms)</li>
+                <li>MCP 서버 초기화 (~300ms)</li>
+              </ul>
+              순차 처리 ~1000ms → 병렬 처리 ~500ms (3배 개선). 시작 프로파일러가 각 단계를 측정하여 병목을 식별합니다.
+            </p>
+          </div>
+          <div class="feature-card">
+            <h4>4. Raw Mode Synchronicity</h4>
+            <p>
+              터미널의 raw mode 상태 변경은 <code>useLayoutEffect</code>를 통해 React의 commit phase에서 동기적 실행됩니다. <code>useEffect</code>와 달리 터미널 상태와 React 렌더링 상태의 불일치를 방지합니다. Ctrl+C 시그널 처리에서 특히 중요합니다.
+            </p>
+          </div>
+          <div class="feature-card">
+            <h4>5. 3 Command Types</h4>
+            <p>
+              각 명령 유형별 최적화된 실행 경로:
+              <ul>
+                <li><code>prompt</code> — 모델 API 호출 (대부분 사용자 입력)</li>
+                <li><code>local</code> — JavaScript 함수 직실행 (/clear, /help 등, 0 latency)</li>
+                <li><code>local-jsx</code> — React 컴포넌트 로컬 렌더링 (설정 대화 등)</li>
+              </ul>
+              이 분류로 유저 프롬프트만 API 호출하고, 슬래시 명령/UI는 로컬 처리로 즉각 응답성을 제공합니다.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <!-- Section 2: Bootstrap & Rendering Pipeline -->
+      <section class="section accent-cli" id="bootstrap">
+        <div class="section-header">
+          <div class="section-badge">&#128187; Bootstrap</div>
+          <h2 class="section-title">Bootstrap & Rendering Pipeline</h2>
+          <p class="section-desc">
+            CLI 진입점부터 터미널 출력까지의 최적화된 렌더링 파이프라인
+          </p>
+        </div>
+
+        <div class="diagram-container">
+          <div class="diagram-title">Rendering Pipeline Flowchart</div>
+          <pre class="mermaid">
+flowchart LR
+    ENTRY["CLI 진입점"] --> FAST{"빠른 경로&lt;br/&gt;확인"}
+    FAST -->|"--version&lt;br/&gt;--help"| INSTANT["즉시 출력&lt;br/&gt;(모듈 로딩 없음)"]
+    FAST -->|"REPL 모드"| LAZY["점진적&lt;br/&gt;모듈 로딩"]
+    LAZY --> PREFETCH["병렬 사전 로딩:&lt;br/&gt;디바이스 관리 + 키체인&lt;br/&gt;+ MCP 초기화"]
+    PREFETCH --> REACT["React&lt;br/&gt;컴포넌트 트리"]
+    REACT --> INK["커스텀 Ink&lt;br/&gt;재조정자"]
+    INK --> DOM["가상 Ink DOM"]
+    DOM --> ANSI["ANSI 이스케이프&lt;br/&gt;코드 생성"]
+    ANSI --> TERM["터미널 출력"]
+    style ENTRY fill:#eef2ff,stroke:#6366f1,color:#4338ca
+    style INSTANT fill:#ecfdf5,stroke:#10b981,color:#065f46
+    style PREFETCH fill:#fef3c7,stroke:#d97706,color:#92400e
+    style INK fill:#f5f3ff,stroke:#8b5cf6,color:#5b21b6
+          </pre>
+        </div>
+
+        <div class="feature-cards">
+          <div class="feature-card">
+            <h4>Fast Path 분기</h4>
+            <p>
+              CLI 진입점에서 <code>--version</code>, <code>--help</code> 같은 단순 명령은 모듈 로딩 없이 즉시 출력합니다. REPL/대화형 세션만 전체 모듈 트리를 lazy loading하므로, 빈번한 버전 확인이나 도움말 호출에서 콜드 스타트 페널티가 발생하지 않습니다.
+            </p>
+          </div>
+          <div class="feature-card">
+            <h4>병렬 사전 로딩</h4>
+            <p>
+              REPL 시작 시 MDM 구성 로드(~200ms), Keychain 자격증명 조회(~500ms), MCP 서버 초기화(~300ms)를 <code>Promise.all</code>로 병렬 실행합니다. 순차 처리 시 ~1000ms가 소요되는 작업을 ~500ms로 단축하며, 시작 프로파일러가 각 단계의 소요 시간을 측정하여 병목 지점을 식별합니다.
+            </p>
+          </div>
+          <div class="feature-card">
+            <h4>Ink Reconciler 파이프라인</h4>
+            <p>
+              커스텀 React Fiber 재조정자(약 1,722줄)가 JSX 컴포넌트를 HTML DOM 대신 ANSI escape code로 변환합니다. React 컴포넌트 트리 &rarr; Ink 재조정자 &rarr; 가상 Ink DOM &rarr; ANSI 코드 생성 &rarr; 터미널 출력 순서로 처리되며, useState/useEffect 같은 React 훅을 터미널 렌더링에 맞게 적응시킵니다.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <!-- Section 3: State Management Flow -->
+      <section class="section accent-state" id="state-management">
+        <div class="section-header">
+          <div class="section-badge">&#128994; State</div>
+          <h2 class="section-title">State Management Flow</h2>
+          <p class="section-desc">
+            사용자 입력에서 터미널 출력까지의 상태 관리 및 렌더링 흐름
+          </p>
+        </div>
+
+        <div class="diagram-container">
+          <div class="diagram-title">State Management & Terminal Synchronicity</div>
+          <pre class="mermaid">
+flowchart TB
+    UI["사용자 입력&lt;br/&gt;(키보드)"] --> USEINPUT["키 입력 캡처&lt;br/&gt;(useInput 훅)"]
+    USEINPUT --> CS["컴포넌트&lt;br/&gt;상태 업데이트"]
+    CS --> AS["앱 전역 상태&lt;br/&gt;(스토어)"]
+    AS --> RENDER["React&lt;br/&gt;렌더링"]
+    RENDER --> IDOM["Ink DOM&lt;br/&gt;재조정"]
+    IDOM --> DIFF["차이 비교 &amp;&lt;br/&gt;패치 적용"]
+    DIFF --> TERM["터미널&lt;br/&gt;ANSI 출력"]
+    UI2["특수 키 이벤트&lt;br/&gt;(Ctrl+C, Escape)"] --> LAYOUT["동기 커밋 처리&lt;br/&gt;(useLayoutEffect)"]
+    LAYOUT --> TSTATE["터미널 상태&lt;br/&gt;변경"]
+    TSTATE --> TERM
+    style UI fill:#eef2ff,stroke:#6366f1,color:#4338ca
+    style AS fill:#f5f3ff,stroke:#8b5cf6,color:#5b21b6
+    style IDOM fill:#fef3c7,stroke:#d97706,color:#92400e
+    style TERM fill:#ecfdf5,stroke:#10b981,color:#065f46
+          </pre>
+        </div>
+
+        <div class="feature-cards">
+          <div class="feature-card">
+            <h4>useInput 키 캡처</h4>
+            <p>
+              키보드 입력은 <code>useInput</code> 훅을 통해 React 상태로 변환됩니다. 각 컴포넌트가 독립적으로 키 이벤트를 구독할 수 있으며, 입력 값은 컴포넌트 로컬 상태를 거쳐 앱 전역 스토어로 전파됩니다. 이 단방향 데이터 흐름이 복잡한 터미널 UI에서도 상태 일관성을 보장합니다.
+            </p>
+          </div>
+          <div class="feature-card">
+            <h4>useLayoutEffect 동기 커밋</h4>
+            <p>
+              Ctrl+C, Escape 같은 특수 키 이벤트는 <code>useLayoutEffect</code>를 통해 React commit phase에서 동기적으로 처리됩니다. 비동기 <code>useEffect</code>와 달리 터미널의 raw mode 상태 변경이 렌더링과 정확히 동기화되어, 터미널 상태와 React 상태 사이의 불일치를 방지합니다. 시그널 처리의 정확성에 핵심적인 설계입니다.
+            </p>
+          </div>
+          <div class="feature-card">
+            <h4>Ink DOM 차이 비교</h4>
+            <p>
+              React의 가상 DOM 재조정과 유사하게, Ink DOM은 이전 렌더링 결과와 현재 결과의 차이만 계산하여 변경된 ANSI 시퀀스만 터미널에 출력합니다. 전체 화면을 다시 그리는 대신 변경분만 패치하므로 터미널 깜빡임을 최소화하고 렌더링 성능을 최적화합니다.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <!-- Footer -->
+            <footer class="footer">
+        <p>
+          <a href="https://github.com/hi-space/claude-code-unpack-docs" target="_blank" rel="noopener noreferrer"
+             style="color:var(--color-text-muted);text-decoration:none;border-bottom:1px solid var(--color-border);">
+            hi-space/claude-code-unpack-docs
+          </a>
+          &middot; &copy; 2026 All rights reserved.
+        </p>
+      </footer>
+
+    </div>
+  </div>
+
+  <!-- Back to Top -->
+  <button class="back-to-top" onclick="window.scrollTo({top:0,behavior:'smooth'})" title="Back to top">&#8593;</button>
+
+  <script>
+    // ===== Mermaid Init =====
+    const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+    mermaid.initialize({
+      startOnLoad: true,
+      theme: isDark ? 'dark' : 'neutral',
+      fontFamily: "'Noto Sans KR', system-ui, sans-serif",
+      flowchart: { curve: 'basis', padding: 16 },
+      themeVariables: isDark ? {
+        primaryColor: '#422006',
+        primaryBorderColor: '#f59e0b',
+        primaryTextColor: '#fbbf24',
+        lineColor: '#6b7085',
+        secondaryColor: '#172554',
+        tertiaryColor: '#2e1065'
+      } : {
+        primaryColor: '#fef3c7',
+        primaryBorderColor: '#d97706',
+        primaryTextColor: '#92400e',
+        lineColor: '#9ca3af',
+        secondaryColor: '#eff6ff',
+        tertiaryColor: '#f5f3ff'
+      }
+    });
+
+    // CDN fallback
+    window.addEventListener('load', () => {
+      if (typeof mermaid === 'undefined') {
+        document.querySelectorAll('.diagram-container').forEach(c => {
+          const fb = document.createElement('div');
+          fb.style.cssText = 'text-align:center;padding:40px;color:var(--color-text-muted);font-size:14px;';
+          fb.textContent = 'Diagram requires internet for Mermaid.js';
+          c.querySelector('.mermaid')?.replaceWith(fb);
+        });
+      }
+    });
+
+    // ===== Theme Toggle =====
+    function toggleTheme() {
+      const html = document.documentElement;
+      const current = html.getAttribute('data-theme');
+      const next = current === 'dark' ? 'light' : 'dark';
+      html.setAttribute('data-theme', next);
+      localStorage.setItem('claude-docs-theme', next);
+      updateThemeUI(next);
+      location.reload();
+    }
+
+    function updateThemeUI(theme) {
+      const icon = document.querySelector('.theme-icon');
+      const label = document.querySelector('.theme-label');
+      if (theme === 'dark') {
+        icon.innerHTML = '&#9788;';
+        label.textContent = 'Light Mode';
+      } else {
+        icon.innerHTML = '&#9789;';
+        label.textContent = 'Dark Mode';
+      }
+    }
+
+    // Restore theme on load
+    (function() {
+      const saved = localStorage.getItem('claude-docs-theme');
+      if (saved) {
+        document.documentElement.setAttribute('data-theme', saved);
+        updateThemeUI(saved);
+      } else if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
+        document.documentElement.setAttribute('data-theme', 'dark');
+        updateThemeUI('dark');
+      }
+    })();
+
+    // ===== Mobile Sidebar =====
+    function toggleSidebar() {
+      document.querySelector('.sidebar').classList.toggle('open');
+      document.querySelector('.sidebar-backdrop').classList.toggle('open');
+    }
+
+    // ===== Back to Top =====
+    const backBtn = document.querySelector('.back-to-top');
+    window.addEventListener('scroll', () => {
+      backBtn.classList.toggle('visible', window.scrollY > 400);
+    });
+
+    // ===== Active Nav Tracking =====
+    const sections = document.querySelectorAll('.section, .hero');
+    const navLinks = document.querySelectorAll('.sidebar-nav a');
+
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          const id = entry.target.id || entry.target.closest('[id]')?.id;
+          if (!id) return;
+          navLinks.forEach(link => {
+            const href = link.getAttribute('href');
+            if (href.startsWith('#')) {
+              link.classList.toggle('active', href === '#' + id);
+            }
+          });
+        }
+      });
+    }, { rootMargin: '-10% 0px -70% 0px' });
+
+    sections.forEach(s => observer.observe(s));
+  </script>
+
+</body>
+</html>
