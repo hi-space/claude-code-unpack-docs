@@ -1,5 +1,5 @@
 {
-  "name": "claude-code-unpack-docs",
+  "name": "claude-code-under-the-hood",
   "version": "1.0.0",
   "type": "module",
   "description": "Unofficial deep dive into Claude Code's architecture, tool system, and security mechanisms",

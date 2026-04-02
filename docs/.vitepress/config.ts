@@ -5,7 +5,7 @@ import { koConfig } from './config/ko'
 
 export default withMermaid(
   defineConfig({
-    base: '/claude-code-unpack-docs/',
+    base: '/claude-code-under-the-hood/',
     title: 'Claude Code Deep Dive',
     description: 'A deep dive into Claude Code\'s internal architecture, reverse-engineered from the leaked source code',
 
@@ -35,7 +35,7 @@ export default withMermaid(
         provider: 'local',
       },
       socialLinks: [
-        { icon: 'github', link: 'https://github.com/hi-space/claude-code-unpack-docs' },
+        { icon: 'github', link: 'https://github.com/hi-space/claude-code-under-the-hood' },
       ],
     },
 

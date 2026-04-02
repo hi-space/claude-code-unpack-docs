@@ -12,7 +12,7 @@
 
 An unofficial technical documentation site analyzing the internal architecture of Claude Code, based on the source code leaked via npm source maps on March 31, 2026.
 
-🌐 **[Visit the Site](https://hi-space.github.io/claude-code-unpack-docs/)** 🌐
+🌐 **[Visit the Site](https://hi-space.github.io/claude-code-under-the-hood/)** 🌐
 
 </div>
 
@@ -23,7 +23,7 @@ An unofficial technical documentation site analyzing the internal architecture o
 
 ## Lite
 
-**[hi-space.github.io/claude-code-unpack-docs/lite/](https://hi-space.github.io/claude-code-unpack-docs/lite/)**
+**[hi-space.github.io/claude-code-under-the-hood/lite/](https://hi-space.github.io/claude-code-under-the-hood/lite/)**
 
 A quick overview of Claude Code's entire architecture. Covers system prompts, tool system, multi-agent orchestration, security, and memory at a glance.
 
@@ -31,8 +31,8 @@ A quick overview of Claude Code's entire architecture. Covers system prompts, to
 
 In-depth analysis of each component's internal implementation, design philosophy, and mechanics. Built with VitePress, spanning 50+ pages across 7 sections.
 
-- **English**: [hi-space.github.io/claude-code-unpack-docs/deep/en/](https://hi-space.github.io/claude-code-unpack-docs/deep/en/)
-- **한국어**: [hi-space.github.io/claude-code-unpack-docs/deep/ko/](https://hi-space.github.io/claude-code-unpack-docs/deep/ko/)
+- **English**: [hi-space.github.io/claude-code-under-the-hood/deep/en/](https://hi-space.github.io/claude-code-under-the-hood/deep/en/)
+- **한국어**: [hi-space.github.io/claude-code-under-the-hood/deep/ko/](https://hi-space.github.io/claude-code-under-the-hood/deep/ko/)
 
 | Section | Content |
 |---------|---------|
@@ -59,8 +59,8 @@ docs/
 ## Quick Start
 
 ```bash
-git clone https://github.com/hi-space/claude-code-unpack-docs.git
-cd claude-code-unpack-docs
+git clone https://github.com/hi-space/claude-code-under-the-hood.git
+cd claude-code-under-the-hood
 npm install
 npm run docs:dev
 ```

@@ -11,7 +11,7 @@ hero:
       link: /deep/en/overview/architecture
     - theme: alt
       text: Quick Overview (Lite)
-      link: https://hi-space.github.io/claude-code-unpack-docs/lite/
+      link: https://hi-space.github.io/claude-code-under-the-hood/lite/
 
 features:
   - icon: 🔧

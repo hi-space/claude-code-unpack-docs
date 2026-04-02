@@ -11,7 +11,7 @@ hero:
       link: /deep/ko/overview/architecture
     - theme: alt
       text: Lite 버전으로 빠르게 보기
-      link: https://hi-space.github.io/claude-code-unpack-docs/lite/
+      link: https://hi-space.github.io/claude-code-under-the-hood/lite/
 
 features:
   - icon: 🔧
