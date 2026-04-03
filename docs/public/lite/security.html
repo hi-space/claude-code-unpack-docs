@@ -546,6 +546,49 @@
       letter-spacing: 0.03em;
     }
 
+    /* ===== Page Navigation ===== */
+    .page-nav {
+      display: flex;
+      justify-content: space-between;
+      align-items: stretch;
+      margin-top: 48px;
+      padding-top: 24px;
+      border-top: 1px solid var(--color-border-light);
+      gap: 16px;
+    }
+
+    .page-nav a {
+      display: flex;
+      flex-direction: column;
+      padding: 16px 20px;
+      border-radius: var(--radius-md);
+      border: 1px solid var(--color-border);
+      text-decoration: none;
+      transition: border-color 0.2s, background 0.2s;
+      min-width: 0;
+      max-width: 48%;
+    }
+
+    .page-nav a:hover {
+      border-color: var(--color-accent);
+      background: var(--color-bg-soft);
+    }
+
+    .page-nav .nav-label {
+      font-size: 12px;
+      color: var(--color-text-muted);
+      margin-bottom: 4px;
+    }
+
+    .page-nav .nav-title {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--color-text);
+    }
+
+    .page-nav .prev { align-items: flex-start; }
+    .page-nav .next { align-items: flex-end; margin-left: auto; }
+
     /* ===== Footer ===== */
     .footer {
       margin-top: 40px;
@@ -1148,6 +1191,18 @@ sequenceDiagram
           </div>
         </div>
       </section>
+
+      <!-- Page Navigation -->
+      <nav class="page-nav">
+        <a href="system-prompt.html" class="prev">
+          <span class="nav-label">&#8592; Prev</span>
+          <span class="nav-title">System Prompt</span>
+        </a>
+        <a href="hidden-features.html" class="next">
+          <span class="nav-label">Next &#8594;</span>
+          <span class="nav-title">Hidden Features</span>
+        </a>
+      </nav>
 
       <!-- Footer -->
             <footer class="footer">
