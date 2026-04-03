@@ -635,8 +635,8 @@
       border: 1px solid var(--color-border);
       text-decoration: none;
       transition: border-color 0.2s, background 0.2s;
+      flex: 1 1 0;
       min-width: 0;
-      max-width: 48%;
     }
 
     .page-nav a:hover {
@@ -866,16 +866,12 @@
         </p>
         <div class="hero-stats">
           <div class="hero-stat">
-            <span class="hero-stat-value">44</span>
+            <span class="hero-stat-value">50+</span>
             <span class="hero-stat-label">Feature Flags</span>
           </div>
           <div class="hero-stat">
-            <span class="hero-stat-value">12</span>
-            <span class="hero-stat-label">Compile-time</span>
-          </div>
-          <div class="hero-stat">
-            <span class="hero-stat-value">15+</span>
-            <span class="hero-stat-label">Runtime</span>
+            <span class="hero-stat-value">2</span>
+            <span class="hero-stat-label">Flag Types</span>
           </div>
           <div class="hero-stat">
             <span class="hero-stat-value">5+</span>
@@ -891,10 +887,7 @@
             <button class="tab-btn active" data-tab="feature-flags" onclick="switchTab('feature-flags')">
               기능 플래그
             </button>
-            <button class="tab-btn" data-tab="model-codenames" onclick="switchTab('model-codenames')">
-              모델 코드명
-            </button>
-            <button class="tab-btn" data-tab="unreleased-features" onclick="switchTab('unreleased-features')">
+<button class="tab-btn" data-tab="unreleased-features" onclick="switchTab('unreleased-features')">
               미출시 기능
             </button>
             <button class="tab-btn" data-tab="config-system" onclick="switchTab('config-system')">
@@ -908,11 +901,11 @@
               <div class="section-badge" style="background:var(--color-accent-red-light);color:var(--color-accent-red);">&#9873; 기능 플래그</div>
               <h2 class="section-title">Feature Flags (기능 플래그)</h2>
               <p class="section-desc">
-                44개 플래그는 Claude Code의 진화 로드맵을 명시합니다. 컴파일 타임 플래그 12개는 빌드할 때 포함/제외되며, 런타임 플래그 15+개는 GrowthBook으로 Anthropic이 재배포 없이 원격 제어합니다.
+                피처 플래그는 Claude Code의 진화 로드맵을 명시합니다. 컴파일 타임 플래그는 빌드할 때 포함/제외되며, 런타임 플래그는 GrowthBook으로 Anthropic이 재배포 없이 원격 제어합니다.
               </p>
             </div>
 
-            <h3 style="font-size: 18px; font-weight: 700; margin: 28px 0 16px; color: var(--color-text);">컴파일 타임 플래그 (12개)</h3>
+            <h3 style="font-size: 18px; font-weight: 700; margin: 28px 0 16px; color: var(--color-text);">컴파일 타임 플래그</h3>
             <p style="font-size: 14px; color: var(--color-text-secondary); margin-bottom: 16px;">빌드할 때 포함하거나 제외하는 기능:</p>
 
             <div style="overflow-x: auto;">
@@ -1002,7 +995,7 @@
               </table>
             </div>
 
-            <h3 style="font-size: 18px; font-weight: 700; margin: 28px 0 16px; color: var(--color-text);">런타임 플래그 (15+)</h3>
+            <h3 style="font-size: 18px; font-weight: 700; margin: 28px 0 16px; color: var(--color-text);">런타임 플래그</h3>
             <p style="font-size: 14px; color: var(--color-text-secondary); margin-bottom: 16px;"><code>tengu_</code> 접두사를 사용하며, 실행 중에 원격으로 제어됩니다:</p>
 
             <div style="overflow-x: auto;">
@@ -1097,7 +1090,7 @@
             <div class="feature-card">
               <h4>피처 플래그의 의미</h4>
               <p>
-                44개 플래그는 Claude Code의 진화 로드맵을 명시합니다. <strong>현재 상태:</strong> 반응형 단일 에이전트 코딩 어시스턴트, <strong>미래 상태:</strong> 자율적, 멀티모달(음성/텍스트), 멀티에이전트 개발 플랫폼. 컴파일 타임 플래그 12개는 공개 빌드에서 dead code elimination으로 완전 제거되고, 런타임 플래그 15+개는 GrowthBook으로 원격 제어되어 재배포 불필요합니다.
+                피처 플래그는 Claude Code의 진화 로드맵을 명시합니다. <strong>현재 상태:</strong> 반응형 단일 에이전트 코딩 어시스턴트, <strong>미래 상태:</strong> 자율적, 멀티모달(음성/텍스트), 멀티에이전트 개발 플랫폼. 컴파일 타임 플래그는 공개 빌드에서 dead code elimination으로 완전 제거되고, 런타임 플래그는 GrowthBook으로 원격 제어되어 재배포 불필요합니다.
               </p>
             </div>
 
@@ -1105,90 +1098,15 @@
               <div class="diagram-title">피처 플래그 분포</div>
               <pre class="mermaid">
 pie title "피처 플래그 분포"
-    "컴파일 타임 (12)" : 12
-    "런타임 GrowthBook (15+)" : 17
-    "베타 API (15+)" : 15
+    "컴파일 타임" : 12
+    "런타임 GrowthBook" : 17
+    "베타 API" : 15
               </pre>
             </div>
           </div>
 
-          <!-- Tab 2: Model Codenames -->
-          <div id="model-codenames" class="tab-pane">
-            <div class="section-header">
-              <div class="section-badge" style="background:var(--color-accent-blue-light);color:var(--color-accent-blue);">&#9733; 모델 코드명</div>
-              <h2 class="section-title">Model Codenames (모델 코드명)</h2>
-              <p class="section-desc">
-                Claude 모델과 Claude Code 프로젝트의 내부 코드네임입니다. 소스 코드에 임베딩된 이들 이름은 Anthropic의 개발 로드맵과 모델 진화 과정을 드러냅니다.
-              </p>
-            </div>
 
-            <div style="overflow-x: auto;">
-              <table class="tech-table">
-                <thead>
-                  <tr>
-                    <th>코드네임</th>
-                    <th>타입</th>
-                    <th>상세</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr>
-                    <td><strong>Capybara</strong></td>
-                    <td>프로젝트 코드네임</td>
-                    <td>Sonnet v8 (1M 컨텍스트), "fast mode" 변형, 거짓 주장률 29-30%</td>
-                  </tr>
-                  <tr>
-                    <td><strong>Fennec</strong></td>
-                    <td>프로젝트 코드네임</td>
-                    <td>Opus 4.6 전신, 마이그레이션 경로가 소스코드에 존재</td>
-                  </tr>
-                  <tr>
-                    <td><strong>Numbat</strong></td>
-                    <td>프로젝트 코드네임</td>
-                    <td>차기 미출시 모델, 출시 일정이 소스코드에 임베딩됨</td>
-                  </tr>
-                  <tr>
-                    <td><strong>Tengu</strong></td>
-                    <td>피처 플래그 프리픽스</td>
-                    <td>Claude Code 프로젝트 자체의 내부 이름, <code>tengu_*</code> 플래그와 텔레메트리에 사용 (모델 식별자 아님)</td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
 
-            <h3 style="font-size: 18px; font-weight: 700; margin: 28px 0 16px; color: var(--color-text);">Capybara (Sonnet v8)</h3>
-            <div class="feature-card">
-              <h4>1. Fast Mode 변형 모델</h4>
-              <p>
-                Capybara는 Sonnet v8의 내부 코드네임으로 Claude Code의 "fast mode" 구동 모델입니다. 1M 토큰 컨텍스트 윈도우를 제공합니다. 속도 최적화의 트레이드오프로 거짓 주장률이 29-30% (Opus v4의 16.7% 대비) 상승했습니다. 반응성이 중요한 상황에서 정확도보다 속도를 우선하는 선택지입니다.
-              </p>
-            </div>
-
-            <h3 style="font-size: 18px; font-weight: 700; margin: 28px 0 16px; color: var(--color-text);">Fennec (Pre-Opus 4.6)</h3>
-            <div class="feature-card">
-              <h4>2. 모델 마이그레이션 경로</h4>
-              <p>
-                Fennec은 Opus 4.6의 직계 전신으로 공식 미공개 모델입니다. resolveModelId 함수에 Fennec → Opus 마이그레이션 경로가 존재하여 Anthropic의 체계적 모델 업그레이드 프로세스를 증명합니다. 버전 전환 시 기존 설정과 행동 호환성을 유지하는 메커니즘이 내장되어 있습니다.
-              </p>
-            </div>
-
-            <h3 style="font-size: 18px; font-weight: 700; margin: 28px 0 16px; color: var(--color-text);">Numbat (미출시 모델)</h3>
-            <div class="feature-card">
-              <h4>3. 공개적으로 발표되지 않은 차세대 모델</h4>
-              <p>
-                Numbat은 미발표 차세대 모델의 내부 코드네임입니다. 출시 일정이 소스코드 feature flag gates에 임베딩되어 있으며, model_routing_logic에서 조건부 분기가 존재합니다. 다른 system prompt instructions (능력/제약 프로파일)이 정의되어 있고, resolveModelId에서 "numbat" → 예약된 API ID 매핑이 존재합니다. Numbat은 이미 내부 개발 중이며 출시 준비 단계입니다.
-              </p>
-            </div>
-
-            <h3 style="font-size: 18px; font-weight: 700; margin: 28px 0 16px; color: var(--color-text);">Tengu (프로젝트 코드네임)</h3>
-            <div class="feature-card">
-              <h4>4. Claude Code 자체의 코드네임</h4>
-              <p>
-                Tengu는 모델이 아닌 <strong>Claude Code 프로젝트 자체의 내부 코드네임</strong>이자 <strong>피처 플래그 프리픽스</strong>입니다. <code>tengu_</code> 접두사가 모든 시스템에 일관적 네임스페이스를 제공합니다: GrowthBook feature flags (tengu_anti_distill_fake_tool_injection 등), OpenTelemetry 텔레메트리 이벤트, 환경 변수 (TENGU_DEBUG=1), 설정 키 (tengu_log_tool_metrics). Tengu는 모델 식별자가 아닌 기능 플래그 네임스페이스로서 Claude Code를 다른 Anthropic 제품과 구분합니다.
-              </p>
-            </div>
-
-          </div>
 
           <!-- Tab 3: Unreleased Features -->
           <div id="unreleased-features" class="tab-pane">

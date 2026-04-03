@@ -523,8 +523,8 @@
       border: 1px solid var(--color-border);
       text-decoration: none;
       transition: border-color 0.2s, background 0.2s;
+      flex: 1 1 0;
       min-width: 0;
-      max-width: 48%;
     }
 
     .page-nav a:hover {
@@ -736,7 +736,7 @@
         <div class="hero-eyebrow">Memory System</div>
         <h1>Self-Healing Memory &amp; Context Budgeting</h1>
         <p class="hero-desc">
-          3-Layer 자가 치유 메모리 아키텍처와 4-Layer 컨텍스트 압축 시스템으로 장시간 세션을 안정적으로 유지합니다. 컨텍스트가 가득 차도 MEMORY.md 포인터는 항상 살아있어, 중요한 정보 접근성이 떨어지지 않습니다.
+          3-Layer 자가 치유 메모리 아키텍처와 6-Stage 컨텍스트 압축 시스템으로 장시간 세션을 안정적으로 유지합니다. 컨텍스트가 가득 차도 MEMORY.md 포인터는 항상 살아있어, 중요한 정보 접근성이 떨어지지 않습니다.
         </p>
         <div class="hero-stats">
           <div class="hero-stat">
@@ -744,8 +744,8 @@
             <span class="hero-stat-label">Memory Layers</span>
           </div>
           <div class="hero-stat">
-            <span class="hero-stat-value">4</span>
-            <span class="hero-stat-label">Compaction Layers</span>
+            <span class="hero-stat-value">6</span>
+            <span class="hero-stat-label">Compaction Stages</span>
           </div>
           <div class="hero-stat">
             <span class="hero-stat-value">~20K</span>
@@ -865,11 +865,11 @@ graph TB
         </div>
       </section>
 
-      <!-- Section 2: 5-Layer Context Compaction -->
+      <!-- Section 2: 6-Stage Context Compaction -->
       <section class="section accent-blue" id="context-compaction">
         <div class="section-header">
           <div class="section-badge">&#9889; Compaction</div>
-          <h2 class="section-title">5-Layer Context Compaction</h2>
+          <h2 class="section-title">6-Stage Context Compaction</h2>
           <p class="section-desc">
             필요한 최소한의 압축만 적용하여 정보 품질을 최대한 보존하면서 컨텍스트 제한을 유지하는 점진적 압축 시스템입니다. 각 레이어는 필요할 때만 활성화되어, 시간 기반에서 모델 기반, 그리고 긴급 모드까지 단계적으로 발동됩니다.
           </p>
@@ -919,62 +919,65 @@ graph TB
           </tbody>
         </table>
 
+        <h3 style="font-size:16px;font-weight:600;margin:24px 0 12px;color:var(--color-accent-blue);">Pre-API Call (4단계, 매 요청마다 순차 실행)</h3>
         <div class="feature-cards">
           <div class="feature-card">
-            <h4>1. Layer 1: Time-Based Microcompact - 시간 기반 압축</h4>
-            <p>마지막 어시스턴트 메시지 이후 임계값(기본 60분)을 초과하면 Content-clear를 사용하여 오래된 도구 결과를 제거합니다. 최근 도구 결과만 유지하여 경량 압축을 달성하고, 도구 결과는 디스크에서 필요 시 다시 읽을 수 있으므로 정보 손실은 최소입니다.</p>
+            <h4>1. Snip Compact - 좀비 메시지 제거</h4>
+            <p>대화 스트림에서 더 이상 참조되지 않는 "좀비" 메시지를 식별하여 제거하는, 일종의 메시지 가비지 컬렉션입니다. 비용이 거의 없으면서도 불필요한 토큰 점유를 방지하는 가장 경량의 첫 단계입니다. 대화가 길어질수록 자연스럽게 쌓이는 orphaned 메시지를 정리하여, 이후 단계의 부담을 줄입니다.</p>
           </div>
           <div class="feature-card">
-            <h4>1B. Layer 1B: Cached Microcompact - 캐시 기반 압축</h4>
-            <p>프롬프트 캐시가 활성 상태일 때 작동합니다. Cache_edits API를 사용하여 도구 결과 블록을 삭제하고 프리픽스 재작성을 회피함으로써 15-25% 토큰을 절약합니다. 캐시 프리픽스는 보존되므로 토큰 증가를 방지하면서도 경량 압축을 달성합니다.</p>
+            <h4>2. Microcompact - 도구 결과 삭제</h4>
+            <p>두 가지 경로로 작동합니다. <strong>시간 기반</strong>: 마지막 어시스턴트 메시지 이후 임계값(기본 60분)을 초과하면 서버 측 프롬프트 캐시가 만료되었을 가능성이 높으므로, 어차피 전체 프리픽스가 재작성됩니다. 이때 오래된 도구 결과를 함께 제거합니다. <strong>캐시 기반</strong>: 프롬프트 캐시가 활성 상태일 때는 cache_edits API를 사용하여 캐시 프리픽스를 보존하면서 도구 결과 블록만 정밀 삭제합니다. 핵심 설계 원칙: 도구 결과는 디스크에서 언제든 다시 읽을 수 있으므로, 삭제해도 정보가 영구적으로 소실되지 않습니다.</p>
           </div>
           <div class="feature-card">
-            <h4>2. Layer 2: Session Memory Compact - 세션 메모리 압축</h4>
-            <p>자동 압축 전에 시행됩니다. 최근 대화에서 패턴과 결정사항을 추출하여 MEMORY.md에 저장하고 오래된 메시지를 제거합니다. 주요 결정과 발견사항은 MEMORY.md 포인터로 보존되므로 정보 손실이 낮으며, 성공 시 더 비용이 큰 자동 압축 API 호출을 회피할 수 있습니다.</p>
+            <h4>3. Context Collapse - 단계적 대화 축소</h4>
+            <p>경량 Microcompact과 비용이 큰 Auto Compact 사이의 중간 지대입니다. 오래된 대화 세그먼트를 점진적으로 축소하되, 두 단계의 임계값으로 작동합니다: 컨텍스트 90% 도달 시 요청을 차단하지 않고 기회적으로 collapse를 commit하고, 95%에서는 collapse가 완료될 때까지 차단합니다. 전체 요약보다 더 많은 대화 구조를 보존하면서도 의미 있는 토큰 절감을 달성합니다.</p>
           </div>
           <div class="feature-card">
-            <h4>3. Layer 3: Auto Compact - 모델 기반 요약</h4>
-            <p>컨텍스트가 임계값을 초과하고 이전 레이어가 미충분할 때 작동합니다. 최근 몇 턴을 제외한 모든 메시지를 Claude에 전송하여 의미론적 요약을 수행하며, 70-85% 토큰을 절약합니다. 연속 실패 3회 시 중단되며, Post-compact 복구로 최근 파일(최대 5개), 플랜 파일, 호출된 스킬을 재주입하여 정보 손실을 보정합니다.</p>
+            <h4>4. Auto Compact - 세션 메모리 + 모델 기반 요약</h4>
+            <p>가장 무거운 사전 압축 단계로, 두 가지 하위 전략이 있습니다. 먼저 <strong>세션 메모리 추출</strong>을 시도하여 주요 결정, 발견된 버그, 사용자 선호도를 MEMORY.md 포인터(~150자)로 추출합니다. 이것만으로 충분하면 비용이 큰 API 호출을 회피할 수 있습니다. 부족하면 전체 대화를 Claude에 전송하여 의미론적 요약을 수행하며 70-85%의 극적인 토큰 절감을 달성합니다. 연속 3회 실패 시 circuit breaker가 작동하여 API 낭비를 방지합니다. Post-compact 복구로 최근 파일(최대 5개), 플랜 파일, 호출된 스킬을 재주입하여 작업 컨텍스트를 복원합니다.</p>
+          </div>
+        </div>
+
+        <h3 style="font-size:16px;font-weight:600;margin:24px 0 12px;color:var(--color-accent-red, #ef4444);">Post-API Call (2단계, 413/미디어 에러 시 반응)</h3>
+        <div class="feature-cards">
+          <div class="feature-card">
+            <h4>5. Collapse Drain - Collapse 큐 일괄 적용</h4>
+            <p>API가 413 Prompt Too Long을 반환하면, 먼저 비용이 낮은 방법을 시도합니다. Stage 3에서 준비해둔 Context Collapse 큐를 모두 일괄 적용하여 즉시 토큰을 확보합니다. Reactive Compact보다 훨씬 저비용이며 프롬프트 캐시를 보존할 수 있어 먼저 시도됩니다. 이것만으로 충분히 토큰이 확보되면, 더 파괴적인 다음 단계 없이 요청을 재시도합니다.</p>
           </div>
           <div class="feature-card">
-            <h4>4. Layer 4: Reactive Compact - 긴급 압축</h4>
-            <p>API 호출 실패로 max_tokens 오류가 발생할 때 비상 모드가 작동합니다. 시스템 프롬프트 + MEMORY.md + 마지막 2 턴만 유지하고 스트리밍 모드로 재시도하여 메모리 버퍼링을 회피합니다. 정보 손실이 치명적이지만 MEMORY.md 포인터는 완벽히 보존되므로 모델이 중요한 정보에 여전히 접근할 수 있으며, 약 1/10,000+ 세션에서만 나타나는 마지막 수단입니다.</p>
+            <h4>6. Reactive Compact - 긴급 압축</h4>
+            <p>Collapse Drain이 실패하거나 미디어 크기 초과 에러 시 작동하는 최후의 수단입니다. 시스템 프롬프트 + MEMORY.md + 마지막 2턴만 유지하고 나머지를 모두 폐기하며, 이미지/PDF도 제거합니다. 정보 손실이 치명적이지만 MEMORY.md 포인터는 완벽히 보존되므로 모델이 중요한 정보에 여전히 접근할 수 있습니다. 스트리밍 모드로 재시도하여 메모리 버퍼링을 회피하며, 약 1/10,000+ 세션에서만 나타나는 비상 탈출구입니다. 완전히 포기하는 것보다 낫다는 설계 철학을 반영합니다.</p>
           </div>
         </div>
 
         <div class="diagram-container">
-          <div class="diagram-title">4-Layer Progressive Compaction Flow</div>
+          <div class="diagram-title">6-Stage Progressive Compaction Flow</div>
           <pre class="mermaid">
 flowchart TB
     Check{컨텍스트<br/>임계값 초과?}
     Check -->|아니오| Continue["정상 계속"]
-    Check -->|예| TBM{마지막 어시스턴트<br/>메시지 이후<br/>시간 초과?}
 
-    TBM -->|예| L1["1단계: 시간 기반 압축<br/>오래된 도구 결과 제거<br/>경량"]
-    TBM -->|아니오| CACHE{캐시 기반<br/>압축<br/>가능?}
+    Check -->|예| S1["1단계: Snip<br/>좀비 메시지 제거"]
+    S1 --> S2["2단계: Microcompact<br/>도구 결과 삭제<br/>(시간/캐시 기반)"]
+    S2 --> S3["3단계: Context Collapse<br/>단계적 대화 축소"]
+    S3 --> S4["4단계: Auto Compact<br/>세션 메모리 + 모델 요약"]
+    S4 --> API["API 호출"]
 
-    L1 --> Continue
-
-    CACHE -->|예| L1B["1B단계: 캐시 기반 압축<br/>도구 결과 캐시 편집<br/>경량"]
-    CACHE -->|아니오| Continue
-    L1B --> Continue
-
-    Check -->|예 & 추가 조건| L2["2단계: 세션 메모리 압축<br/>MEMORY.md에 패턴 추출<br/>경량"]
-    L2 -->|성공| Continue
-    L2 -->|실패| L3
-
-    L3["3단계: 자동 압축<br/>모델 기반 요약<br/>고비용"] --> Check2{여전히<br/>max_tokens 초과?}
-    Check2 -->|아니오| Continue
-    Check2 -->|예| L4
-
-    L4["4단계: 긴급 압축<br/>비상 절단 + 스트리밍<br/>비상"] --> Continue
+    API -->|성공| Continue
+    API -->|413 에러| S5["5단계: Collapse Drain<br/>준비된 collapse 적용"]
+    S5 -->|성공| Continue
+    S5 -->|실패| S6["6단계: Reactive Compact<br/>긴급 압축 + 이미지 제거"]
+    S6 --> Continue
 
     style Continue fill:#ecfdf5,stroke:#10b981,color:#065f46
-    style L1 fill:#fef3c7,stroke:#d97706,color:#92400e
-    style L1B fill:#ffe4e4,stroke:#f59e0b,color:#92400e
-    style L2 fill:#fed7d7,stroke:#d97706,color:#92400e
-    style L3 fill:#fccccb,stroke:#ef4444,color:#7c2d12
-    style L4 fill:#fee2e2,stroke:#ef4444,color:#991b1b
+    style S1 fill:#f0fdf4,stroke:#22c55e,color:#14532d
+    style S2 fill:#fef3c7,stroke:#d97706,color:#92400e
+    style S3 fill:#fed7d7,stroke:#d97706,color:#92400e
+    style S4 fill:#fccccb,stroke:#ef4444,color:#7c2d12
+    style API fill:#eff6ff,stroke:#3b82f6,color:#1e40af
+    style S5 fill:#fef3c7,stroke:#f59e0b,color:#92400e
+    style S6 fill:#fee2e2,stroke:#ef4444,color:#991b1b
           </pre>
         </div>
       </section>
@@ -1054,7 +1057,7 @@ flowchart TB
           </div>
           <div class="feature-card">
             <h4>5. Session Quality Impact</h4>
-            <p>Budgeting 없는 시나리오에서는 짧은 세션(10턴 미만)은 좋지만 중간(10-50턴)부터 성능 저하, 100+ 턴은 사용 불가능합니다. Budgeting 시스템이 있으면 100+ 턴도 기능적으로 유지됩니다. 4-Layer 컨텍스트 압축(시간 기반, 캐시 기반, 세션 메모리, 자동, 긴급) + Synthetic 메시지 + 3-Stage 복구 + Self-healing 메모리의 조합으로 초장시간 세션도 안정적입니다.</p>
+            <p>Budgeting 없는 시나리오에서는 짧은 세션(10턴 미만)은 좋지만 중간(10-50턴)부터 성능 저하, 100+ 턴은 사용 불가능합니다. Budgeting 시스템이 있으면 100+ 턴도 기능적으로 유지됩니다. 6-Stage 컨텍스트 압축(Snip, Microcompact, Context Collapse, Auto Compact + 반응형 Collapse Drain, Reactive Compact) + Synthetic 메시지 + 3-Stage 복구 + Self-healing 메모리의 조합으로 초장시간 세션도 안정적입니다.</p>
           </div>
         </div>
 

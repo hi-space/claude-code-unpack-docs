@@ -615,8 +615,8 @@
       border: 1px solid var(--color-border);
       text-decoration: none;
       transition: border-color 0.2s, background 0.2s;
+      flex: 1 1 0;
       min-width: 0;
-      max-width: 48%;
     }
 
     .page-nav a:hover {
@@ -844,7 +844,7 @@
             <span class="hero-stat-label">Cached Prefix</span>
           </div>
           <div class="hero-stat">
-            <span class="hero-stat-value">14</span>
+            <span class="hero-stat-value">12</span>
             <span class="hero-stat-label">Cache-Break Vectors</span>
           </div>
         </div>
@@ -874,7 +874,7 @@
           <span class="h-icon">🛠️</span>
           <div>
             <div class="h-name">도구 정의 (14-17K 토큰)</div>
-            <div class="h-desc">가장 큰 섹션. 23+ 도구 각각에 대한 완전한 JSON Schema 정의 포함</div>
+            <div class="h-desc">가장 큰 섹션. 43+ 도구 각각에 대한 완전한 JSON Schema 정의 포함</div>
           </div>
         </div>
 
@@ -976,7 +976,7 @@ flowchart TB
           <div class="section-badge">&#9889; Optimization</div>
           <h2 class="section-title">Prompt Caching Strategy</h2>
           <p class="section-desc">
-            시스템 프롬프트는 캐시 가능한 접두사와 세션별 접미사로 분할되어 정적 부분(약 20K 토큰)을 캐싱함으로써 API 비용을 최대 90% 절감합니다. 캐시 안정성을 위해 14개 벡터(도구 스키마 변경, 피처 플래그, 모델 전환 등)를 모니터링합니다.
+            시스템 프롬프트는 캐시 가능한 접두사와 세션별 접미사로 분할되어 정적 부분(약 20K 토큰)을 캐싱함으로써 API 비용을 최대 90% 절감합니다. 캐시 안정성을 위해 12개 벡터(도구 스키마 변경, 피처 플래그, 모델 전환 등)를 모니터링합니다.
           </p>
         </div>
 
@@ -1002,7 +1002,7 @@ flowchart TB
               <td>Tool Schemas</td>
               <td>14-17K</td>
               <td>Yes</td>
-              <td>23+ 도구의 완전한 JSON Schema 정의 (알파벳순 정렬로 안정성 보장)</td>
+              <td>43+ 도구의 완전한 JSON Schema 정의 (알파벳순 정렬로 안정성 보장)</td>
             </tr>
             <tr>
               <td>Dynamic Context</td>
@@ -1048,7 +1048,7 @@ flowchart TB
           <div class="feature-card">
             <h4>3. 캐시 무효화 감지</h4>
             <p>
-              CacheBreakDetector(src/prompt/)는 14개 벡터를 각각 모니터링합니다: 도구 스키마 변경, 피처 플래그, 모델 전환, 권한 모드, 프롬프트 버전, 훅 설정 변경 등. 무효화 감지 시 세션의 캐시된 접두사를 삭제하여 다음 요청에서 전체 prefix를 재처리하고 새 캐시 키를 저장합니다. 로깅을 통해 어떤 벡터가 캐시 break를 유발했는지 추적할 수 있습니다.
+              CacheBreakDetector(src/prompt/)는 12개 벡터를 각각 모니터링합니다: 도구 스키마 변경, 피처 플래그, 모델 전환, 권한 모드, 프롬프트 버전, 훅 설정 변경 등. 무효화 감지 시 세션의 캐시된 접두사를 삭제하여 다음 요청에서 전체 prefix를 재처리하고 새 캐시 키를 저장합니다. 로깅을 통해 어떤 벡터가 캐시 break를 유발했는지 추적할 수 있습니다.
             </p>
           </div>
 

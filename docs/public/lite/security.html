@@ -565,8 +565,8 @@
       border: 1px solid var(--color-border);
       text-decoration: none;
       transition: border-color 0.2s, background 0.2s;
+      flex: 1 1 0;
       min-width: 0;
-      max-width: 48%;
     }
 
     .page-nav a:hover {
@@ -786,7 +786,7 @@
             <span class="hero-stat-label">Permission Layers</span>
           </div>
           <div class="hero-stat">
-            <span class="hero-stat-value">6</span>
+            <span class="hero-stat-value">3</span>
             <span class="hero-stat-label">Risk Categories</span>
           </div>
           <div class="hero-stat">
@@ -833,9 +833,9 @@
             </p>
           </div>
           <div class="feature-card">
-            <h4>4. 6가지 위험 카테고리</h4>
+            <h4>4. 3가지 위험 카테고리</h4>
             <p>
-              분류기는 범위 확대(요청 초과), 비신뢰 인프라(원격 저장소), 데이터 누출(민감 정보), 높은 권한(sudo), 시스템 영향(부팅), 기타 우려 등 6가지 차원에서 위험을 평가합니다. 이러한 체계적 분류는 단순한 안전/위험 판단을 넘어서 위험의 성격을 정확히 파악할 수 있게 합니다.
+              분류기는 범위 확대(요청 초과 여부), 비신뢰 인프라(외부/공유 시스템 대상 여부), 기타 위험(파괴적 명령, .env 노출, API 키, 시스템 설정 변경 등) 3가지 차원에서 위험을 평가합니다. 이러한 체계적 분류는 단순한 안전/위험 판단을 넘어서 위험의 성격을 정확히 파악할 수 있게 합니다.
             </p>
           </div>
           <div class="feature-card">

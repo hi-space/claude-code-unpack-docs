@@ -30,7 +30,7 @@ Anti-Distillation 메커니즘은 다중 게이트 권한 시스템을 사용한
 ```mermaid
 sequenceDiagram
     participant CC as Claude Code 클라이언트
-    participant AD as AntiDistillationManager
+    participant AD as Anti-Distillation<br/>Gate Check
     participant API as Claude API 서버
     participant Spy as 트래픽 레코더 ❌
 
@@ -58,14 +58,15 @@ sequenceDiagram
 
 가짜 도구 주입은 오염 방어(poisoning defense)다: 가짜 도구가 응답에 삽입되어 트래픽 녹화로 캡처된 학습 데이터를 망친다. 기록된 트래픽으로 학습한 모델은 존재하지 않는 도구들을 호출하는 것을 배우게 되어 프로덕션에서는 깨진 도구 호출을 생성한다. 이는 **API 도용에 대한 카나리 함정**이다. 가짜 도구를 주입하는 비용은 추론 시간에 무시할 수 있지만, 도용된 학습 데이터에서 파괴하는 가치는 엄청나다.
 
-### 이중 게이트 권한
+### 3단계 게이트 권한
 
-메커니즘은 두 게이트가 모두 열려야 한다:
+메커니즘은 세 게이트가 모두 열려야 한다:
 
 | 게이트 | 유형 | 제어자 |
 |-------|------|--------|
 | `ANTI_DISTILLATION_CC` | 컴파일 타임 플래그 | 빌드 시 설정; 런타임에 변경 불가 |
 | `tengu_anti_distill_fake_tool_injection` | GrowthBook 런타임 플래그 | Anthropic이 원격 제어 |
+| 1st-party 세션 검증 | 런타임 체크 | 클라이언트 인증 시스템 |
 
 이 설계는 두 가지 목적을 제공한다:
 1. **컴파일 타임 게이트**: 기능이 3rd-party 빌드에서 완전히 제거되도록 보장 (데드 코드 제거)
@@ -73,13 +74,17 @@ sequenceDiagram
 
 ### 1st-Party 세션 감지
 
-`isFirstPartyCLISession()` 검사는 요청이 3rd-party 통합이 아닌 공식 Claude Code 바이너리에서 유래했는지 검증한다. 이는 [클라이언트 인증](./client-attestation.md) 시스템을 포함한다. Zig-계산 HTTP 해시는 바이너리가 정품인지 확인한다.
+1st-party 세션 체크는 요청이 3rd-party 통합이 아닌 공식 Claude Code 바이너리에서 유래했는지 검증한다. 이는 [클라이언트 인증](./client-attestation.md) 시스템에 의존하며, 여기서 전송 레벨 암호화 해시가 바이너리가 정품인지 확인한다.
 
 ## 2. 추론 요약
 
 ### 서버 사이드 전용
 
 추론 요약은 **Anthropic 서버에서만 구현된다**. Claude Code 클라이언트는 요약 로직이나 코드를 포함하지 않는다. 클라이언트의 유일한 관련은 서버에 안티 디스틸레이션 보호를 적용해야 함을 신호하는 요청 파라미터(`anti_distillation: ['fake_tools']` 또는 유사)를 설정하는 것이다. 서버는 클라이언트에 응답을 반환하기 전에 어시스턴트의 추론 체인에 요약을 적용한다.
+
+> **주의:** 아래에 설명된 서버 사이드 처리 파이프라인은 클라이언트의 요청 파라미터와 관찰된 응답 동작으로부터 추론된 것이다. 실제 서버 구현—특정 컴포넌트 이름 및 처리 단계 포함—은 클라이언트 소스 코드에 보이지 않는다.
+
+> **소스 코드 참조:** 이 메커니즘은 내부적으로 "커넥터 텍스트 요약"이라고 불리며 전용 베타 API 헤더 및 GrowthBook 플래그로 게이팅된다. 이름은 그 대상을 반영한다: 연속적인 도구 호출을 연결하는 텍스트다.
 
 ### 설계 철학
 
@@ -89,28 +94,28 @@ sequenceDiagram
 
 ```mermaid
 flowchart TB
-    subgraph Client["클라이언트 (JavaScript)"]
-        Req[API 요청] --> Send[서버로 전송]
+    subgraph Client["Client (JavaScript)"]
+        Req[API Request] --> Send[Send to server]
     end
 
-    subgraph Server["서버 (Anthropic 인프라)"]
-        Recv[요청 수신] --> Process[Claude 모델로 처리]
-        Process --> Generate[어시스턴트 응답 생성]
+    subgraph Server["Server (Anthropic Infrastructure)"]
+        Recv[Receive request] --> Process[Process with Claude model]
+        Process --> Generate[Generate assistant response]
 
-        Generate --> Buffer["ConnectorTextBuffer<br/>도구 호출 사이의 텍스트 버퍼링"]
+        Generate --> Buffer["Connector Text Buffer<br/>Collects text between tool calls"]
 
-        Buffer --> Summarize["SummarizationEngine<br/>추론을 핵심으로 압축"]
-        Summarize --> Sign["CryptoSigner<br/>암호화 서명 추가"]
-        Sign --> Output["출력: 요약 + 서명"]
+        Buffer --> Summarize["Reasoning Summarizer<br/>Compresses to key points"]
+        Summarize --> Sign["Signature Module<br/>Adds cryptographic signature"]
+        Sign --> Output["Output: summary + signature"]
     end
 
-    subgraph Transport["전송 계층"]
-        Output --> Response[HTTP 응답]
-        Response --> |"요약만,<br/>완전한 추론 아님"| Client2[클라이언트 응답 수신]
+    subgraph Transport["Transport Layer"]
+        Output --> Response[HTTP Response]
+        Response --> |"Summary only,<br/>not full reasoning"| Client2[Client receives response]
     end
 
-    subgraph Attacker["트래픽 레코더"]
-        Response -.-> |"요약만 캡처 가능,<br/>완전한 CoT 아님"| Captured["캡처된 데이터:<br/>- 압축된 요약 ✓<br/>- 암호화 서명 ✓<br/>- 완전한 추론 체인 ✗<br/>- 상세한 도구 근거 ✗"]
+    subgraph Attacker["Traffic Recorder"]
+        Response -.-> |"Can only capture<br/>summaries, not<br/>full CoT"| Captured["Captured Data:<br/>- Compressed summaries ✓<br/>- Crypto signatures ✓<br/>- Full reasoning chains ✗<br/>- Detailed tool rationale ✗"]
     end
 
     style Attacker fill:#ffcccc

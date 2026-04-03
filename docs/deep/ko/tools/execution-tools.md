@@ -33,11 +33,11 @@ flowchart TB
     ValidCheck -->|No| DenyInput["Return error:<br/>validation failure"]
     ValidCheck -->|Yes| PermCheck1
     
-    PermCheck1["3. Layer 1: checkPermissions()<br/>Tool-level checks"] --> PermCheck1Result{"Allowed?"}
+    PermCheck1["3. Phase 1: 도구별 권한 검사<br/>Tool-level checks"] --> PermCheck1Result{"Allowed?"}
     PermCheck1Result -->|No| DenyTool["Return error:<br/>tool disabled/restricted"]
     PermCheck1Result -->|Yes| PermCheck2
     
-    PermCheck2["4. Layer 2: hasPermissionsToUseTool()<br/>Context checks"] --> PermCheck2Result{"Allowed?"}
+    PermCheck2["4. Phase 2: 컨텍스트 기반 권한 검사<br/>Context checks"] --> PermCheck2Result{"Allowed?"}
     PermCheck2Result -->|No| DenyContext["Return error:<br/>insufficient permissions"]
     PermCheck2Result -->|Yes| Route
     

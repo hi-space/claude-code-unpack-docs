@@ -31,11 +31,11 @@ features:
     details: MEMORY.md 포인터 시스템을 사용한 3단계 메모리 아키텍처. 장시간 세션에서의 환각 방지 설계.
     link: /deep/ko/memory/self-healing-memory
   - icon: 🚩
-    title: 44개 피처 플래그
-    details: "12개 컴파일 타임 + 15+ 런타임 GrowthBook 플래그: KAIROS, 음성 모드, UltraPlan, Buddy 터미널 펫 등."
+    title: 50개 이상의 피처 플래그
+    details: "약 10개 컴파일 타임 + 15+ 런타임 GrowthBook 플래그: KAIROS, 음성 모드, UltraPlan, Buddy 터미널 펫 등."
     link: /deep/ko/hidden-features/feature-flags
   - icon: 🔐
     title: 권한 & 보안 모델
-    details: Sonnet 4.6 분류 모델이 자동 모드에서 모든 도구 호출을 평가하는 3단계 보안 아키텍처.
+    details: Sonnet 4.6 분류 모델이 자동 모드에서 모든 도구 호출을 평가하는 다단계 보안 파이프라인.
     link: /deep/ko/security/permission-model
 ---

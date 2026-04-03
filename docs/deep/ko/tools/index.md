@@ -43,8 +43,8 @@ flowchart TB
 
     PermCheck["4. 권한 확인<br/>permissionChecker.check(<br/>  toolCall,<br/>  permissionMode<br/>)"] --> PermResult{"권한?"}
 
-    PermResult -->|"자동 허용<br/>(레이어 1/2)"| Execute
-    PermResult -->|"분류<br/>(레이어 3)"| Classifier["toolUseClassifier<br/>.classify(toolCall)"]
+    PermResult -->|"자동 허용<br/>(Phase 1/2)"| Execute
+    PermResult -->|"분류<br/>(Phase 3)"| Classifier["보안 분류기<br/>(Sonnet 4.6)"]
     PermResult -->|"항상 거부"| Deny["거부 반환"]
 
     Classifier -->|"안전"| Execute

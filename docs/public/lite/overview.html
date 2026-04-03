@@ -532,8 +532,8 @@
       border: 1px solid var(--color-border);
       text-decoration: none;
       transition: border-color 0.2s, background 0.2s;
+      flex: 1 1 0;
       min-width: 0;
-      max-width: 48%;
     }
 
     .page-nav a:hover {
@@ -761,7 +761,7 @@
             <span class="hero-stat-label">Core Systems</span>
           </div>
           <div class="hero-stat">
-            <span class="hero-stat-value">23+</span>
+            <span class="hero-stat-value">43+</span>
             <span class="hero-stat-label">Built-in Tools</span>
           </div>
         </div>
@@ -792,13 +792,13 @@ flowchart TB
 
     subgraph CORE["&#9889; 핵심 엔진"]
         QE["Query Engine<br/>(대화 루프)"]
-        TS["도구 시스템<br/>(23+ 빌트인 도구)"]
+        TS["도구 시스템<br/>(43+ 빌트인 도구)"]
         MA["멀티 에이전트<br/>(코디네이터 / 서브에이전트)"]
     end
 
     subgraph MEMORY["&#129504; 메모리 시스템"]
         MEM["MEMORY.md<br/>(영구 인덱스)"]
-        COMP["압축기<br/>(5단계)"]
+        COMP["압축기<br/>(6단계)"]
         BUDGET["토큰 예산<br/>(할당기)"]
     end
 
@@ -928,7 +928,7 @@ flowchart TB
                 <li class="file">cacheBreakDetector.ts <span class="desc">캐시 무효화</span></li>
               </ul>
             </li>
-            <li class="dir">tools/ <span class="desc">23+ 빌트인 도구</span>
+            <li class="dir">tools/ <span class="desc">43+ 빌트인 도구</span>
               <ul>
                 <li class="dir">definitions/ <span class="desc">도구 구현</span></li>
                 <li class="dir">mcp/ <span class="desc">MCP 브릿지</span></li>
@@ -952,7 +952,7 @@ flowchart TB
             <li class="dir">memory/
               <ul>
                 <li class="file">memoryMdLoader.ts <span class="desc">파서</span></li>
-                <li class="file">conversationCompressor.ts <span class="desc">5-계층 압축</span></li>
+                <li class="file">conversationCompressor.ts <span class="desc">6-계층 압축</span></li>
                 <li class="file">tokenBudgetAllocator.ts <span class="desc">컨텍스트 할당</span></li>
               </ul>
             </li>

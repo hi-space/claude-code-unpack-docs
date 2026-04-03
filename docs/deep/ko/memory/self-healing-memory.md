@@ -32,16 +32,16 @@ graph TB
         MD --> P5["- Deploy: GH Actions → AWS ECS"]
     end
 
-    subgraph L2["Layer 2: ConversationCompressor"]
+    subgraph L2["Layer 2: 대화 압축 시스템"]
         direction TB
-        Trigger["tokenBudgetAllocator<br/>.isOverBudget()"]
+        Trigger["예산 임계치<br/>초과 감지"]
         Trigger --> Select["Select oldest N messages<br/>(skip system prompt + last 2 turns)"]
         Select --> Summarize["Send to Claude for summarization"]
         Summarize --> Replace["Replace originals with summary"]
         Replace --> Extract["Extract new facts → MEMORY.md"]
     end
 
-    subgraph L3["Layer 3: TokenBudgetAllocator"]
+    subgraph L3["Layer 3: 토큰 예산 관리"]
         direction TB
         Budget["Total context: ~1M tokens"]
         Budget --> Sys["System prompt: ~20-25K (fixed)"]
@@ -64,28 +64,34 @@ graph TB
 
 ### File Location and Loading
 
-MEMORY.md는 cascading search pattern을 사용하여 현재 세션에 가장 관련된 index를 찾습니다. loader는 project-level memory 파일을 먼저 확인합니다(최우선), project-specific index가 없으면 user-level memory로 fallback합니다. 이는 사용자가 global preference와 project-specific context를 모두 유지할 수 있게 합니다.
+MEMORY.md는 프로젝트별로 저장되며, 레포지토리의 canonical git root를 기준으로 스코핑됩니다. 같은 레포지토리의 모든 worktree가 하나의 메모리 디렉토리를 공유하므로, 어떤 worktree에서 세션을 실행하든 지식이 일관되게 유지됩니다.
 
-로드되면, memory index는 system prompt의 suffix(모든 API 요청 끝에 추가되는 섹션)로 주입됩니다. 이는 대화 길이나 compaction cycle에 상관없이 모든 턴에서 MEMORY.md가 Context Window에 유지되도록 보장합니다. suffix injection pattern은 모델이 응답을 생성하기 전에 항상 current pointer index를 보도록 의미합니다.
+시스템은 우선순위 체인을 통해 메모리 디렉토리를 결정합니다:
+
+1. **환경변수 오버라이드** (`CLAUDE_COWORK_MEMORY_PATH_OVERRIDE`): SDK 통합에서 메모리를 space-scoped 마운트로 리다이렉트하는 데 사용되는 전체 경로 오버라이드. 설정 시 해당 경로가 직접 사용됩니다.
+2. **설정 오버라이드** (settings.json의 `autoMemoryDirectory`): `~/` 확장을 지원하는 사용자 설정 가능 경로. 보안을 위해 신뢰할 수 있는 소스(policy, local, user 설정)에서만 반영되며, 프로젝트 레벨 `.claude/settings.json`은 의도적으로 제외됩니다. 악의적인 레포지토리가 메모리 쓰기를 민감한 디렉토리로 리다이렉트하는 것을 방지하기 위함입니다.
+3. **기본 경로**: `~/.claude/projects/<sanitized-git-root>/memory/MEMORY.md`. 원격 실행 환경에서는 `CLAUDE_CODE_REMOTE_MEMORY_DIR`로 기본 디렉토리를 변경할 수 있습니다.
+
+로드되면, memory index는 system prompt의 suffix(모든 API 요청 끝에 추가되는 섹션)로 주입됩니다. 이는 대화 길이나 compaction cycle에 상관없이 모든 턴에서 MEMORY.md가 Context Window에 유지되도록 보장합니다. 모델은 응답을 생성하기 전에 항상 최신 pointer index를 참조합니다.
 
 ```mermaid
 graph LR
-    A["Session starts"] --> B["Check project/.claude/MEMORY.md"]
-    B -->|Found| C["✅ Load project memory"]
-    B -->|Not found| D["Check ~/.claude/MEMORY.md"]
-    D -->|Found| E["✅ Load user memory"]
-    D -->|Not found| F["✅ Empty index"]
+    A["Session starts"] --> B{"SDK 경로<br/>오버라이드 설정?"}
+    B -->|Yes| C["✅ 오버라이드 경로 사용"]
+    B -->|No| D{"Settings<br/>autoMemoryDirectory?"}
+    D -->|Yes| E["✅ 설정 경로 사용"]
+    D -->|No| F["✅ 기본 경로:<br/>~/.claude/projects/&lt;git-root&gt;/memory/"]
     
-    C --> G["Inject into system prompt suffix"]
+    C --> G["MEMORY.md 로드"]
     E --> G
     F --> G
-    
-    G --> H["Every API call includes MEMORY.md"]
+    G --> H["System prompt suffix에 주입"]
+    H --> I["모든 API 호출에 MEMORY.md 포함"]
     
     style C fill:#2ecc71,color:#fff
     style E fill:#2ecc71,color:#fff
-    style F fill:#f39c12,color:#fff
-    style H fill:#3498db,color:#fff
+    style F fill:#2ecc71,color:#fff
+    style I fill:#3498db,color:#fff
 ```
 
 ### Format Constraints
@@ -116,6 +122,11 @@ MEMORY.md는 token 효율성을 위해 엄격한 형식을 적용합니다:
 
 **Target**: 줄당 ~150자. 각 줄은 **포인터**(model에 세부사항을 찾을 위치를 알려줌)이지, **저장소**(세부사항 자체를 포함하지 않음)가 아닙니다.
 
+**하드 제한**:
+- 최대 200줄
+- 최대 25KB 파일 크기
+- 이 제한을 초과하는 줄은 경고와 함께 잘립니다
+
 ### Why Pointers Instead of Storage?
 
 ```mermaid
@@ -139,7 +150,7 @@ graph TB
 
 포인터 접근법은 project 크기에 관계없이 MEMORY.md가 ~500-1000 token을 사용함을 의미하면서, 모델이 전체 codebase를 navigate할 map을 제공합니다.
 
-## Layer 2: ConversationCompressor - 설계 철학
+## Layer 2: 대화 압축 시스템 - 설계 철학
 
 ### Compression Trigger and Design
 
@@ -187,7 +198,7 @@ Summarizer output은 일반적으로 50-100K token 대화 segment에 대해 500-
 
 추출된 fact는 MEMORY.md에 추가되어, compaction 중에 잃어버리지 않고 다음 session에서 사용 가능하게 됩니다. 이는 positive feedback loop를 만듭니다: 이전 session이 학습된 pattern을 persistent index에 기여하여, 향후 대화에 대한 context 품질을 점진적으로 향상시킵니다.
 
-## Layer 3: TokenBudgetAllocator - 왜 사전 관리가 중요한가
+## Layer 3: 토큰 예산 관리 - 왜 사전 관리가 중요한가
 
 Token Budget allocator는 model의 Context Window(일반적으로 200K token, 모델 의존, 최신 모델은 최대 1M)를 fixed 및 dynamic zone으로 나눕니다. Fixed zone은 system prompt 명령어(~25K token), tool schema 정의(~17K token), MEMORY.md index(~1K token)를 보유합니다. 이것들은 request당 변경되지 않는 overhead입니다 (운영 비용).
 
@@ -233,8 +244,8 @@ graph TB
 
 ```mermaid
 flowchart TB
-    Session["Long session running..."] --> Detect["TokenBudgetAllocator<br/>detects overage"]
-    Detect --> Compress["ConversationCompressor<br/>summarizes old messages"]
+    Session["Long session running..."] --> Detect["토큰 예산 관리<br/>overage 감지"]
+    Detect --> Compress["대화 압축 시스템<br/>요약 이전 메시지"]
     Compress --> Extract["Extract new persistent facts"]
     Extract --> Update["Update MEMORY.md<br/>with new pointer entries"]
     Update --> Better["Next API call has:<br/>✅ Fresh compressed context<br/>✅ Updated MEMORY.md<br/>✅ Budget headroom"]
