@@ -8,41 +8,23 @@ Subagents are independent agent instances spawned at runtime with isolated execu
 
 ### Initialization Flow
 
-```mermaid
-flowchart TB
-    Parent[Parent Agent<br/>QueryEngine] -->|spawn| AgentTool["Agent Tool<br/>(subagent_type, prompt)"]
-    AgentTool --> Config["Load Agent Config<br/>(AGENT_TYPE_CONFIGS)"]
-    Config --> Filter["Filter Available Tools<br/>(per subagent_type)"]
-    Filter --> Prompt["Build Subagent Prompt<br/>(buildSubagentPrompt)"]
-    Prompt --> Engine["Initialize Child<br/>QueryEngine"]
-    Engine --> Child["Child Agent<br/>Independent Context"]
-    Child -->|result| Parent
-```
+When a parent agent spawns a subagent, the system performs these initialization steps:
+
+1. **Config Loading**: Loads the subagent type configuration to determine constraints and capabilities
+2. **Tool Filtering**: Restricts the tool registry to only those allowed for this subagent type (done at init time, not runtime)
+3. **Prompt Construction**: Builds the subagent's system prompt, including type-specific instructions, agent-specific constraints, parent tracking information, and execution boundaries
+4. **QueryEngine Creation**: Initializes an independent QueryEngine instance for the child agent
+5. **Context Setup**: Establishes isolated context for conversation history, tool state, working directory, and parent-child relationship tracking
 
 ### Key Architectural Concepts
 
-**QueryEngine Instance**: Each subagent receives its own `QueryEngine` instance, ensuring:
-- Isolated conversation history
-- Independent tool state management
-- Separate working directory context
-- No cross-agent data leakage
+**QueryEngine Isolation**: Each subagent receives its own QueryEngine instance, ensuring isolated conversation history, independent tool state management, separate working directory context, and no cross-agent data leakage.
 
-**System Prompt Injection**: The subagent prompt is constructed via `buildSubagentPrompt(type, userPrompt)`, which:
-- Loads type-specific instructions from `AGENT_TYPE_CONFIGS`
-- Appends agent-specific constraints and capabilities
-- Injects parentAgentId for parent-child tracking
-- Sets execution boundaries (read-only, implementation-only, etc.)
+**Type-Specific System Prompts**: The subagent prompt is constructed to include type-specific instructions, agent-specific constraints and capabilities, parent agent tracking information, and execution boundaries (read-only, implementation-only, etc.).
 
-**Tool Registration**: Tools are filtered at initialization time, not runtime. The Agent tool:
-- Reads subagent type configuration
-- Constructs the tool registry with only allowed tools
-- Passes restricted registry to the child QueryEngine
-- Prevents runtime tool registration bypass
+**Tool Registration at Initialization**: Tools are filtered when the subagent is created, not during runtime. This prevents bypass of tool restrictions and ensures the child only receives the allowed tool registry.
 
-**Parent-Child Relationship**: Tracked via `parentAgentId` field:
-- Enables hierarchical abort signal propagation
-- Allows parent to monitor child progress
-- Supports nested subagent spawning (agent → subagent → sub-subagent)
+**Parent-Child Hierarchy**: Tracked via a parent agent identifier, enabling hierarchical abort signal propagation, allowing the parent to monitor child progress, and supporting nested subagent spawning (agent → subagent → sub-subagent).
 
 ---
 
@@ -55,17 +37,17 @@ Each subagent type uses an **allowlist model**: tools are explicitly permitted o
 | **general-purpose** | None | All tools | Complex multi-step tasks requiring full capabilities |
 | **Explore** | Agent, Edit, Write, NotebookEdit, ExitPlanMode | All read-only tools (Glob, Grep, Read, WebFetch, etc.) | Fast codebase exploration, read-only analysis |
 | **Plan** | Agent, Edit, Write, NotebookEdit, ExitPlanMode | All read-only tools (Glob, Grep, Read, WebFetch, etc.) | Implementation planning, design strategy |
-| **claude-code-guide** | All except Read, Edit | Read, Edit, Bash (limited) | Claude Code usage questions, configuration guidance |
+| **claude-code-guide** | Edit, Write, Bash, Agent, NotebookEdit, ExitPlanMode | Glob, Grep, Read, WebFetch, WebSearch | Claude Code usage questions, configuration guidance |
 | **statusline-setup** | All except Read, Edit | Read, Edit | Status line configuration and setup |
 | **verification** | Agent, Edit, Write, NotebookEdit, ExitPlanMode | All read-only tools (Glob, Grep, Read, WebFetch, etc.) | Implementation verification, testing, and validation |
 
 ### Disallowed Tool Explanations
 
-**Agent**: Prevents subagents from spawning their own subagents (except general-purpose). This avoids runaway spawn hierarchies and simplifies context management.
+**Agent Tool**: Prevents subagents from spawning their own subagents (except general-purpose). This avoids runaway spawn hierarchies and simplifies context management.
 
-**Edit / Write / NotebookEdit**: Prevents read-only agents (Explore, Plan, verification) from modifying code. These types are designed for analysis, planning, and verification, not implementation.
+**File Modification Tools (Edit, Write, NotebookEdit)**: Prevents read-only agents (Explore, Plan, verification) from modifying code. These types are designed for analysis, planning, and verification, not implementation.
 
-**ExitPlanMode**: Only relevant to Plan agents; prevents unintended mode exits.
+**Plan Mode Controls**: Only relevant to Plan agents; prevents unintended mode exits.
 
 ---
 
@@ -79,25 +61,22 @@ Node.js `AsyncLocalStorage` provides per-agent context isolation, ensuring:
 
 ### Agent Context Structure
 
-Node.js `AsyncLocalStorage` (from `async_hooks`) provides a namespace for storing data that flows through async execution chains. Each agent gets its own `AsyncLocalStorage` instance to hold context like identity, permissions, and abort signals.
+Node.js `AsyncLocalStorage` provides a namespace for storing data that flows through async execution chains without explicit parameter passing. Each agent gets its own AsyncLocalStorage instance to hold context like identity, permissions, and abort signals.
 
 **How it works:**
 
 1. **Context Creation** - When an agent spawns, a new context object is created containing:
    - `agentId`: Unique identifier for the agent
-   - `agentType`: Either `'subagent'` (Agent tool) or `'teammate'` (swarm teammate)
-   - For subagents: `subagentName` (e.g., "Explore", "Plan"), `parentSessionId`, `permissions`
-   - For teammates: `agentName`, `teamName`, `color`, `planModeRequired`
+   - `agentType`: Either `'subagent'` (spawned via Agent tool) or `'teammate'` (swarm teammate)
+   - For subagents: subagent name (e.g., "Explore", "Plan"), parent session ID, permissions
+   - For teammates: agent name, team name, visual identifier, mode requirements
    - `abortController`: For hierarchical cancellation
 
-2. **Context Binding** - The agent's entire execution runs inside `asyncStore.run(context, fn)`, which:
-   - Sets the context as "local storage" for that async chain
-   - All nested `await` calls inherit the same context
-   - No manual parameter passing required
+2. **Context Binding** - The agent's entire execution runs within an async context that automatically propagates to all nested operations (tool calls, timers, async functions).
 
-3. **Context Retrieval** - Tool calls, nested functions, and timers can access the context via `asyncStore.getStore()` without passing it as a parameter
+3. **Context Retrieval** - Tool calls, nested functions, and timers can access the context implicitly without manual parameter passing.
 
-4. **Isolation Guarantee** - When multiple agents run concurrently (backgrounded agents, parallel explores), each maintains its own context namespace. Agent A's events never see Agent B's context.
+4. **Isolation Guarantee** - When multiple agents run concurrently (backgrounded agents, parallel explores), each maintains its own isolated context namespace. Agent A's events never see Agent B's context.
 
 ### AsyncLocalStorage Isolation Flow
 
@@ -172,28 +151,9 @@ flowchart TB
     style A1b fill:#f39c12,color:#000
 ```
 
-### Lifecycle Example
+### Abort Signal Hierarchy
 
-```typescript
-// Root agent creates child agents
-const rootAbortController = new AbortController();
-
-// Spawn 2 parallel explore agents
-const agent1 = spawnAgent({
-  type: 'Explore',
-  abortSignal: rootAbortController.signal,  // Pass signal to child
-  // ...
-});
-
-const agent2 = spawnAgent({
-  type: 'Explore',
-  abortSignal: rootAbortController.signal,
-  // ...
-});
-
-// If root is cancelled, signal propagates to all children
-rootAbortController.abort();  // Agent1 and Agent2 receive abort signal immediately
-```
+When a parent agent spawns children, it passes its abort signal down the hierarchy. If the parent is cancelled, the signal propagates to all children automatically, triggering graceful cleanup.
 
 ### Cleanup Guarantees
 
@@ -370,59 +330,40 @@ stateDiagram-v2
 
 ### Lifecycle Phases
 
-**Spawning (0-100ms)**
-- `Agent` tool receives subagent_type and prompt
-- `AGENT_TYPE_CONFIGS` loaded for type
-- Tool registry filtered
-- System prompt constructed
+**Spawning (0-100ms)**: Load agent type configuration, filter tool registry, construct system prompt.
 
-**Initialized (100-200ms)**
-- QueryEngine instance created
-- AsyncLocalStorage context set up
-- AbortController chain established
-- Worktree created (if `isolation: 'worktree'`)
+**Initialized (100-200ms)**: Create QueryEngine instance, set up AsyncLocalStorage context, establish AbortController chain, create worktree if isolation is requested.
 
-**Running**
-- Agent processes messages
-- Tool calls executed within QueryEngine
-- State persisted to AsyncLocalStorage
-- Child agents may be spawned (if type permits)
+**Running**: Agent processes messages, executes tool calls within QueryEngine, persists state to AsyncLocalStorage, may spawn child agents if type permits.
 
-**Completed/Failed/Aborted**
-- Result object prepared
-- Error details captured (if applicable)
-- Abort signal propagated to children
+**Completed/Failed/Aborted**: Prepare result object, capture error details if applicable, propagate abort signal to children.
 
-**Cleanup**
-- File handles closed
-- Worktree removed (if applicable)
-- AsyncLocalStorage context destroyed
-- QueryEngine deallocated
+**Cleanup**: Close file handles, remove worktree if applicable, destroy AsyncLocalStorage context, deallocate QueryEngine.
 
 ### Spawning Parameters
 
-```typescript
-interface SpawnAgentOptions {
-  type: 'general-purpose' | 'Explore' | 'Plan' | 'claude-code-guide' | 'statusline-setup';
-  prompt: string;
-  run_in_background?: boolean;  // Default: true
-  isolation?: 'worktree';        // Optional git worktree isolation
-  parentAgentId?: string;         // Set by parent agent
-  abortSignal?: AbortSignal;      // Optional cancellation signal
-  workingDirectory?: string;      // Override working directory
-  maxDuration?: number;           // Timeout in milliseconds
-}
+Subagents are spawned with these key parameters:
 
-interface AgentResult {
-  agentId: string;
-  status: 'completed' | 'failed' | 'aborted';
-  result?: unknown;              // Agent output
-  error?: Error;                 // Error details
-  duration: number;              // Execution time in ms
-  worktreePath?: string;          // If isolation=worktree and changes made
-  worktreeBranch?: string;        // Branch name if worktree created
-}
-```
+- **type**: The subagent type (general-purpose, Explore, Plan, claude-code-guide, statusline-setup)
+- **prompt**: The task or query for the subagent
+- **run_in_background**: Whether to run asynchronously (default: false)
+- **isolation**: Optional git worktree isolation for safe code modifications
+- **parentAgentId**: Set by parent agent for tracking
+- **abortSignal**: Optional cancellation signal for hierarchical cleanup
+- **workingDirectory**: Override the default working directory
+- **maxDuration**: Timeout in milliseconds
+
+### Agent Result Structure
+
+Subagents return a result object containing:
+
+- **agentId**: Unique identifier for this agent execution
+- **status**: Terminal status (completed, failed, or aborted)
+- **result**: The agent's output or response
+- **error**: Error details if status is failed
+- **duration**: Execution time in milliseconds
+- **worktreePath**: Path to worktree if isolation was used and changes were made
+- **worktreeBranch**: Git branch name if worktree was created
 
 ---
 

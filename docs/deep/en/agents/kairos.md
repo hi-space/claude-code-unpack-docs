@@ -4,12 +4,14 @@ KAIROS is one of the most significant discoveries in the leaked source code. Wit
 
 ## Technical Summary
 
-| Property | Value |
-|----------|-------|
-| Architecture | Autonomous daemon with tick loop, autoDream consolidation, and event watching |
-| Implementation status | Fully implemented, not a prototype |
-| Feature flag | `KAIROS` (compile-time): dead-code-eliminated in public builds |
-| Key modules | kairosManager, tickLoop, autoDream, eventWatcher, dailyLog |
+KAIROS implements an autonomous daemon architecture with four key subsystems:
+
+- **Tick Loop**: Periodic evaluation cycle that assesses workspace state, decides on actions, and records observations
+- **autoDream**: Consolidation engine that merges observations into structured facts for long-term memory
+- **Event Watcher**: GitHub webhook integration that injects high-priority events into the decision pipeline
+- **Daily Log**: Append-only journal recording all autonomous actions, observations, and decisions for audit trails and dream input
+
+Controlled by the `KAIROS` compile-time feature flag (dead-code-eliminated in public builds).
 
 ## Architecture
 
@@ -109,7 +111,7 @@ sequenceDiagram
 
 ### Workspace State Assessment
 
-The `assessWorkspaceState()` function performs a systematic snapshot of the development environment across four dimensions. The **git dimension** captures the current branch, uncommitted changes (staged and unstaged), recent commit history (titles and authors), and open pull requests (status, review state). This provides the daemon with visibility into the repository's current trajectory and any pending code changes awaiting merge.
+The workspace state assessment performs a systematic snapshot of the development environment across four dimensions. The **git dimension** captures the current branch, uncommitted changes (staged and unstaged), recent commit history (titles and authors), and open pull requests (status, review state). This provides the daemon with visibility into the repository's current trajectory and any pending code changes awaiting merge.
 
 The **CI dimension** tracks the last continuous integration run status (success, failure, or pending), lists any failing tests, and their error messages. This allows KAIROS to detect build breaks and failed test suites as autonomous action triggers. The daemon can read CI logs, identify the root cause, and attempt fixes without waiting for user intervention.
 
@@ -303,22 +305,7 @@ graph TB
 
 ## Daily Log: Append-Only Journal
 
-The daily log maintains a structured, append-only record:
-
-```typescript
-interface DailyLogEntry {
-  timestamp: number;
-  tickNumber: number;
-  type: 'action' | 'observation' | 'event' | 'dream' | 'error';
-  action: string;          // What was done
-  result: string;          // What happened
-  context: {
-    workspaceState?: WorkspaceState;
-    triggeredBy?: string;  // 'tick' | 'event' | 'dream'
-    relatedFiles?: string[];
-  };
-}
-```
+The daily log maintains a structured, append-only record. Each entry captures a timestamp, tick number, entry type (action/observation/event/dream/error), description of what was done, the result, and contextual metadata including the workspace state snapshot, what triggered the entry, and related files.
 
 The log serves multiple purposes:
 1. **Audit trail**: Complete record of autonomous actions for user review

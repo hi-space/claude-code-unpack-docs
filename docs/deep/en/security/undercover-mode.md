@@ -43,22 +43,7 @@ This triggers the model to avoid mentioning:
 
 ## Implementation
 
-```mermaid
-flowchart TB
-    Build{Build Type?}
-    Build -->|"Internal"| Internal[Full system prompt<br/>All metadata included]
-    Build -->|"External"| External[Undercover Mode ON]
-
-    External --> Strip[Strip internal references]
-    Strip --> DCE[Dead-code elimination<br/>Undercover check → trivial return]
-
-    ENV{CLAUDE_CODE_UNDERCOVER=1?}
-    ENV -->|"Yes"| ForceOn[Force Undercover ON]
-    ENV -->|"No"| Build
-
-    style External fill:#e74c3c,color:#fff
-    style DCE fill:#e74c3c,color:#fff
-```
+Undercover Mode is implemented through a combination of build-time configuration and runtime checks. When external builds are compiled, the code is optimized to strip all internal metadata references before the model processes outputs. The design philosophy is **competitive intelligence protection**: prevent accidental information leakage that could reveal Anthropic's internal structure or unreleased products.
 
 ## Relationship to Other Security Mechanisms
 

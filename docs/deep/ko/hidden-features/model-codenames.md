@@ -7,7 +7,7 @@
 | Codename | 모델 | 상세 |
 |----------|------|------|
 | **Capybara** | Sonnet 시리즈 v8 | 1M Context Window, "fast mode" 변형 |
-| **Fennec** | Opus 4.6 전신 | 소스에 마이그레이션 경로 존재 |
+| **Fennec** | Claude Opus 4.5 | 소스에 마이그레이션 경로 존재 |
 | **Numbat** | 차기 미출시 모델 | 출시 일정이 소스코드에 포함 |
 | **Tengu** | 내부 프로젝트 Codename | Feature Flag, 텔레메트리, 분석에 사용 |
 
@@ -26,9 +26,9 @@ Capybara는 1M Context Window를 가진 Sonnet 시리즈 v8 모델의 내부 Cod
 Claude Code의 "Fast mode"는 동일한 모델(Capybara/Sonnet)을 사용하며, 다른 모델이 아니다. 동일 품질 수준에서 더 빠른 토큰 생성을 최적화하지만, 거짓 주장률 데이터는 일부 정확도 트레이드오프를 시사한다.
 :::
 
-## Fennec (Pre-Opus 4.6)
+## Fennec (Claude Opus 4.5)
 
-Fennec은 Opus 4.6의 전신이다. 소스코드에 Fennec에서 현재 Opus 모델로의 마이그레이션 경로가 포함되어 있어, 구조화된 모델 업그레이드 프로세스를 보여준다.
+Fennec은 Claude Opus 4.5의 내부 코드네임이다. 소스코드에 Fennec에서 현재 Opus 모델로의 마이그레이션 경로가 포함되어 있어, 구조화된 모델 업그레이드 프로세스를 보여준다.
 
 ## Numbat 
 

@@ -42,5 +42,13 @@ export default withMermaid(
     mermaid: {
       theme: 'neutral',
     },
+
+    vite: {
+      resolve: {
+        alias: {
+          'dayjs/plugin/duration.js': 'dayjs/esm/plugin/duration',
+        },
+      },
+    },
   })
 )

@@ -6,7 +6,7 @@ The leaked source code reveals **44 feature flags** controlling fully built but 
 
 ```mermaid
 graph LR
-    subgraph Compile["Compile-Time (12 flags)"]
+    subgraph Compile["Compile-Time (9 flags)"]
         CT[Removed from public builds<br/>at compile time]
     end
 
@@ -23,7 +23,7 @@ graph LR
     style Beta fill:#3498db,color:#fff
 ```
 
-## Compile-Time Flags (12)
+## Compile-Time Flags (9)
 
 These features are completely removed from public builds during compilation. The code exists in the source but is dead-code-eliminated in the distributed binary.
 

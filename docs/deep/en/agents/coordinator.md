@@ -49,11 +49,9 @@ Each InProcessTeammate runs inside an async execution context. The AsyncLocalSto
 - Permissions are enforced per-agent (not globally)
 - Abort signals can be propagated to individual agents
 
-InProcessTeammate tasks store their identity and state in AppState as `InProcessTeammateTaskState`, which includes the agent's name, team context, current permissions, conversation history, and execution lifecycle. The actual execution happens via AsyncLocalStorage, which provides true isolation within the Node.js event loop. Each teammate gets its own context object containing isolated tool state, conversation history, and permissions.
+The unified execution engine runs inside the async context, receiving the teammate's specific prompt, allowed tools, and permission configuration. Multiple teammates can execute concurrently in the same Node.js process without their tool calls interfering with each other. Each teammate maintains isolated tool state, conversation history, and permissions.
 
-The QueryEngine (Claude Code's unified execution engine) runs inside the async context, receiving the teammate's specific prompt, allowed tools, and permission configuration. Multiple teammates can execute concurrently in the same Node.js process without their tool calls interfering with each other. Progress is tracked via heartbeats and state updates, allowing the coordinator to detect stalled tasks and the UI to display real-time status.
-
-When a teammate completes or fails, its result is stored in AppState and notified back to the coordinator, which can then decide whether to retry, continue the work, or escalate to a different agent type.
+Progress is tracked via heartbeats and state updates, allowing the coordinator to detect stalled tasks and the UI to display real-time status. When a teammate completes or fails, its result is stored and notified back to the coordinator, which can then decide whether to retry, continue the work, or escalate to a different agent type.
 
 **Best for:**
 - Feature implementation + parallel testing
@@ -97,23 +95,7 @@ sequenceDiagram
 ```
 
 **Mailbox structure:**
-```json
-{
-  "taskId": "uuid-1234",
-  "status": "pending|processing|completed|failed",
-  "task": {
-    "prompt": "Implement feature X",
-    "tools": ["Read", "Edit", "Bash"],
-    "context": {}
-  },
-  "result": {
-    "output": "...",
-    "files": ["file.ts"],
-    "exitCode": 0
-  },
-  "timestamp": "2026-04-02T12:34:56Z"
-}
-```
+Mailbox files contain task metadata (ID, status), the task itself (prompt, allowed tools, context), execution results (output, modified files, exit code), and timestamping for lifecycle tracking.
 
 **Crash resilience:**
 If a LocalAgent crashes, the mailbox file remains intact. The coordinator can:
@@ -305,67 +287,26 @@ The coordinator doesn't use a coded algorithm for task distribution. Instead, th
 
 ### Coordinator Prompt Structure
 
-The coordinator prompt contains several key sections:
+The coordinator prompt guides agent behavior through several key principles:
 
-**Task Decomposition:**
-```
-You are a project coordinator managing a team of specialist agents.
-When given a task:
-1. Break it into independent subtasks that can be parallelized
-2. Identify critical dependencies between tasks
-3. Assign tasks to appropriate specialist agents
-4. Estimate completion time for each task
-```
+1. **Task Decomposition**: Break requests into independent, parallelizable subtasks while identifying critical dependencies and appropriate specialist agent assignments with time estimates.
 
-**Worker Assignment Logic:**
-```
-Choose the right agent type for each task:
-- Multi-file refactoring with independent files → 3 parallel InProcessTeammates
-- Long-running analysis → LocalAgent (single process)
-- Shell command tasks → LocalShell
-- Cross-machine work → RemoteAgent (internal use only)
-```
+2. **Worker Assignment**: Choose the right agent type based on task characteristics—parallel teammates for independent file work, process-isolated agents for long-running analysis, subprocess agents for shell tasks, and distributed agents for cross-machine work.
 
-**Quality Control:**
-```
-Do not rubber-stamp weak work.
-For each worker output:
-- Verify it solves the assigned subtask completely
-- Check for architectural consistency
-- Validate against original requirements
-- Request revisions if work is incomplete or incorrect
-```
+3. **Quality Control**: Critically evaluate each worker's output rather than rubber-stamping it. Verify completeness, check architectural consistency, validate against original requirements, and request revisions for substandard work.
 
-**Progress Monitoring:**
-```
-Track all workers on TaskList:
-- Monitor completion time
-- Detect stalled tasks (no progress for 5+ minutes)
-- Signal failures to TaskPanel UI
-- Aggregate partial results as tasks complete
-```
+4. **Progress Monitoring**: Track all active workers through a task registry, monitoring completion time, detecting stalled tasks (no progress beyond 5 minutes), signaling failures to the UI, and aggregating partial results as tasks complete.
 
-**Result Aggregation:**
-```
-After all workers complete:
-1. Merge all changes (handling conflicts)
-2. Validate the integrated solution
-3. Run final verification tests
-4. Report success or request re-work
-```
+5. **Result Aggregation**: After all workers complete, merge all changes while handling conflicts, validate the integrated solution, run final verification tests, and either report success or request re-work if issues remain.
 
 ### Quality Control Directives
 
-The prompt includes explicit quality control instructions:
-
-> "Do not rubber-stamp weak work."
-
-This means the coordinator is instructed to:
-- Critically evaluate each worker's output
-- Reject substandard work and request revisions
-- Ensure consistency across worker outputs
-- Validate that the assembled result meets the original requirement
-- Track failed attempts and escalate if work fails repeatedly
+The coordinator is explicitly instructed to avoid rubber-stamping weak work. This means:
+- Critically evaluate each worker's output against the assigned task
+- Reject substandard work and request revisions instead of accepting incomplete solutions
+- Ensure consistency across all worker outputs
+- Validate that the assembled result meets the original user requirement
+- Track failed attempts and escalate if work repeatedly fails to meet standards
 
 ---
 
@@ -402,11 +343,11 @@ graph TB
 
 ### Task Lifecycle
 
-When the coordinator spawns a worker via the Agent tool, the task enters AppState with metadata: task ID, agent ID, status, and timestamps. The task transitions through phases: **pending** (queued but not started), **running** (actively executing), **completed** (finished successfully), or **failed** (stopped with an error).
+When the coordinator spawns a worker, the task enters the registry with metadata: task ID, agent ID, status, and timestamps. The task transitions through phases: **pending** (queued but not started), **running** (actively executing), **completed** (finished successfully), or **failed** (stopped with an error).
 
-Each task includes a heartbeat mechanism. The agent reports progress at intervals, updating `lastHeartbeat`. If a task is running but no heartbeat arrives for a configured timeout (typically 5 minutes), the coordinator marks it as stalled and can either wait longer or signal intervention to the UI.
+Each task includes a heartbeat mechanism. The agent reports progress at intervals. If a task is running but no heartbeat arrives for a configured timeout (typically 5 minutes), the coordinator marks it as stalled and can either wait longer or signal intervention to the UI.
 
-The CoordinatorAgentStatus React component subscribes to AppState changes and displays all active tasks in real time, showing status badges, progress indicators, error messages, and stalled task warnings. This allows the user to monitor parallel workers without polling, and gives the coordinator visibility into which tasks are making progress and which are blocked.
+The status display component subscribes to task changes and displays all active tasks in real time, showing status badges, progress indicators, error messages, and stalled task warnings. This allows the user to monitor parallel workers without polling, and gives the coordinator visibility into which tasks are making progress and which are blocked.
 
 ```mermaid
 stateDiagram-v2
@@ -436,7 +377,7 @@ The `CoordinatorAgentStatus.tsx` React component displays:
 
 ## Worker Agents
 
-Workers are spawned as subagents using the Agent tool with `subagent_type: "worker"`. Each worker:
+Workers are spawned as subagents using the Agent tool with `subagent_type: "general-purpose"`. Each worker:
 
 - Receives a complete task description (no shared context)
 - Operates independently with its own context window
@@ -449,12 +390,11 @@ The coordinator can spawn workers with these agent types:
 
 | Type | Use Case |
 |------|----------|
-| **worker** | General-purpose tasks: implementation, research, verification, refactoring |
+| **general-purpose** | Complex multi-step tasks with full tool access: implementation, research, verification, refactoring |
 | **Explore** | Fast read-only codebase exploration with parallel support |
 | **Plan** | Architectural planning and design strategies |
-| **general-purpose** | Complex multi-step tasks with full tool access |
 
-Most coordinator work uses `subagent_type: "worker"` for flexibility. Specialized types (Explore, Plan) are used when you want type-specific constraints or optimized behavior.
+Most coordinator work uses `subagent_type: "general-purpose"` for flexibility. Specialized types (Explore, Plan) are used when you want type-specific constraints or optimized behavior.
 
 ### Parallel Execution
 
@@ -499,14 +439,11 @@ Coordinator Mode is gated behind the `COORDINATOR_MODE` compile-time flag and is
 
 ### Compile-Time Flag and Environment Control
 
-Coordinator mode is controlled by two mechanisms working together: a Bun compile-time feature flag (`COORDINATOR_MODE`) and an environment variable (`CLAUDE_CODE_COORDINATOR_MODE`). The feature flag determines whether coordinator code is bundled at all; the environment variable controls runtime activation when the feature is enabled.
+Coordinator mode is controlled by two mechanisms working together: a compile-time feature flag (`COORDINATOR_MODE`) and an environment variable (`CLAUDE_CODE_COORDINATOR_MODE`). The feature flag determines whether coordinator code is bundled at all; the environment variable controls runtime activation when the feature is enabled.
 
-The actual check happens in `coordinatorMode.ts`:
-- `isCoordinatorMode()` checks both the feature flag and the environment variable, returning true only if both enable coordinator mode
-- `matchSessionMode()` ensures resumed sessions respect their stored mode (coordinator vs. normal), automatically flipping the environment variable if needed
-- `getCoordinatorSystemPrompt()` and `getCoordinatorUserContext()` construct the coordinator's prompt and worker context, which are only called when coordinator mode is active
+This two-layer design prevents bundling coordinator code in public builds (via the feature flag) while allowing internal builds to enable/disable it at runtime (via the environment variable). When coordinator mode is disabled, the code paths that would instantiate coordinator components simply are not executed.
 
-This design prevents bundling coordinator code in public builds (via the feature flag) while allowing internal builds to enable/disable it at runtime (via the environment variable). When coordinator mode is disabled, the code paths that would instantiate coordinator components simply are not executed.
+Session resumption logic ensures that resumed sessions respect their stored mode (coordinator vs. normal), automatically setting the environment variable as needed for consistency.
 
 ### Coordinator Mode Feature Gate
 
@@ -533,29 +470,13 @@ graph TB
     style Inactive fill:#c0392b,color:#fff
 ```
 
-### Directory Structure
-
-The coordinator module includes:
-- Main orchestration engine
-- Agent implementations (InProcessTeammate, LocalAgent, RemoteAgent, LocalShell)
-- Task registry for tracking worker progress
-- Worktree management for isolated git operations
-- Prompt builder for constructing coordinator instructions
-- UI component for displaying agent status dashboard
-
 ### Activation
 
-Coordinator mode activation happens at the query engine level. When a new agent request arrives, the system checks:
+Coordinator mode activation happens at the query engine level. When a new agent request arrives, the system checks whether the compile-time feature flag and runtime environment variable both enable coordinator mode.
 
-1. Is the feature flag enabled at compile time?
-2. Is the environment variable set to activate it at runtime?
-3. Does the user's prompt suggest parallel work (heuristic keywords like "multi-file", "multiple", "parallel", "components")?
+If both checks pass, the query engine may spawn a coordinator instead of a standalone agent. The coordinator receives the full user prompt and breaks it into subtasks, launching workers for independent work. Otherwise, a single agent executes the task end-to-end.
 
-If all checks pass, the query engine may spawn a coordinator instead of a standalone agent. The coordinator receives the full user prompt and breaks it into subtasks, launching workers for independent work. Otherwise, a single agent executes the task end-to-end.
-
-This decision point ensures that simple, sequential work doesn't unnecessarily invoke coordinator machinery, while complex multi-faceted tasks get the benefit of parallel decomposition. The heuristic is conservative. It looks for explicit keywords or patterns that suggest decomposable work, rather than trying to infer parallelism from subtle prompt content.
-
-Even when coordinator mode is enabled and the task passes heuristics, the coordinator can still decide to fall back to single-agent execution if it judges the task to be inherently sequential. The prompt-based orchestration (discussed earlier) gives the coordinator this flexibility.
+This design ensures coordinator mode is controlled strictly by flags rather than inferred from prompt keywords. When enabled, the coordinator can still choose to execute sequentially if the task is inherently sequential. The prompt-based orchestration philosophy gives the coordinator this flexibility to decide the best execution strategy for each request.
 
 ---
 

@@ -15,7 +15,7 @@ hero:
 
 features:
   - icon: 🔧
-    title: 23+ 빌트인 도구
+    title: 43+ 빌트인 도구
     details: 파일 작업, 셸 실행, 웹 접근, 서브 에이전트 스폰, MCP 통합 등 Claude Code의 모든 도구 카탈로그.
     link: /deep/ko/tools/
   - icon: 🤖

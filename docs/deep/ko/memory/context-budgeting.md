@@ -24,7 +24,7 @@ pie title Context Window Budget (~1M tokens)
 | 대화 이력 | ~900-950K | 아니오 | 예 |
 | Response reserve | ~8-10K | 아니오 | 예 |
 
-**전체 context window**: ~1M tokens (모델에 따라 다름: Claude 3 Sonnet ~200K, Claude 3.5 Opus ~200K, 미래 모델 >1M)
+**전체 context window**: ~1M tokens (모델에 따라 다름: Claude 3 Sonnet ~200K, Claude 3 Opus ~200K, 미래 모델 >1M)
 
 **동적 조정**: 유효 context window는 런타임 중 `effectiveContextWindow = contextWindow - reservedTokensForSummary`를 통해 계산됩니다. `CLAUDE_CODE_AUTO_COMPACT_WINDOW` 환경변수로 오버라이드할 수 있습니다. 대화 이력 및 response reserve 할당은 다음을 기반으로 조정됩니다:
 - 모델의 실제 context window 크기 (모델마다 다른 제한)
@@ -33,7 +33,16 @@ pie title Context Window Budget (~1M tokens)
 
 ## Auto-Compression: 점진적 압축 레이어
 
-대화 이력이 context 제한에 접근하면, 시스템은 자동으로 점진적으로 더 강한 압축 레이어를 적용합니다. Trigger는 동적 임계값을 기반으로 합니다: token 수가 `effectiveContextWindow - AUTOCOMPACT_BUFFER_TOKENS` (13,000 tokens)을 초과하면 압축이 고려됩니다. 각 레이어는 필요할 때만 활성화되며, 필요한 최소한의 압축만 적용하여 정보 품질을 보존합니다.
+대화 이력이 context 제한에 접근하면, 시스템은 자동으로 점진적으로 더 강한 압축 레이어를 적용합니다. 이는 근본적인 설계 결정입니다: **최소한으로 압축하고, 필요할 때만, 가벼운 접근법이 실패한 경우에만 escalate**. 왜 점진적 레이어? 왜냐하면 서로 다른 압축 기술들은 서로 다른 비용을 가지고 서로 다른 정보를 보존하기 때문입니다:
+
+- **가벼운 기법** (Layer 1-1B): disk에서 다시 읽을 수 있는 오래된 tool output만 희생
+- **중간 기법** (Layer 2): 대화 세부 사항을 희생하지만 MEMORY.md에 의미론적 지식을 추출하고 보존
+- **무거운 기법** (Layer 3): 대화 이력을 희생하지만 결정과 최근 작업 보존
+- **응급 기법** (Layer 4): MEMORY.md와 최근 턴을 제외한 모든 것을 희생 (최후의 수단)
+
+점진적으로 escalate함으로써 (더 이른 레이어가 충분하지 않을 때만), 시스템은 compression 비용을 최소화하면서 최대 정보 품질을 보존합니다.
+
+Trigger는 동적 임계값을 기반으로 합니다: token 수가 `effectiveContextWindow - AUTOCOMPACT_BUFFER_TOKENS` (13,000 tokens)을 초과하면 압축이 고려됩니다. 각 레이어는 필요할 때만 활성화되며, 필요한 최소한의 압축만 적용하여 정보 품질을 보존합니다.
 
 ### 점진적 Compaction 흐름도
 
@@ -224,25 +233,29 @@ sequenceDiagram
 
 > "시스템이 context 제한을 유지하기 위해 이전 메시지를 압축 중입니다. 주요 결정 및 발견사항은 MEMORY.md에 보존됩니다."
 
-## 압축 전략
+## 압축 전략: 정보 경제학
+
+Compression은 근본적으로 **경제학**에 관한 것입니다: 어떤 정보가 제한된 context에서 보존할 가치가 있고, 어떤 정보를 검색하거나 재유도할 수 있는가? 시스템은 정보 밀도와 유틸리티를 기반으로 ruthless한 trade-off를 합니다.
 
 ### 보존되는 항목
 
-Auto-compaction 및 session memory 추출 중에 시스템은 다음을 보존합니다:
-- **주요 결정**: 무엇이 결정되었고 왜 그렇게 했는가
-- **파일 수정**: 어떤 파일이 변경되었고, 각각 무엇이 변경되었는가
-- **중요한 발견사항**: 오류, 차단자, 발견, 근본 원인
-- **사용자 명령어**: 원래 요구사항 및 제약 조건
-- **상호 참조**: MEMORY.md, 파일 경로, 라인 번호에 대한 포인터
+Auto-compaction 및 session memory 추출 중에, 시스템은 다음과 같은 정보를 보존합니다:
+- **결정-중요**: 무엇이 결정되었고 왜인가 (미래 방향을 guide)
+- **구현-특정**: 어떤 파일이 변경되었고, 각각 무엇이 변경되었는가 (전체 파일 재읽기 방지)
+- **발견-풍부**: 오류, 차단자, 발견, 근본 원인 (hard-won, 재발견되어서는 안 됨)
+- **사용자-지정**: 원래 요구사항 및 제약 조건 (사용자의 의도, 유도 불가)
+- **위치-태그**: MEMORY.md, 파일 경로, 라인 번호에 대한 포인터 (최소 비용, 높은 유틸리티)
 
 ### 삭제되는 항목
 
-Compressor는 다음을 삭제합니다:
-- 장황한 tool 출력 (파일 내용은 이미 디스크에 있음)
-- 결과를 산출하지 못한 탐색 검색
-- 최종 결정으로 이어진 중간 추론
-- MEMORY.md에 이미 캡처된 중복 정보
-- 막다른 길로 이어진 성공적인 탐색 경로
+Compressor는 ruthlessly 다음을 삭제합니다:
+- **장황한 tool 출력**: 파일 내용은 이미 디스크에 있고 필요하면 다시 읽을 수 있습니다. 대화는 우리가 파일을 읽었다는 것을 기록했습니다. 내용은 다시 읽을 수 있습니다
+- **탐색적 검색**: 어디로도 이어지지 않은 검색은 정보가 아니라 noise입니다. 따른 결정이 중요하고 탐색은 그렇지 않습니다
+- **중간 reasoning**: 최종 결론으로 이어진 work-in-progress thinking. 우리는 결론을 유지하고 journey는 유지하지 않습니다
+- **중복 정보**: MEMORY.md 또는 다른 곳에 이미 캡처된 데이터. De-duplication은 context bloat을 방지합니다
+- **막다른 길**: 아무 곳도 이어지지 않은 성공적인 탐색. 결과(이 방향이 아님)가 중요합니다
+
+**왜 이것이 작동하는가**: Compression은 *구조적* 정보를 보존하면서 *서술적* 정보를 폐기합니다. Model은 필요하면 파일을 다시 읽고 검색을 다시 실행할 수 있지만, 결정을 재유도하거나 차단자를 재발견할 수 없습니다.
 
 ### 사실 추출 to MEMORY.md
 
@@ -356,7 +369,7 @@ API가 `stop_reason: 'max_tokens'`를 가진 응답을 반환할 때, 첫 번째
 
 **Trigger**: Stage 1 escalation이 응답을 완료하지 못했을 때
 
-**Action**: Layer 5 (Reactive Compact) 적용. Essentials만 유지. 후 감소된 budget으로 재시도
+**Action**: Layer 4 (Reactive Compact) 적용. Essentials만 유지. 후 감소된 budget으로 재시도
 
 Escalating max_tokens가 작동하지 않을 때, 시스템은 aggressive context 감소를 적용합니다. 유지:
 - System prompt 

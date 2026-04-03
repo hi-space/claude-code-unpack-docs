@@ -6,7 +6,7 @@
 
 ```mermaid
 graph LR
-    subgraph Compile["Compile-Time (12 flags)"]
+    subgraph Compile["Compile-Time (9 flags)"]
         CT[공개 빌드에서<br/>컴파일 시 제거]
     end
 
@@ -23,7 +23,7 @@ graph LR
     style Beta fill:#3498db,color:#fff
 ```
 
-## 컴파일 타임 플래그 (12개)
+## 컴파일 타임 플래그 (9개)
 
 이 기능들은 컴파일 중에 공개 빌드에서 완전히 제거됩니다. 코드는 소스에 존재하지만 배포된 바이너리에서는 데드코드 제거됩니다.
 

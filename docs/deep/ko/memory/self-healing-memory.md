@@ -139,15 +139,17 @@ graph TB
 
 포인터 접근법은 project 크기에 관계없이 MEMORY.md가 ~500-1000 token을 사용함을 의미하면서, 모델이 전체 codebase를 navigate할 map을 제공합니다.
 
-## Layer 2: ConversationCompressor - Implementation
+## Layer 2: ConversationCompressor - 설계 철학
 
-### Compression Trigger
+### Compression Trigger and Design
 
-Token Budget allocator가 overage를 감지할 때, compression 시스템은 3단계 프로세스에 진입합니다. 첫째, 안전하게 요약될 수 있는 메시지를 식별합니다. 시스템은 system prompt, MEMORY.md index, 마지막 2 user-assistant turn을 **절대** 압축하지 않습니다. 이것들이 ongoing work를 이해하기 위해 model이 항상 recent context를 갖도록 보장하는 protected tail을 형성합니다. 4개 미만의 compressible message가 존재하면, 압축은 skip됩니다(작은 대화에서 detail을 잃기에는 너무 위험).
+Token Budget allocator가 overage를 감지할 때, compression 시스템은 3단계 프로세스에 진입합니다. 핵심 원칙은: **최근 context 보존, 오래된 세부 사항 압축, 영구적 사실 추출**.
 
-두 번째 단계는 protected message의 가장 오래된 batch를 Claude를 사용하여 요약하고, 결정 rationale, 파일 변경, 핵심 발견을 보존하면서 장황한 tool output과 superseded reasoning을 폐기하는 compact digest를 생성합니다. 동시에, compressor는 대화에서 새로운 persistent fact를 추출합니다. 이는 future session이 필요로 하는 project structure, architecture, tools, user preference에 대한 발견입니다.
+먼저, 시스템은 안전하게 압축될 수 있는 메시지를 식별합니다. 시스템은 system prompt, MEMORY.md index, 마지막 2 user-assistant turn을 **절대** 압축하지 않습니다. 이들이 ongoing work를 이해하기 위해 model이 항상 최근 context를 갖도록 보장하는 protected tail을 형성합니다. 4개 미만의 compressible message가 존재하면, 압축은 완전히 skip됩니다 (작은 대화에서 detail을 잃기에는 너무 위험). 이러한 보수적 접근법은 대화가 아직 젊을 때 정보 손실을 방지합니다.
 
-세 번째 단계는 original message를 compressed summary와 preserved tail로 교체한 후, streamlined conversation을 반환합니다. 이 단일 compaction cycle은 200K-token 대화를 coherence를 유지하면서 50-100K token으로 감소시킬 수 있습니다.
+두 번째 단계는 가장 오래된 compressible message를 Claude로 요약합니다. 핵심 통찰: 중요한 것은 장황한 대화가 아니라 *이루어진 결정과 그 이유*입니다. 시스템은 결정 rationale, 어떤 파일이 변경되었는지, 중요한 발견을 보존하면서 장황한 tool output과 중간 reasoning을 폐기합니다. 동시에, compressor는 대화에서 새로운 persistent fact를 추출합니다 (project structure, architecture, tool, user preference에 대한 발견).
+
+세 번째 단계는 original message를 compressed summary와 protected tail로 교체합니다. 이 단일 compaction cycle은 200K-token 대화를 coherence를 유지하면서 50-100K token으로 감소시킬 수 있습니다. 왜 이것이 작동하는가? Compression이 구문론적이 아니라 의미론적이기 때문입니다 (시스템이 무엇이 중요한지 이해하고 불필요한 것을 ruthlessly 제거).
 
 ```mermaid
 graph TB
@@ -185,13 +187,13 @@ Summarizer output은 일반적으로 50-100K token 대화 segment에 대해 500-
 
 추출된 fact는 MEMORY.md에 추가되어, compaction 중에 잃어버리지 않고 다음 session에서 사용 가능하게 됩니다. 이는 positive feedback loop를 만듭니다: 이전 session이 학습된 pattern을 persistent index에 기여하여, 향후 대화에 대한 context 품질을 점진적으로 향상시킵니다.
 
-## Layer 3: TokenBudgetAllocator
+## Layer 3: TokenBudgetAllocator - 왜 사전 관리가 중요한가
 
-Token Budget allocator는 model의 Context Window(일반적으로 Claude 3.5 Sonnet의 경우 ~1M token)를 fixed 및 dynamic zone으로 나눕니다. Fixed zone은 system prompt 명령어(~25K token), tool schema 정의(~17K token), MEMORY.md index(~1K token)를 보유합니다. 이것들은 request당 변경되지 않는 overhead입니다.
+Token Budget allocator는 model의 Context Window(일반적으로 200K token, 모델 의존, 최신 모델은 최대 1M)를 fixed 및 dynamic zone으로 나눕니다. Fixed zone은 system prompt 명령어(~25K token), tool schema 정의(~17K token), MEMORY.md index(~1K token)를 보유합니다. 이것들은 request당 변경되지 않는 overhead입니다 (운영 비용).
 
-Response reserve(8K token)은 model의 output을 위해 보유됩니다. API 오류는 model이 budget을 초과하여 생성하면 발생하므로, 이 공간을 예약하는 것은 그 실패 모드를 방지합니다. 다른 모든 것(기본 할당에서 약 950K token)은 conversation history budget을 형성합니다: 사용자의 입력 이력 및 assistant의 이전 응답을 위해 사용 가능한 공간입니다.
+Response reserve(8K token)은 model의 output을 위해 보유됩니다. 왜 이것을 예약하는가? API 오류는 model이 budget을 초과하여 생성하면 발생하므로, 이 공간을 예약하는 것은 치명적 실패를 방지합니다. 다른 모든 것(기본 할당에서 약 950K token)은 conversation history budget을 형성합니다 (사용자의 입력 이력 및 assistant의 이전 응답).
 
-Conversation history가 이 budget을 초과할 때, allocator는 compression을 트리거합니다. Compression 목표는 단순히 budget 아래로 돌아오는 것이 아니라 제한 아래 20%를 aim합니다. 이는 다음 몇 턴을 위한 breathing room을 만듭니다. Allocator가 barely budget 아래로 squeeze했다면, 다음 턴은 다시 exceed할 수 있고, 즉시 또 다른 compaction을 트리거합니다(thrashing 방지).
+Conversation history가 이 budget을 초과할 때, allocator는 compression을 트리거합니다. 하지만 여기 핵심 설계 결정이 있습니다: **compression target은 정확한 제한이 아니라 제한 아래 20%**입니다. 왜? Allocator가 정확한 제한까지만 압축했다면, 다음 턴의 automatic attachment(재주입된 도구, Agent listing, plan file)가 즉시 다시 budget을 초과할 수 있습니다. 이는 *thrashing*을 만들어집니다 (constant compression overhead가 성능을 저하). Budget의 80%를 target으로 하여, compressor는 최소 한 전체 턴의 breathing room을 보장하여, compression 비용을 여러 턴에 걸쳐 분산합니다.
 
 ```mermaid
 graph TB
@@ -213,7 +215,7 @@ graph TB
     
     Calc --> Target["Compression target =<br/>overage + 20% margin"]
     Target --> Trigger["Trigger compaction"]
-    Trigger --> Compress["ConversationCompressor<br/>reduces conversation"]
+    Trigger --> Compress["Compress conversation<br/>to target"]
     
     style Continue fill:#2ecc71,color:#fff
     style SysPrompt fill:#3498db,color:#fff
@@ -223,7 +225,7 @@ graph TB
     style Budget fill:#f39c12,color:#fff
 ```
 
-20% margin은 안정성을 위해 중요합니다. Allocator가 제한까지만 압축했다면, 다음 턴의 automatic attachment(재주입된 도구, Agent listing, plan file)가 즉시 다시 budget을 초과할 수 있습니다. Budget의 80%를 target으로 하여, compressor는 다음 compaction trigger 전에 최소 한 전체 턴의 breathing room을 보장합니다.
+이 20% margin은 경제적 최적화입니다 (여러 턴에 걸쳐 절약된 한 번의 compression 비용이 frequent recompressions 비용을 능가).
 
 ## Self-Healing Feedback Loop
 

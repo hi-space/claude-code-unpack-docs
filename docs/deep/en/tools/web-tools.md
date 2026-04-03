@@ -178,30 +178,15 @@ URL validation balances safety with usability:
 
 ### Content Extraction: HTML → Readable Text
 
-The extraction algorithm removes noise and prioritizes main content:
+The extraction algorithm removes noise and prioritizes main content through a multi-stage strategy:
 
-```typescript
-interface ExtractionStrategy {
-  // 1. Remove boilerplate
-  removeElements: [
-    'script', 'style', 'noscript',     // Non-content elements
-    'nav', 'footer', 'aside',           // Structural elements
-    '[class*="ad"]', '[id*="ad"]'        // Ad containers
-  ];
+1. **Remove boilerplate elements:** Script tags, stylesheets, navigation, footer, and ad containers are stripped. This reduces noise and focuses on content.
 
-  // 2. Identify main content region
-  mainContent: 'article, main, .content, [role="main"]';
+2. **Identify main content region:** The algorithm scans for semantic landmarks like `<article>`, `<main>`, or elements with role="main" to locate the primary content block.
 
-  // 3. Preserve semantic structure
-  keepMarkup: ['h1', 'h2', 'h3', 'p', 'code', 'pre', 'blockquote', 'ul', 'ol'];
+3. **Preserve semantic structure:** Headers, lists, code blocks, quotes, and emphasis are converted to markdown equivalents (e.g., `#`, `##`, `###` for heading levels; backticks for code).
 
-  // 4. Convert to readable text
-  // Headers: prefix with #, ##, ###
-  // Lists: convert to markdown
-  // Code: preserve with backticks/blocks
-  // Links: convert to [text](url)
-}
-```
+4. **Normalize formatting:** Links are converted to markdown syntax `[text](url)`, lists become markdown bullets or numbers, and whitespace is normalized for readability.
 
 ### Handling Different Content Types
 
@@ -256,39 +241,19 @@ Both WebSearch and WebFetch include a robust prompt injection detection system. 
 
 ### Detection Mechanism
 
-The detection system scans results for patterns that could manipulate the model:
+The detection system evaluates fetched content against multiple pattern categories to identify injection attempts:
 
-```typescript
-interface InjectionDetector {
-  // Pattern categories
-  patterns: {
-    // 1. Instruction-like text (mimics system directives)
-    instructions: /^(SYSTEM|RULE|INSTRUCTION|DIRECTIVE):/mi,
-    
-    // 2. Role override attempts (try to change model identity)
-    roleOverride: /(now you are|you will become|pretend you|act as)/i,
-    
-    // 3. System prompt mimicry (look like system directives)
-    systemPromptMimicry: /(system prompt|original instructions|ignore|disregard)/i,
-    
-    // 4. Tool invocation hijacking (attempt to call tools)
-    toolJacking: /<tool_use\s+name=|assistant_id|function_calls/i,
-    
-    // 5. Escape sequences (attempt context manipulation)
-    escapeSequences: /<!--.*?-->/s,  // Hidden HTML comments
-  },
+1. **Instruction-like text:** Scans for system directives (SYSTEM, RULE, INSTRUCTION, DIRECTIVE) that attempt to override model behavior.
 
-  // Confidence scoring
-  confidenceThreshold: 0.7,  // Flag if score > 70%
-  
-  // Context-aware filtering
-  contextAwareness: [
-    'Is this text appearing in a suspicious context?',
-    'Does the URL match the content?',
-    'Is the content naturally educational or manipulative?',
-  ],
-}
-```
+2. **Role override attempts:** Detects language suggesting identity changes ("now you are", "pretend you", "act as"), which could mislead the model.
+
+3. **System prompt mimicry:** Identifies text mimicking system directives or requesting disregard of instructions, a common social engineering technique.
+
+4. **Tool invocation hijacking:** Looks for XML-like tool-use syntax or function call patterns that could trick the model into invoking unintended operations.
+
+5. **Escape sequences and hidden content:** Identifies hidden content in HTML comments or suspicious Unicode sequences that might bypass normal processing.
+
+The system uses **confidence scoring** (flagging when confidence exceeds 70%) and **context-aware filtering** to reduce false positives. The evaluation considers whether suspicious text appears in a natural context (e.g., documentation mentioning system prompts) versus a manipulative one.
 
 ### System Prompt Directive
 

@@ -15,7 +15,7 @@ hero:
 
 features:
   - icon: 🔧
-    title: 23+ Built-in Tools
+    title: 43+ Built-in Tools
     details: "Complete catalog of every tool in Claude Code's arsenal: file operations, shell execution, web access, sub-agent spawning, and MCP integration."
     link: /deep/en/tools/
   - icon: 🤖

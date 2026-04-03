@@ -47,29 +47,31 @@ The MCP client in Claude Code is a sophisticated multi-layer system:
 
 ## Configuration Hierarchy (7 Scopes)
 
-MCP servers are configured using a hierarchical scope system where upper scopes take precedence:
+MCP servers are configured using a hierarchical scope system where upper scopes take precedence. This design enforces a principle: **organizational policies constrain personal choices, while allowing flexibility within those bounds**.
 
 ```
-Enterprise (highest priority)
+Enterprise (highest priority)   ← Organization mandate
     ↓
-Project (.claude/settings.json in repository root)
+Project (.claude/settings.json)  ← Team agreement
     ↓
-User (~/.claude/settings.json in home directory)
+User (~/.claude/settings.json)   ← Personal choice
     ↓
-ClaudeAI (Claude.ai workspace settings)
+ClaudeAI (workspace settings)    ← Web UI
     ↓
-Dynamic (runtime configuration)
+Dynamic (runtime params)         ← Temporary override
 ```
 
 **Scope Characteristics:**
 
-| Scope | Location | Override Behavior | Use Case |
-|-------|----------|-------------------|----------|
-| **Enterprise** | Organization policy | Cannot be overridden | Security policies, compliance requirements |
-| **Project** | `.claude/settings.json` | Overrides User/ClaudeAI/Dynamic | Team standards, repo-specific servers |
-| **User** | `~/.claude/settings.json` | Overrides ClaudeAI/Dynamic | Personal preferences, local tools |
-| **ClaudeAI** | Claude.ai workspace | Overrides Dynamic | Web interface settings |
-| **Dynamic** | Runtime params | Lowest priority | Temporary configuration |
+| Scope | Location | Override Behavior | Use Case | Why |
+|-------|----------|-------------------|----------|-----|
+| **Enterprise** | Organization policy | Cannot be overridden | Security policies, compliance requirements | Prevents individual override of org mandates |
+| **Project** | `.claude/settings.json` | Overrides User/ClaudeAI/Dynamic | Team standards, repo-specific servers | Ensures consistent tooling across team |
+| **User** | `~/.claude/settings.json` | Overrides ClaudeAI/Dynamic | Personal preferences, local tools | Allows personalization within org bounds |
+| **ClaudeAI** | Claude.ai workspace | Overrides Dynamic | Web interface settings | Enables web-based configuration |
+| **Dynamic** | Runtime params | Lowest priority | Temporary configuration | One-off overrides for testing/debugging |
+
+This hierarchy balances **security and control** (enterprise/project scopes lock down critical settings) with **usability** (user/dynamic scopes allow personalization).
 
 ### Configuration Resolution
 
@@ -152,9 +154,16 @@ flowchart TB
 
 Claude Code uses a factory pattern to instantiate transports based on server configuration type. The factory maps each transport type to its concrete implementation, passing configuration parameters (URLs, environment variables, timeouts) to the transport constructor.
 
-Transport selection is stateless and deterministic: the same configuration always produces the same transport type. The factory validates the transport type at instantiation time and fails fast if an unknown type is encountered (this should never happen in production, as config validation occurs before factory invocation).
+**Transport selection is stateless and deterministic**: the same configuration always produces the same transport type. The factory validates the transport type at instantiation time and fails fast if an unknown type is encountered (this should never happen in production, as config validation occurs before factory invocation).
 
-For local transports (stdio), the factory resolves the command path and passes environment variables for subprocess spawning. For remote transports (SSE, HTTP, WebSocket), it constructs the URL and passes network options like timeouts and retry counts. The SDK transport dynamically loads a Node.js module and wraps it in a transport adapter. The Claude.ai proxy transport is used only in remote Claude.ai sessions.
+**For different transport families:**
+
+- **Local transports (stdio):** The factory resolves the command path and passes environment variables for subprocess spawning.
+- **Remote transports (SSE, HTTP, WebSocket):** The factory constructs the URL and passes network options like timeouts and retry counts.
+- **SDK transport:** Dynamically loads a Node.js module and wraps it in a transport adapter.
+- **Claude.ai proxy transport:** Used only in remote Claude.ai sessions.
+
+The transport hierarchy (conceptual representation):
 
 ```mermaid
 classDiagram

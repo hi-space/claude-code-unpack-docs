@@ -48,39 +48,35 @@ flowchart TB
     style Suffix fill:#e74c3c,color:#fff
 ```
 
-## 소스 모듈: InstructionBlocks
+## Instruction Blocks: System Prompt 구축
 
-각 Instruction Block은 코드베이스의 별도 TypeScript 모듈입니다. Instruction Block은 Claude Code의 System Prompt의 기본 구성 요소입니다. 각 블록은 단일 의미론적 지시사항 또는 기능(identity, tool usage rules, git protocol, safety rules 등)을 캡슐화하고 재사용 가능하고 독립적으로 버전이 지정된 구성 요소로 패키징됩니다.
+Instruction Block은 Claude Code의 System Prompt의 기본 구성 요소입니다. 각 블록은 단일 의미론적 지시사항 또는 기능(identity, tool usage rules, git protocol, safety rules 등)을 캡슐화합니다. 블록은 최종 조립 prompt에 어떻게 들어가는지를 제어하는 메타데이터로 구성됩니다:
 
-지시사항 블록의 핵심 구조는 등록 및 조립을 제어하는 메타데이터로 구성됩니다:
+- 각 블록은 **카테고리 식별자** (예: `identity`, `tool-usage`)를 가집니다
+- 각각은 **캐시된 prefix** (요청 간 안정적) 또는 **캐시되지 않은 suffix** (요청마다 재처리)로 표시됩니다
+- 각각은 최종 prompt에서 그 위치를 결정하는 **우선순위 수준** (0 = 최고 우선순위, 먼저 렌더링)을 가집니다
+- 각각은 예산 책정을 위한 **예상 토큰 수**를 포함합니다
+- 각각은 session 구성을 기반으로 자신을 포함하거나 제외하는 조건 로직을 가집니다 ("git 리포지토리에만 포함" 같은 기능 게이트에 유용)
 
-- **id**: 블록의 고유 식별자 (예: `'identity'`, `'tool-usage'`)
-- **section**: `'prefix'` (캐시됨) 또는 `'suffix'` (요청마다 재처리)
-- **priority**: 최종 프롬프트에서 블록의 위치를 결정하는 숫자 순서 (0 = 최고 우선순위, 먼저 렌더링)
-- **tokens**: 예산 책정을 위한 예상 토큰 수 (identity의 경우 약 100 토큰, tool definitions의 경우 ~800)
-- **content()**: 블록의 텍스트를 생성하는 함수. `SessionConfig` 객체를 수신하며 조건부로 빈 문자열을 반환하여 블록을 건너뛸 수 있습니다 (기능 게이트 및 환경 확인에 유용).
-
-블록은 시작 시 중앙 레지스트리에 등록됩니다. 그런 다음 어셈블러는 모든 블록을 우선순위별로 정렬하고 세션 구성으로 필터링한 후 우선순위 순서대로 연결합니다. 이 설계를 통해 기능을 핵심 조립 로직을 수정하지 않고도 켜고 끌 수 있습니다. Cache Invalidation은 블록 상태 변화 시 감지됩니다.
-
-예를 들어 git protocol 블록은 사용자가 git 리포지토리에 있는 경우에만 조건부로 지시사항을 포함합니다. 도구 관련 블록은 현재 사용 가능한 도구(14-17K 토큰의 JSON 스키마)로 동적으로 주입됩니다. Identity 및 기타 기본 블록은 항상 렌더링됩니다. 모든 Instruction Block을 일관된 구조의 모듈 디렉토리에서 중앙화함으로써 코드베이스는 효율적으로 확장할 수 있습니다.
+모든 블록은 시작 시 등록되고 우선순위별로 정렬됩니다. 어셈블러는 순서대로 연결하여, 핵심 조립 로직을 수정하지 않고도 기능을 켜고 끌 수 있습니다. 도구 관련 블록은 현재 사용 가능한 도구(14-17K 토큰의 JSON 스키마)로 동적으로 주입됩니다. Identity 및 기타 기본 블록은 항상 렌더링됩니다. 이 모듈식 설계는 효율적인 확장을 가능하게 합니다: 새로운 지시사항 기능 추가는 새로운 블록 추가일 뿐, 핵심 조립 로직 리팩토링이 아닙니다.
 
 
 ### 블록 등록 및 조립
 
-SystemPromptAssembler 클래스는 완전한 System Prompt의 조립을 조율합니다. 초기화 시 모든 Instruction Block을 중앙 목록에 등록합니다. 블록은 다양한 관심사를 다룹니다: 기본 identity (Claude Code가 무엇인가), 기능 경계 (어떤 도구가 사용 가능한가), 안전 제약 (어떤 위험을 피할 것인가), 실행 패턴 (작업에 어떻게 접근할 것인가), 런타임 상태 (현재 리포지토리, git status, 사용 가능한 MCP 서버).
+System Prompt 어셈블러는 완전한 System Prompt의 조립을 조율합니다. 초기화 시 모든 Instruction Block을 중앙 목록에 등록합니다. 블록은 다양한 관심사를 다룹니다: 기본 identity (Claude Code가 무엇인가), 기능 경계 (어떤 도구가 사용 가능한가), 안전 제약 (어떤 위험을 피할 것인가), 실행 패턴 (작업에 어떻게 접근할 것인가), 런타임 상태 (현재 리포지토리, git status, 사용 가능한 MCP 서버).
 
 조립 프로세스는 예측 가능하고 반복 가능한 순서를 따릅니다:
 
-1. **초기화**: 모든 Instruction Block이 로드되고 어셈블러 생성자에 등록됩니다
-2. **정렬**: 블록은 `priority` 필드로 정렬됩니다 (작은 번호가 먼저), identity 같은 기본 블록이 agent guidance 같은 특수 블록보다 먼저 나타나도록 보장합니다
-3. **Context Window 별 필터링**: 블록은 두 그룹으로 분할됩니다: prefix 블록 (캐시 가능, ~20K 토큰) 및 suffix 블록 (요청마다 재처리, ~3-5K 토큰)
-4. **콘텐츠 생성**: 각 블록에 대해 현재 `SessionConfig`를 사용하여 `content()` 함수가 호출됩니다. 함수가 빈 문자열을 반환하면 블록이 필터링됩니다 (조건부 기능 및 권한 확인에 유용).
-5. **연결**: 결과 블록은 `'\n\n'` 구분 기호와 함께 결합되어 응집력 있는 마크다운 섹션을 형성합니다
-6. **토큰 예산**: 모니터링 및 디버깅을 위해 총 토큰 수가 계산됩니다
+1. **초기화**: 모든 Instruction Block이 로드되고 시작 시 등록됩니다
+2. **정렬**: 블록은 우선순위로 정렬됩니다 (작은 번호가 먼저), identity 같은 기본 블록이 agent guidance 같은 특수 블록보다 먼저 나타나도록 보장합니다
+3. **섹션별 필터링**: 블록은 두 그룹으로 분할됩니다: prefix 블록 (캐시 가능, ~20K 토큰) 및 suffix 블록 (요청마다 재처리, ~3-5K 토큰)
+4. **콘텐츠 생성**: 각 블록에 대해 session 구성에 따라 조건 로직이 블록을 포함할지 여부를 결정합니다. 블록이 비활성화되면 (예: "git repo에만 git protocol"), 필터링됩니다
+5. **연결**: 결과 블록은 섹션 구분 기호와 함께 결합되어 응집력 있는 마크다운 섹션을 형성합니다
+6. **토큰 예산**: 모니터링 및 리소스 할당을 위해 총 토큰 수가 계산됩니다
 
-조립 결과는 세 필드를 가진 `SystemPrompt` 객체입니다: `prefix` (캐시 가능한 부분), `suffix` (캐시되지 않은 부분), `totalTokens` (소비된 전체 토큰 예산).
+최종 조립 System Prompt는 세 가지 구성 요소를 가집니다: 캐시 가능한 prefix (요청 간 안정적), 캐시되지 않은 suffix (요청마다 재생성), 및 모니터링을 위한 총 토큰 예산.
 
-이 설계는 우려사항을 분리합니다: 블록은 *어떤* 콘텐츠를 포함해야 하는지 정의하고 어셈블러는 *어떻게* 결합할 것인지 정의합니다. 새로운 기능은 조립 로직을 건드리지 않고도 새로운 블록으로 추가될 수 있습니다. 조건부 포함 (예: "git repo에 있는 경우에만 git protocol을 포함")은 블록의 `content()` 함수에서 빈 문자열을 반환하여 처리되며, 로직이 각 블록에 로컬로 유지됩니다.
+이 설계는 우려사항을 분리합니다: 블록은 *어떤* 콘텐츠를 포함해야 하는지 정의하고 어셈블러는 *어떻게* 결합할 것인지 정의합니다. 새로운 기능은 조립 로직을 건드리지 않고도 새로운 블록으로 추가될 수 있습니다. 조건부 포함은 각 블록 자체 로직으로 처리되어, 의존성을 로컬로 유지합니다.
 
 ```mermaid
 flowchart TD
@@ -154,55 +150,11 @@ flowchart TD
 
 ## `DANGEROUS_uncachedSystemPromptSection`
 
-소스 코드는 suffix를 위해 명시적으로 이름이 지정된 변수를 사용합니다:
-
-```typescript
-// Suffix는 의도적으로 캐시 영향을 그리기 위해 이름이 지정되었습니다
-const DANGEROUS_uncachedSystemPromptSection = buildSuffix(config);
-
-// 이 명명 규칙은 개발자에게 경고로 작동합니다:
-// "여기에 추가된 모든 것은 모든 API 호출에서 재처리됩니다"
-// "여기에 콘텐츠를 추가하면 캐시 효율성이 깨집니다"
-// "여기에 무언가를 넣기 전에 신중하게 생각하세요"
-```
-
-`DANGEROUS_` 접두사는 의도적인 명명 선택입니다. suffix에 콘텐츠를 추가하면 성능과 비용 영향이 있다는 개발자에게 경고합니다. 왜냐하면 suffix의 모든 것이 프롬프트 캐싱을 우회하기 때문입니다.
+Suffix 섹션은 개발자에게 캐시 영향을 신호하기 위해 명시적으로 이름이 지정됩니다. `DANGEROUS_` 접두사는 의도적인 명명 선택으로 경고합니다: suffix에 추가된 모든 것은 모든 API 호출에서 재처리되고, 여기에 콘텐츠를 추가하면 캐시 효율성이 깨지며, 개발자는 suffix에 무언가를 넣기 전에 신중하게 생각해야 합니다. 이 명명 규칙은 suffix가 직접적인 성능 및 비용 영향을 가진다는 상수 상기 역할을 합니다. suffix의 모든 것이 프롬프트 캐싱을 우회하기 때문입니다.
 
 ## 조건부 블록
 
-많은 지시사항 블록은 구성에 따라 조건부로 포함됩니다:
-
-```typescript
-// 조건부 포함의 예제
-const planModeBlock: InstructionBlock = {
-  id: 'plan-mode',
-  section: 'prefix',
-  content: (config) => {
-    if (!config.planMode) return '';  // plan 모드가 아니면 완전히 건너뛰기
-    return `## Plan Mode\nYou are currently in plan mode...`;
-  },
-};
-
-const agentBlock: InstructionBlock = {
-  id: 'agent-system',
-  section: 'prefix',
-  content: (config) => {
-    // 에이전트가 사용 가능한 경우에만 에이전트 지시사항 포함
-    if (config.disableAgents) return '';
-    return `## Using the Agent tool\n...`;
-  },
-};
-
-const undercoverBlock: InstructionBlock = {
-  id: 'undercover',
-  section: 'prefix',
-  content: (config) => {
-    if (!config.undercoverMode) return '';
-    return `You are operating UNDERCOVER in a PUBLIC/OPEN-SOURCE repository.
-Do not mention: ${INTERNAL_CODENAMES.join(', ')}...`;
-  },
-};
-```
+많은 지시사항 블록은 구성에 따라 조건부로 포함됩니다. 예를 들어, git protocol 블록은 사용자가 git 리포지토리에 있는 경우에만 렌더링됩니다. Agent system 블록은 agent가 session에서 활성화된 경우에만 agent guidance를 포함합니다. Undercover mode 블록은 시스템이 오픈 소스 리포지토리 컨텍스트에서 작동하는 경우에만 나타납니다. 각 블록의 조건 로직은 자체 포함되어 있습니다. 블록은 어셈블러가 복잡한 포함/제외 규칙을 관리하도록 요구하는 대신 자신의 조건을 평가합니다.
 
 ## 캐시 경계 설계 원칙
 

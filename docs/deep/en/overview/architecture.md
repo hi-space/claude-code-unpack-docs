@@ -27,7 +27,7 @@ graph TB
     Validate --> PermCheck["PermissionChecker<br/>checkPermission(toolCall)"]
     PermCheck --> Execute["ToolExecutor<br/>executeTool(toolCall)"]
 
-    Execute --> BuiltIn["BuiltInToolRegistry<br/>23+ tools"]
+    Execute --> BuiltIn["BuiltInToolRegistry<br/>43+ tools"]
     Execute --> MCPBridge["MCPToolBridge<br/>forwardToMCPServer()"]
     Execute --> DeferredLoader["DeferredToolLoader<br/>resolveSchema()"]
 
@@ -74,7 +74,7 @@ The codebase is organized into approximately 1,900 TypeScript files across sever
 - **CLI & Session Management**: Entry point initialization, argument parsing, and session lifecycle
 - **Core Engine**: Query processing loop, streaming response handling, message history, and token management
 - **Prompt System**: System prompt assembly with 110+ instruction blocks and prompt cache management
-- **Tools**: Tool registry, dispatcher, schema validation, and 15+ tool implementations (read, write, edit, bash, grep, etc.)
+- **Tools**: Tool registry, dispatcher, schema validation, and 43+ tool implementations (read, write, edit, bash, grep, etc.)
 - **Agents**: Agent spawning, multi-worker orchestration, and KAIROS daemon for background scheduling
 - **Security**: Permission checking, tool use classification, bash sandboxing, anti-distillation, and client attestation
 - **Memory**: Memory management, MEMORY.md parsing, conversation compression, and token budgeting
@@ -141,71 +141,32 @@ flowchart TB
 
 ### Key Implementation Details
 
-**Message Format**: The QueryEngine maintains a strictly typed message array:
+**Message Format**: The QueryEngine maintains a strictly typed message array where each message carries a role (user or assistant) and a list of content blocks. Content blocks are polymorphic and can represent text output, tool invocations, or tool results from previous steps. The conversation alternates strictly between user and assistant messages—tool results always come back as user messages with result content blocks, preserving the alternating pattern expected by the API.
 
-```typescript
-interface ConversationMessage {
-  role: 'user' | 'assistant';
-  content: ContentBlock[];  // TextBlock | ToolUseBlock | ToolResultBlock
-}
+**Streaming**: Responses arrive via Server-Sent Events (SSE), allowing real-time token streaming. The system handles partial JSON that may span multiple SSE chunks. Because tool call parameters can be split across chunk boundaries, they must be buffered until complete before validation and dispatch.
 
-// The conversation alternates: user → assistant → user → assistant...
-// Tool results are sent as user messages with tool_result content blocks
-```
+**Tool Call Batching**: The model can return multiple tool calls in a single response. The system dispatches these according to dependency analysis: independent tool calls run in parallel (via `Promise.all()`), while dependent calls run sequentially to respect causal ordering.
 
-**Streaming**: Responses are processed as Server-Sent Events (SSE). The `StreamProcessor` handles partial JSON for tool calls. A tool call's parameters can arrive across multiple SSE chunks and must be buffered until complete.
-
-**Tool Call Batching**: The model can return multiple tool calls in a single response. The QueryEngine processes these according to dependency rules:
-- Independent tool calls → dispatched in parallel via `Promise.all()`
-- Dependent tool calls → dispatched sequentially
-
-**Conversation Compression Trigger**: When `tokenBudgetAllocator.isOverBudget(conversationHistory)` returns true, the compressor:
-1. Selects the oldest N messages (excluding the system prompt and last 2 turns)
-2. Sends them to a summarization call (using the same Claude model)
-3. Replaces the original messages with the compressed summary
-4. Updates `MEMORY.md` if new persistent facts were extracted
+**Conversation Compression**: When the token budget is exceeded, the system compresses older message history to reclaim tokens. This involves selecting the oldest N messages (excluding the system prompt and recent context), sending them to a summarization pass with the same Claude model, and replacing the originals with the condensed summary. If new persistent facts are discovered during summarization, these are extracted and added to `MEMORY.md`.
 
 ## Anthropic API Integration
 
-The API client uses a customized version of the Anthropic TypeScript SDK with several modifications:
+The API client sends requests to the Anthropic messages endpoint with the following key parameters:
 
-```typescript
-// Simplified representation of the API call
-const response = await anthropicClient.messages.create({
-  model: resolveModelId(selectedModel),  // Resolves codenames → API model IDs
-  max_tokens: computeMaxTokens(budgetRemaining),
-  system: assembledSystemPrompt,         // Array of system prompt blocks
-  messages: conversationHistory,
-  tools: registeredToolSchemas,          // 14-17K tokens of tool definitions
-  stream: true,
-
-  // Anti-distillation: injects fake tool signal
-  ...(featureFlags.isEnabled('ANTI_DISTILLATION_CC') && {
-    anti_distillation: ['fake_tools']
-  }),
-
-  // Prompt caching: marks the prefix boundary
-  // Everything before this marker is cached
-  ...(promptCacheConfig && {
-    cache_control: { type: 'ephemeral' }
-  }),
-});
-```
+| Parameter | Purpose |
+|-----------|---------|
+| `model` | Selected model, resolved from internal codename to API model ID (e.g., 'capybara' → 'claude-sonnet-4-6') |
+| `max_tokens` | Dynamically computed from remaining token budget |
+| `system` | Array of system prompt blocks assembled by the SystemPromptAssembler |
+| `messages` | Conversation history with strict alternation between user and assistant roles |
+| `tools` | Tool schema definitions (14-17K tokens) filtered by PermissionChecker based on access rules |
+| `stream` | Enabled to allow real-time streaming of response tokens |
+| `anti_distillation` | Optional signal injecting fake tools into the request when anti-distillation is enabled |
+| `cache_control` | Marks the boundary for prompt caching, enabling the cached system prompt prefix |
 
 ### Model Resolution
 
-The `resolveModelId()` function maps internal codenames to API model IDs:
-
-```typescript
-function resolveModelId(codename: string): string {
-  const modelMap = {
-    'capybara':   'claude-sonnet-4-6',     // Sonnet v8, 1M context
-    'fennec':     'claude-opus-4-5',        // Opus predecessor
-    'numbat':     /* unreleased model ID */, // Gated
-  };
-  return modelMap[codename] ?? codename;
-}
-```
+Claude Code maps internal model codenames to actual API model IDs at runtime. This abstraction layer allows Anthropic to update model availability without requiring client-side binary updates. For example, the codename 'capybara' resolves to 'claude-sonnet-4-6', providing both human readability in logs and flexibility for testing unreleased models. Unknown codenames are passed through directly, allowing forward compatibility with new models.
 
 ## React + Ink Terminal UI
 
@@ -260,40 +221,21 @@ Compiled defaults (lowest priority)
 
 ### GrowthBook Integration
 
-The GrowthBook client evaluates feature flags at runtime:
+GrowthBook enables remote feature flag management, allowing Anthropic to control feature activation across all Claude Code installations without requiring deployments. The client fetches feature flag definitions from Anthropic's GrowthBook instance at startup and evaluates them at runtime.
 
-```typescript
-// GrowthBook initialization
-const gb = new GrowthBook({
-  apiHost: 'https://cdn.growthbook.io',
-  clientKey: 'sdk-...', // Compiled into the binary
-  // Feature definitions fetched from Anthropic's GrowthBook instance
-});
-
-// Feature flag evaluation
-function isEnabled(flag: string): boolean {
-  return gb.isOn(`tengu_${flag}`);
-}
-
-// Example usage
-if (isEnabled('anti_distill_fake_tool_injection')) {
-  injectFakeTools(systemPrompt);
-}
-```
-
-All `tengu_`-prefixed flags are evaluated against remote configuration. Changes on Anthropic's GrowthBook dashboard take effect across all Claude Code installations **without pushing a new version**.
+All feature flags use the `tengu_` prefix and are evaluated against the remote configuration. For example, the `anti_distill_fake_tool_injection` flag controls whether fake tool schemas are injected into system prompts to defend against distillation attacks. Changes to any `tengu_`-prefixed flag propagate immediately to all active Claude Code sessions, enabling rapid experimentation and emergency killswitches without pushing new binaries.
 
 ## Progressive Module Loading
 
-Claude Code uses a fast-path optimization to minimize time-to-first-response (TTFR) for common operations. The main entry point (`src/main.tsx`) implements a three-tier loading strategy:
+Claude Code optimizes startup time through a three-tier loading strategy, recognizing that different use cases demand different initialization profiles. Users running `--version` or `--help` should see results in milliseconds, while full interactive sessions can afford slightly more setup time to load necessary subsystems.
 
-**Tier 1: Instant exit paths**: When users run `--version` or `--help`, the process exits immediately without loading any heavy modules. These checks happen before all imports, allowing Bun to skip the entire dependency tree for these quick operations.
+**Tier 1: Instant exit paths** handle quick operations like version and help displays. These checks occur before importing the bulk of the codebase, allowing Bun's dead-code elimination to skip entire dependency trees for these use cases. The result: version checks in under 100ms.
 
-**Tier 2: Feature-gated subsystems**: The codebase uses Bun's `feature()` bundle-time function to conditionally require modules based on compile-time feature flags. For example, the KAIROS assistant system (a long-running daemon for background task scheduling) is only loaded if the `feature('KAIROS')` flag is true. Similarly, coordinator mode for multi-worker orchestration only loads if `feature('COORDINATOR_MODE')` is enabled. This dead-code elimination happens at the bundler level, shrinking the final executable for builds without these features.
+**Tier 2: Feature-gated subsystems** use Bun's compile-time feature flags to conditionally include modules. For example, KAIROS (a daemon for background scheduling) and coordinator mode (multi-worker orchestration) are only bundled if explicitly enabled. This design reflects the insight that many users never invoke these features—why include them? Removing dead code shrinks the binary and reduces initialization overhead.
 
-**Tier 3: Lazy initialization**: Even when modules are available, their initialization is deferred. Dependencies like MDM configuration (macOS Mobile Device Management) and keychain credentials are prefetched asynchronously in parallel during the import phase, rather than blocking on them synchronously during session startup.
+**Tier 3: Lazy and parallel initialization** defers non-critical dependencies. MDM configuration, keychain credential retrieval, and MCP server setup run asynchronously in parallel rather than sequentially blocking startup. By the time the session initialization completes, these prefetch operations typically finish in the background.
 
-This hierarchical approach ensures that the perceived startup time depends on the specific operation: version checks complete in milliseconds, help text displays within 50-100ms, and full interactive sessions initialize in 1-2 seconds as subsystems complete their parallel prefetch operations.
+Combined, this strategy ensures fast perceived responsiveness: version checks in milliseconds, help in 50-100ms, and full interactive sessions in 1-2 seconds as parallel subsystems settle. For CLI tools where every 100ms of startup time is felt by users, this architecture is critical to perceived quality.
 
 
 ## Parallel Prefetching and Startup Profiling
@@ -335,40 +277,21 @@ By launching these operations before waiting for any of them to complete, Claude
 
 ## Terminal Rendering Deep Dive
 
-The terminal UI uses a custom React Fiber reconciler (~1,722 lines) that targets ANSI escape codes instead of the DOM. This architecture enables declarative component composition and React-style state management in a terminal context:
+The terminal UI is rendered through a custom React Fiber reconciler (approximately 1,722 lines) that translates React components directly to ANSI escape sequences instead of DOM nodes. This architecture preserves React's declarative component model and state management patterns in a terminal context—developers write familiar React hooks and JSX, and the reconciler handles the translation to terminal output.
 
-```mermaid
-flowchart LR
-    JSX[React JSX] --> Reconciler[Custom Fiber<br/>Reconciler<br/>~1,722 lines]
-    Reconciler --> ANSI[ANSI Escape<br/>Sequences]
-    ANSI --> Terminal[Terminal<br/>Output]
-    
-    subgraph ReactConcepts["React Concepts → Terminal"]
-        State[useState] --> Rerender[Re-render]
-        Effect[useEffect] --> SideEffect[Side Effects]
-        Layout[useLayoutEffect] --> Sync[Synchronous<br/>Terminal Updates]
-    end
-```
-
-### Raw Mode Synchronicity
-
-A critical implementation detail: Terminal state changes use `useLayoutEffect()` (synchronous commit phase) instead of `useEffect()` (asynchronous scheduling). This synchronicity prevents terminal/React state mismatch, which is essential for signal handling (e.g., Ctrl+C interrupts) and prevents visual glitches when rapid state updates occur.
-
-The reconciler's tight coupling to terminal I/O means that by the time a state update completes, the terminal display has already been synchronized. This is a departure from browser React, where the layout phase is decoupled from DOM mutations.
+The key design choice that makes this work in a terminal environment is **synchronous state commitment**. Unlike browser React, which schedules layout updates asynchronously, terminal state changes use synchronous commit mechanics. This prevents terminal and React state from drifting out of sync, which is critical when responding to terminal signals like Ctrl+C interrupts or handling rapid sequential updates. By the time a state update completes, the terminal display has already been redrawn—there is no window where stale output could confuse the user.
 
 ## Three Command Types
 
-Claude Code's command system distinguishes between three execution models, each optimized for a different purpose. Commands are registered in `src/commands.ts` and implement a discriminated union type where the `type` field determines the runtime behavior.
+Claude Code distinguishes three execution models for commands, each optimized for different latency and capability requirements:
 
-**Prompt commands** (`type: 'prompt'`) represent user-written prompts or skills that should be sent to the Claude API. When invoked, these expand into the conversation history, are tokenized, and flow through the full message pipeline including tool dispatch, permission checking, and streaming response handling. Examples include `/refactor`, `/summarize`, and any skill that needs model reasoning. These commands include metadata like `progressMessage` (shown during inference), `contentLength` (for token estimation), and optionally allowed tool lists for security sandboxing.
+**Prompt commands** represent user prompts and skills that require model reasoning. When invoked, they flow through the complete pipeline: tokenization, system prompt assembly, tool dispatch, permission checking, and streaming response handling. Examples include `/refactor`, `/summarize`, and any skill that benefits from Claude's analysis. These reach the API and may take seconds depending on request complexity.
 
-**Local commands** (`type: 'local'`) execute as synchronous or async JavaScript functions with zero latency. They return either plain text output or a structured `CompactionResult` for complex operations like `/compact` (conversation compression). Examples include `/clear` (clears history), `/help` (prints usage), and `/version` (outputs version number). Local commands are handled entirely in-process and never contact the API, making them instant.
+**Local commands** execute as simple JavaScript functions with zero API latency. They include operations like `/clear` (wipe history), `/help` (show usage), and `/version` (report version). Some local commands return structured results (e.g., `/compact` for conversation compression), while others produce plain text. Because they never contact the API, they complete instantly—typically under 10ms.
 
-**Local JSX commands** (`type: 'local-jsx'`) render interactive React components using Ink's terminal renderer. When invoked, they return `Promise<React.ReactNode>`, which the main event loop renders to the terminal display. These commands are used for complex UI flows like settings dialogs (`/config`), permission approval screens, and IDE setup wizards. Local JSX commands can call `onDone()` to optionally trigger follow-up queries to the model after the dialog completes (e.g., "Apply these settings, then analyze the code").
+**Local JSX commands** render interactive terminal UI using React and Ink. When invoked, they present modal dialogs or configuration screens (e.g., `/config` for settings, permission approval flows, IDE setup wizards). Users interact with the UI, and the command can optionally trigger a follow-up prompt command after completion—for example, "User configured settings, now analyze the codebase with these settings applied."
 
-All three command types are registered in a single `commands: Command[]` array, where `CommandBase` defines shared metadata (name, aliases, description, feature gates, availability requirements for auth types). The discriminated union ensures type safety: attempting to call a `handler` on a prompt command will fail at compile time because prompt commands don't have a handler property. They have `getPromptForCommand()` instead.
-
-This three-type system means **only user prompts hit the API**. Slash commands and UI dialogs are handled entirely locally with zero latency. This design choice dramatically improves responsiveness for common operations like toggling settings or viewing status.
+The key architectural insight is that **only user prompts incur API latency**. Slash commands and UI dialogs are handled locally. This design dramatically improves perceived responsiveness—toggling a setting is instant, not a 2-second round trip to the API. The system registers all three types in a unified command registry with shared metadata (name, aliases, description, feature gates), using type discriminators to ensure that command handlers call the appropriate execution path.
 
 ```mermaid
 graph TB
@@ -401,40 +324,21 @@ graph TB
 
 ## State Management Architecture
 
-Application state is managed through a hybrid approach combining Zustand-style store patterns with React Context:
+Application state combines React Context with a centralized store pattern. The AppState context provider exposes a `useAppState(selector)` hook, allowing components to subscribe to specific slices of application state rather than the entire tree. This selector-based subscription model ensures components only re-render when their subscribed slice changes, preventing unnecessary re-renders and keeping the UI responsive.
 
-- **AppState.tsx**: React Context provider with `useAppState(selector)` hook for component integration
-- **AppStateStore.ts**: Central state shape definition and reducer logic
+The state tree encompasses:
 
-The state tree includes:
+| Slice | Purpose |
+|-------|---------|
+| **settings** | User preferences (loaded from `~/.claude/settings.json`) with persistence via effect observers |
+| **mainLoopModel** | Currently selected model for the conversation loop |
+| **messages** | Conversation history, streamed from QueryEngine and updated as tool calls complete |
+| **tasks** | Active task queue for tracking background operations |
+| **toolPermissionContext** | Approval rules, bypass mode, and denial log for security auditing |
+| **kairosEnabled / replBridgeEnabled** | Feature gates controlling active subsystems |
+| **speculationState** | Cache of model predictions used for prompt cache prefix matching |
 
-```typescript
-interface AppState {
-  settings: UserSettings;
-  mainLoopModel: string;
-  messages: Message[];
-  tasks: TaskState[];
-  toolPermissionContext: {
-    rules: PermissionRule[];
-    bypassMode: 'auto' | 'block' | 'ask';
-    denialTracking: DenialTrackingState;
-  };
-  kairosEnabled: boolean;
-  remoteConnectionStatus: Status;
-  replBridgeEnabled: boolean;
-  speculationState: Cache;
-}
-```
-
-Key aspects:
-
-- **Settings** persist to `~/.claude/settings.json` via a `useEffect()` observer
-- **Messages** are streamed in from the QueryEngine and updated as tool calls complete
-- **Permission context** tracks user approval rules and maintains a denial log for security auditing
-- **Feature gates** (kairosEnabled, replBridgeEnabled) control which subsystems are active
-- **Speculation state** caches model predictions for prefix matching in prompt caching
-
-The selector pattern (`useAppState(state => state.messages)`) enables fine-grained subscriptions, ensuring components only re-render when their selected slice changes.
+This architecture separates concerns: the Context handles React integration (subscriptions and re-renders), while the store manages state logic. The selector pattern (`useAppState(state => state.messages)`) is critical to performance—without it, every state change would force a full re-render of all connected components.
 
 ## Codebase Statistics
 
@@ -444,7 +348,7 @@ The selector pattern (`useAppState(state => state.messages)`) enables fine-grain
 | Lines of code | ~512,000 |
 | Bundle size (cli.mjs) | ~8 MB |
 | Source map size | 59.8 MB |
-| Built-in tools | 23+ |
+| Built-in tools | 43+ |
 | Deferred/MCP tools | Dynamic |
 | System prompt instruction blocks | 110+ |
 | Feature flags | 44 (12 compile-time, 15+ runtime) |

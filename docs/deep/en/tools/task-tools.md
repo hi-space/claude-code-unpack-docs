@@ -35,8 +35,6 @@ Claude Code's task system supports seven distinct task types, each optimized for
 
 **Dream tasks** run continuous learning loops in the background (part of the KAIROS always-on architecture). They process accumulated logs, generate insights, and update agent memory without blocking the main interaction loop.
 
-> 📁 实际구现: `src/Task.ts` (TaskType definition) and `src/tasks/*Task/` (per-type implementations)
-
 | Type | Use Case | Characteristics |
 |------|----------|-----------------|
 | `local_bash` | Run shell commands, scripts, builds | Spawns process, persists working dir, timeout enforced |
@@ -155,7 +153,6 @@ In-process teammate:    i-a2b3c4d5e6f7g8h9
 | **CronDelete** | `cronDelete.ts` | Cancel a scheduled cron job | `{ deleted: true, jobId: string }` |
 | **CronList** | `cronList.ts` | List all scheduled cron jobs | `{ jobs: CronJob[] }` |
 | **AskUserQuestion** | `askUserQuestion.ts` | Ask user multiple choice questions to gather information | `{ selectedOptions: string[], customInput?: string }` |
-| **SendMessage** | `sendMessage.ts` | Send message to another agent (team communication) | `{ queued: true, messageId: string }` |
 
 ### Tool Details and Implementation Notes
 

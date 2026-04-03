@@ -1,6 +1,6 @@
 # Permission Model
 
-Claude Code implements a **three-layer security architecture** that evaluates every tool call before execution. The most sophisticated component is a secondary Claude model (Sonnet 4.6) acting as an independent security classifier.
+Claude Code implements a **three-layer security architecture** that evaluates every tool call before execution using a defense-in-depth approach. Even if one layer has a vulnerability, the others still protect against unauthorized actions. The most sophisticated component is a secondary Claude model (Sonnet 4.6) acting as an independent security classifier.
 
 > **Note:** The three-layer model below describes the **Bash tool permission flow**. Other tools (Read, Write, Edit, etc.) have different permission models. See their respective tool documentation for details. Bash has the most complex permission system because it can execute arbitrary shell commands.
 
@@ -86,7 +86,7 @@ The classifier operates as follows:
 
 3. **Build Classifier Prompt**: The stripped user messages are combined with the pending tool call (the action being evaluated) to form a concise prompt. This stripped prompt is much smaller than the full conversation, reducing context window usage and improving classifier focus.
 
-4. **Call Classifier API**: The stripped prompt and tool call are sent to Claude Sonnet 4.6 in a **separate API call** with its own system prompt (`CLASSIFIER_SYSTEM_PROMPT`). This classifier model runs independently from the main agent conversation.
+4. **Call Classifier API**: The stripped prompt and tool call are sent to Claude Sonnet 4.6 in a **separate API call** with its own system prompt. This classifier model runs independently from the main agent conversation.
 
 5. **Parse Response**: The classifier returns a verdict: `SAFE` (allow) or `RISKY` (require user confirmation). The response includes a brief justification explaining the risk assessment.
 
@@ -106,36 +106,13 @@ By only seeing **what the user asked for** and **what the tool intends to do**, 
 
 ### Risk Categories
 
-The classifier evaluates tool calls against several risk categories:
+The classifier evaluates tool calls against several risk categories. The security classifier checks for:
 
-```typescript
-const CLASSIFIER_SYSTEM_PROMPT = `
-You are a security classifier for Claude Code. Evaluate whether the following
-tool call is safe to execute given the user's request.
+- **SCOPE ESCALATION**: Does the tool call exceed what the user actually requested? (e.g., user asks to fix a bug but the model tries to refactor the entire codebase)
+- **UNTRUSTED INFRASTRUCTURE**: Does the tool call target external or shared systems? (e.g., pushing to remote repository, making HTTP requests to external APIs, modifying CI/CD)
+- **OTHER RISKS**: General safety concerns like destructive commands (rm -rf, DROP TABLE), exposing secrets (.env files, API keys), or modifying system configuration
 
-Evaluate these risk categories:
-
-1. SCOPE ESCALATION: Does the tool call exceed what the user actually requested?
-   Examples: User asks to fix a bug → model tries to refactor entire codebase
-             User asks to read a file → model tries to delete it
-
-2. UNTRUSTED INFRASTRUCTURE: Does the tool call target external or shared systems?
-   Examples: Pushing to remote repository
-             Making HTTP requests to external APIs
-             Modifying CI/CD configuration
-
-3. OTHER RISKS: General safety concerns.
-   Examples: Destructive commands (rm -rf, DROP TABLE)
-             Exposing secrets (cat .env, printing API keys)
-             Modifying system configuration
-
-Respond with exactly one of:
-- SAFE: The tool call is appropriate for the user's request
-- RISKY: The tool call requires user confirmation
-
-Include a brief justification.
-`;
-```
+The classifier returns a verdict: `SAFE` (allow) or `RISKY` (require user confirmation).
 
 ### Classifier Decision Flow
 

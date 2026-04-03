@@ -7,7 +7,7 @@ The leaked source code reveals internal codenames for Claude models and projects
 | Codename | Type | Details |
 |----------|------|---------|
 | **Capybara** | Model | Sonnet-series v8 with 1M context window; appears in "fast mode" comments |
-| **Fennec** | Model | Opus 4.6 predecessor; migration paths exist in source |
+| **Fennec** | Model | Claude Opus 4.5; migration paths exist in source |
 | **Numbat** | Model | Next unreleased model; launch window baked into source code |
 | **Tengu** | Project | Internal codename for Claude Code itself |
 
@@ -26,9 +26,9 @@ Capybara is the internal codename for the Sonnet-series model at version 8 with 
 "Fast mode" in Claude Code uses the same model (Capybara/Sonnet), not a different model. It optimizes for faster token generation at the same quality level, though the false claims rate data suggests some accuracy tradeoff.
 :::
 
-## Fennec (Pre-Opus 4.6)
+## Fennec (Claude Opus 4.5)
 
-Fennec is the predecessor to Opus 4.6. The source code contains migration paths from Fennec to the current Opus model, suggesting a structured model upgrade process.
+Fennec is the internal codename for Claude Opus 4.5. The source code contains migration paths from Fennec to the current Opus model, suggesting a structured model upgrade process.
 
 - Migration code exists for transitioning configurations
 - Feature flags reference Fennec for backward compatibility

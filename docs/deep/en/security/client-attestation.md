@@ -43,15 +43,13 @@ sequenceDiagram
 
 ## The Key Insight: Zig Below JavaScript
 
-Bun's architecture is unique among JavaScript runtimes:
+Bun's architecture is unique among JavaScript runtimes. The critical design insight for client attestation is **putting the hash computation below the JavaScript runtime**. This means:
 
 ```
 ┌─────────────────────────────────────────┐
 │  JavaScript/TypeScript Application Code │  ← Can be inspected, patched, debugged
 │─────────────────────────────────────────│
-│  Bun JavaScript Engine (Zig)            │  ← Compiled native code
-│─────────────────────────────────────────│
-│  Bun HTTP Client (Zig)                  │  ← Hash computation happens HERE
+│  Bun HTTP Client (Zig)                  │  ← Hash computation HERE (native code)
 │  - TLS implementation                   │
 │  - HTTP/2 multiplexing                  │
 │  - Request serialization                │
@@ -61,7 +59,7 @@ Bun's architecture is unique among JavaScript runtimes:
 └─────────────────────────────────────────┘
 ```
 
-The critical insight: **JavaScript monkey-patching cannot reach the Zig layer**. Common bypass techniques fail:
+The consequence: **JavaScript monkey-patching cannot reach the Zig layer**. Common bypass techniques fail:
 
 | Bypass Attempt | Why It Fails |
 |---------------|-------------|
@@ -84,19 +82,15 @@ The **only** way to bypass the attestation is to **recompile the Zig code** in B
 
 The JavaScript-side implementation of client attestation is deliberately minimal: it only sets a static placeholder value (`00000`) in the `cch` header before the request is handed off to Bun's native HTTP transport. This placeholder is never the actual attestation hash. The real computation happens below the JavaScript runtime in the Zig layer and cannot be observed or modified from JavaScript.
 
-The specific placeholder value (`00000`) is part of the compiled binary layer and does not correspond to a real attestation token. The actual hash computation (derived from request body, compiled-in secret key, and timestamp) happens entirely in Zig and replaces this placeholder before the request leaves the client.
+The actual hash computation (derived from request body, compiled-in secret key, and timestamp) happens entirely in Zig and replaces the placeholder before the request leaves the client. This replacement is invisible to JavaScript — the hash is computed and substituted below the runtime, making monkey-patching impossible.
 
-The JS-side code includes three independent gates that short-circuit before setting the placeholder. First, a compile-time flag (`COMPILE_FLAGS.NATIVE_CLIENT_ATTESTATION`) ensures attestation logic is completely absent from non-first-party builds. Second, a development override via the `CLAUDE_CODE_ATTRIBUTION_HEADER` environment variable allows local testing and CI environments to opt out without recompiling. Third, a GrowthBook feature flag (`tengu_attribution_header`) provides a remote killswitch that allows Anthropic to disable attestation across all installations instantly if the mechanism causes issues. Only when all three gates permit the operation does the code set the placeholder. The actual hash replacement happens entirely in Zig, making it invisible and tamper-proof from the JavaScript perspective.
+The mechanism includes three independent gates that must all permit the operation: a compile-time flag ensures attestation logic is absent from non-first-party builds, a development override allows local testing and CI without recompilation, and a GrowthBook feature flag provides a remote killswitch if the mechanism causes issues. Only when all three conditions are satisfied does attestation activate.
 
-> 📁 Source reference: `src/utils/` - utility modules for request preparation and header management
+### Zig-Side Hash Computation
 
-### Zig-Side Hash Computation (Inferred)
+The Zig HTTP transport layer operates entirely below the JavaScript runtime and performs the actual cryptographic attestation computation. The hash is derived from three inputs that cannot be observed from JavaScript: the complete request body bytes, a compiled-in secret key burned into the Zig binary, and a timestamp to prevent replay attacks.
 
-The Zig HTTP transport layer operates entirely below the JavaScript runtime and performs the actual cryptographic attestation computation. When Bun's native HTTP stack prepares to send a request, it intercepts any `cch` header containing the placeholder value and replaces it with a computed cryptographic hash. The hash is derived from multiple inputs: the complete request body bytes, a compiled-in secret key that never appears in JavaScript memory, and a timestamp to prevent replay attacks.
-
-The computation uses HMAC-SHA256 as the core cryptographic primitive, ensuring that only the genuine Claude Code binary (which has the correct secret key compiled into its Zig layer) can produce valid attestation hashes. The final hash is truncated to the first 16 bytes and formatted as hexadecimal before replacing the placeholder. This occurs after the JavaScript SDK hands off the request but before it reaches the network layer, ensuring that the actual hash computation is completely hidden from JavaScript debuggers, proxies, and instrumentation tools. The timestamp inclusion further protects against replay attacks where an attacker could capture a valid hash and reuse it for a different request.
-
-> 📁 Source reference: `src/native-ts/` - native module bindings for the Zig HTTP layer and cryptographic operations
+This placement below JavaScript is the security foundation: the hash computation is completely hidden from JavaScript debuggers, proxies, and instrumentation tools. Even with full control over JavaScript execution, an attacker cannot observe how the hash is computed or intercept the secret key. The timestamp inclusion further prevents replay attacks — captured hashes cannot be reused for different requests.
 
 ### Server-Side Validation
 

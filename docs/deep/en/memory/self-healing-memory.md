@@ -137,15 +137,17 @@ graph TB
 
 The pointer approach means MEMORY.md uses ~500-1000 tokens regardless of project size, while giving the model a map to navigate the entire codebase.
 
-## Layer 2: ConversationCompressor - Implementation
+## Layer 2: ConversationCompressor - Design Philosophy
 
-### Compression Trigger
+### Compression Trigger and Design
 
-When the token budget allocator detects overage, the compression system enters a three-phase process. First, it identifies which messages can be safely summarized. The system **never** compresses the system prompt, MEMORY.md index, or the last 2 user-assistant turns. These form a protected tail that ensures the model always has recent context to understand ongoing work. If fewer than 4 compressible messages exist, compression is skipped (too risky to lose detail on small conversations).
+When the token budget allocator detects overage, the compression system enters a three-phase process driven by a core principle: **preserve recent context, compress old details, extract permanent facts**.
 
-The second phase summarizes the oldest batch of protected messages using Claude, generating a compact digest that preserves decision rationale, file changes, and key findings while discarding verbose tool outputs and superseded reasoning. Concurrently, the compressor extracts any new persistent facts from the conversation that should be added to MEMORY.md: discoveries about project structure, architecture, tools, or user preferences that future sessions need.
+First, the system identifies which messages can be safely compressed. The system **never** compresses the system prompt, MEMORY.md index, or the last 2 user-assistant turns—these form a protected tail that ensures the model always has recent context to understand ongoing work. If fewer than 4 compressible messages exist, compression is skipped entirely (too risky to lose detail on small conversations). This conservative approach prevents information loss when the conversation is still young.
 
-The third phase replaces the original messages with the compressed summary and the preserved tail, then returns the streamlined conversation. This single compaction cycle can reduce a 200K-token conversation to 50-100K tokens while preserving coherence.
+The second phase summarizes the oldest compressible messages using Claude, generating a compact digest. The key insight: what matters is not the verbose conversation, but the *decisions made and why*. The system preserves decision rationale, which specific files were changed, and critical findings while discarding verbose tool outputs and intermediate reasoning. Concurrently, the compressor extracts new persistent facts from the conversation—discoveries about project structure, architecture, tools, or user preferences that future sessions need to remember.
+
+The third phase replaces the original messages with the compressed summary and the protected tail. This single compaction cycle can reduce a 200K-token conversation to 50-100K tokens while preserving coherence. Why does this work? Because compression is *semantic*, not syntactic—the system understands what matters and ruthlessly removes what doesn't.
 
 ```mermaid
 graph TB
@@ -185,13 +187,13 @@ After generating the summary, a second API call runs in parallel to extract pers
 The extracted facts are appended to MEMORY.md, making them available to the next session without losing them during compaction. This creates a positive feedback loop: older sessions contribute their learned patterns to the persistent index, gradually improving the context quality for future conversations.
 
 
-## Layer 3: TokenBudgetAllocator
+## Layer 3: TokenBudgetAllocator - Why Proactive Management Matters
 
-The token budget allocator divides the model's context window (typically 1M tokens for Claude 3.5 Sonnet) into fixed and dynamic zones. The fixed zones hold system prompt instructions (~25K tokens), tool schema definitions (~17K tokens), and MEMORY.md index (~1K tokens). These are overhead that doesn't change per request.
+The token budget allocator divides the model's context window (typically 200K tokens, model-dependent, up to 1M for latest models) into fixed and dynamic zones. The fixed zones hold system prompt instructions (~25K tokens), tool schema definitions (~17K tokens), and MEMORY.md index (~1K tokens). These are overhead that doesn't change per request—they're the cost of operation.
 
-The response reserve (8K tokens) is held back for the model's output. API errors occur if the model generates beyond its budget, so reserving this space prevents that failure mode. Everything else (approximately 950K tokens in the default allocation) forms the conversation history budget: the space available for the user's input history and the assistant's prior responses.
+The response reserve (8K tokens) is held back for the model's output. Why reserve this? API errors occur if the model generates beyond its budget, so reserving this space prevents catastrophic failure. Everything else (approximately 950K tokens in the default allocation) forms the conversation history budget: the space available for the user's input history and the assistant's prior responses.
 
-When the conversation history exceeds this budget, the allocator triggers compression. The compression target isn't just to get back under budget; it aims 20% below the limit to create breathing room for the next few turns. This prevents thrashing: if the allocator just barely squeezed under budget, the next turn might exceed it again, triggering another compaction immediately.
+When the conversation history exceeds this budget, the allocator triggers compression. But here's the key design decision: **the compression target isn't just to get back under budget; it aims 20% below the limit**. Why? If the allocator compressed only to the exact limit, the next turn's automatic attachments (re-injected tools, agent listings, plan files) could immediately exceed budget again, triggering another compaction immediately. This creates *thrashing*—constant compression overhead that degrades performance. By targeting 80% of the budget, the compressor ensures at least one full turn of breathing room, amortizing the compression cost over multiple turns.
 
 ```mermaid
 graph TB
@@ -213,7 +215,7 @@ graph TB
     
     Calc --> Target["Compression target =<br/>overage + 20% margin"]
     Target --> Trigger["Trigger compaction"]
-    Trigger --> Compress["ConversationCompressor<br/>reduces conversation"]
+    Trigger --> Compress["Compress conversation<br/>to target"]
     
     style Continue fill:#2ecc71,color:#fff
     style SysPrompt fill:#3498db,color:#fff
@@ -223,7 +225,7 @@ graph TB
     style Budget fill:#f39c12,color:#fff
 ```
 
-The 20% margin is crucial for stability. If the allocator compressed only to the limit, the next turn's automatic attachments (re-injected tools, agent listings, plan files) could immediately exceed budget again. By targeting 80% of the budget, the compressor ensures at least one full turn of breathing room before the next compaction trigger.
+This 20% margin is an economic optimization: the cost of one compression saved over multiple turns outweighs the cost of frequent recompressions.
 
 
 ## Self-Healing Feedback Loop

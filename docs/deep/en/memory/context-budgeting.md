@@ -24,7 +24,7 @@ pie title Context Window Budget (~1M tokens)
 | Conversation history | ~900-950K | No | Yes |
 | Response reserve | ~8-10K | No | Yes |
 
-**Total context window**: ~1M tokens (varies by model: Claude 3 Sonnet ~200K, Claude 3.5 Opus ~200K, future models >1M)
+**Total context window**: ~1M tokens (varies by model: Claude 3 Sonnet ~200K, Claude 3 Opus ~200K, future models >1M)
 
 **Dynamic adjustments**: The effective context window is calculated at runtime via `effectiveContextWindow = contextWindow - reservedTokensForSummary`. This can be overridden by the `CLAUDE_CODE_AUTO_COMPACT_WINDOW` environment variable. The conversation history and response reserve allocation adjusts based on:
 - Model's actual context window size (different models have different limits)
@@ -33,7 +33,16 @@ pie title Context Window Budget (~1M tokens)
 
 ## Auto-Compression: Progressive Compaction Layers
 
-When the conversation history approaches context limits, the system automatically applies progressively heavier compression layers. The trigger is based on a dynamic threshold: when token count exceeds `effectiveContextWindow - AUTOCOMPACT_BUFFER_TOKENS` (13,000 tokens), compaction is considered. Each layer engages only when necessary, preserving information quality by applying only the minimal compression needed to stay within budget.
+When the conversation history approaches context limits, the system automatically applies progressively heavier compression layers. This is a fundamental design decision: **compress minimally, only when necessary, escalating only if lighter approaches fail**. Why progressive layers? Because different compression techniques have different costs and preserve different information:
+
+- **Lightweight techniques** (Layer 1-1B) sacrifice nothing except old tool output that can be re-read from disk
+- **Medium techniques** (Layer 2) sacrifice conversation detail but extract and preserve semantic knowledge to MEMORY.md
+- **Heavy techniques** (Layer 3) sacrifice conversational history but preserve decisions and recent work
+- **Emergency techniques** (Layer 4) sacrifice everything except MEMORY.md and recent turns—a last resort
+
+By progressively escalating only when earlier layers are insufficient, the system preserves maximum information quality while minimizing the cost of compression.
+
+The trigger is based on a dynamic threshold: when token count exceeds `effectiveContextWindow - AUTOCOMPACT_BUFFER_TOKENS` (13,000 tokens), compaction is considered. Each layer engages only when necessary, preserving information quality by applying only the minimal compression needed to stay within budget.
 
 ### Progressive Compaction Flowchart
 
@@ -225,25 +234,29 @@ The system notifies the user when heavy compression (Layer 3+) occurs:
 
 > "The system is compressing prior messages to stay within context limits. Key decisions and findings are preserved in MEMORY.md."
 
-## Compression Strategy
+## Compression Strategy: Information Economics
+
+Compression is fundamentally about **economics**: what information is worth keeping in limited context, and what can be retrieved or re-derived? The system makes ruthless trade-offs based on information density and utility.
 
 ### What Gets Preserved
 
-During auto-compaction and session memory extraction, the system preserves:
-- **Key decisions**: What was decided and why
-- **File modifications**: Which files were changed, what changed in each
-- **Important findings**: Errors, blockers, discoveries, root causes
-- **User instructions**: Original requirements and constraints
-- **Cross-references**: Pointers to MEMORY.md, file paths, line numbers
+During auto-compaction and session memory extraction, the system preserves information that is:
+- **Decision-critical**: What was decided and why—this guides future directions
+- **Implementation-specific**: Which files were changed, what changed in each—this prevents re-reading entire files
+- **Discovery-rich**: Errors, blockers, discoveries, root causes—these are hard-won and shouldn't be re-discovered
+- **User-specified**: Original requirements and constraints—these are the user's intent, not derivable
+- **Location-tagged**: Pointers to MEMORY.md, file paths, line numbers—minimal cost, high utility
 
 ### What Gets Discarded
 
-The compressor discards:
-- Verbose tool outputs (file contents already on disk)
-- Exploratory searches that didn't yield results
-- Intermediate reasoning that led to final decisions
-- Repeated information already captured in MEMORY.md
-- Successful exploratory paths that led to dead ends
+The compressor ruthlessly discards:
+- **Verbose tool outputs**: File contents are already on disk, re-readable if needed. The conversation logged *that* we read a file; the content can be re-read
+- **Exploratory searches**: Searches that led nowhere are not information, they're noise. The decision that followed matters; the exploration doesn't
+- **Intermediate reasoning**: Work-in-progress thinking that led to final conclusions. We keep the conclusion, not the journey
+- **Redundant information**: Data already captured in MEMORY.md or elsewhere. De-duplication prevents context bloat
+- **Dead-end paths**: Successful explorations that didn't lead anywhere. The result (not this direction) is what matters
+
+**Why this works**: Compression preserves *structural* information while discarding *narrative* information. The model can re-read files and re-run searches if needed, but it cannot re-derive decisions or re-discover blockers.
 
 ### Fact Extraction to MEMORY.md
 
@@ -360,7 +373,7 @@ The implementation is straightforward: catch the `max_tokens` stop reason, reuse
 
 **Trigger**: Stage 1 escalation didn't complete the response
 
-**Action**: Apply Layer 5 (Reactive Compact). Keep only last 2 turns + MEMORY.md. Then retry with reduced budget
+**Action**: Apply Layer 4 (Reactive Compact). Keep only last 2 turns + MEMORY.md. Then retry with reduced budget
 
 When escalating max_tokens doesn't work, the system applies aggressive context reduction. Keep only:
 - System prompt (always needed)

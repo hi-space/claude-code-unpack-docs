@@ -48,39 +48,35 @@ flowchart TB
     style Suffix fill:#e74c3c,color:#fff
 ```
 
-## Source Module: InstructionBlocks
+## Instruction Blocks: Building the System Prompt
 
-Each instruction block is a separate TypeScript module. Instruction blocks are the fundamental building blocks of Claude Code's system prompt. Each block encapsulates a single semantic instruction or capability: identity, tool usage rules, git protocol, safety rules, and more. It is packaged as a reusable, independently-versioned component.
+Instruction blocks are the fundamental building blocks of Claude Code's system prompt. Each block encapsulates a single semantic instruction or capability: identity, tool usage rules, git protocol, safety rules, and more. Blocks are organized by metadata that controls how they fit into the final assembled prompt:
 
-The core structure of an instruction block consists of metadata that controls registration and assembly:
+- Each block has a **category identifier** (e.g., `identity`, `tool-usage`)
+- Each is marked for either the **cached prefix** (stable across requests) or **uncached suffix** (reprocessed per request)
+- Each has a **priority level** that determines its position in the final prompt (0 = highest priority, rendered first)
+- Each includes an **estimated token count** for budgeting purposes
+- Each has conditional logic to include or exclude itself based on session configuration (useful for feature gates like "only include git protocol if in a git repository")
 
-- **id**: A unique identifier for the block (e.g., `'identity'`, `'tool-usage'`)
-- **section**: Either `'prefix'` (cached) or `'suffix'` (reprocessed per request)
-- **priority**: A numeric ordering that determines the block's position in the final prompt (0 = highest priority, rendered first)
-- **tokens**: An estimated token count for budgeting (approximately 100 tokens for identity, ~800 for tool definitions)
-- **content()**: A function that generates the block's text. It receives a `SessionConfig` object and can conditionally return an empty string to skip the block entirely (useful for feature gates and environment checks)
-
-Blocks are registered into a central registry at startup. The assembler then sorts all blocks by priority, filters them by session configuration, and concatenates them in priority order. This design allows features to be toggled on/off without modifying the core assembly logic.
-
-For example, the git protocol block conditionally includes instructions only if the user is in a git repository. Tool-related blocks are dynamically injected with the current available tools (14–17K tokens of JSON schemas). Identity and other foundational blocks always render. By centralizing all instruction blocks in a module directory with consistent structure, the codebase scales efficiently without becoming unwieldy.
+All blocks are registered at startup and sorted by priority. The assembler concatenates them in order, allowing features to be toggled on/off without modifying the core assembly logic. Tool-related blocks are dynamically injected with the current available tools (14–17K tokens of JSON schemas). Identity and other foundational blocks always render. This modular design allows the codebase to scale efficiently: adding a new instruction capability is just adding a new block, not refactoring the core assembly logic.
 
 
 ### Block Registration and Assembly
 
-The SystemPromptAssembler class orchestrates the assembly of the complete system prompt. At initialization, it registers all instruction blocks into a central list. The blocks cover diverse concerns: foundational identity (who Claude Code is), capability boundaries (what tools are available), safety constraints (what risks to avoid), execution patterns (how to approach tasks), and runtime state (current repository, git status, available MCP servers).
+The system prompt assembler orchestrates the assembly of the complete system prompt. At initialization, all instruction blocks are registered into a central list. The blocks cover diverse concerns: foundational identity (who Claude Code is), capability boundaries (what tools are available), safety constraints (what risks to avoid), execution patterns (how to approach tasks), and runtime state (current repository, git status, available MCP servers).
 
 The assembly process follows a predictable, repeatable sequence:
 
-1. **Initialization**: All instruction blocks are loaded and registered in the assembler constructor
-2. **Sorting**: Blocks are sorted by their `priority` field (lower numbers first), ensuring that foundational blocks like identity appear before specialized ones like agent guidance
+1. **Initialization**: All instruction blocks are loaded and registered at startup
+2. **Sorting**: Blocks are sorted by priority (lower numbers first), ensuring foundational blocks like identity appear before specialized ones like agent guidance
 3. **Filtering by section**: Blocks are split into two groups: prefix blocks (cacheable, ~20K tokens) and suffix blocks (reprocessed per request, ~3–5K tokens)
-4. **Content generation**: For each block, the `content()` function is called with the current `SessionConfig`. If the function returns an empty string, the block is filtered out (useful for conditional features and permission checks)
-5. **Concatenation**: The resulting blocks are joined with `'\n\n'` separators to form cohesive markdown sections
-6. **Token budgeting**: Total token count is computed for monitoring and debugging
+4. **Content generation**: For each block, the conditional logic determines whether to include the block based on session configuration. If a block is disabled (e.g., "git protocol only if in a git repo"), it's filtered out
+5. **Concatenation**: The resulting blocks are joined with section separators to form cohesive markdown sections
+6. **Token budgeting**: Total token count is computed for monitoring and resource allocation
 
-The assembly result is a `SystemPrompt` object with three fields: `prefix` (the cacheable portion), `suffix` (the uncached portion), and `totalTokens` (the full token budget consumed).
+The final assembled system prompt has three components: the cacheable prefix (stable across requests), the uncached suffix (regenerated per request), and a total token budget for monitoring.
 
-This design separates concerns: blocks define *what* content should be included, while the assembler defines *how* to combine them. New features can be added as new blocks without touching assembly logic. Conditional inclusion (e.g., "only include git protocol if in a git repo") is handled by returning an empty string from the block's `content()` function, keeping logic local to each block.
+This design separates concerns: blocks define *what* content should be included, while the assembler defines *how* to combine them. New features can be added as new blocks without touching assembly logic. Conditional inclusion is handled by each block's own logic, keeping dependencies local.
 
 ```mermaid
 flowchart TD
@@ -154,55 +150,11 @@ TOTAL SYSTEM PROMPT: ~20-25K tokens
 
 ## The `DANGEROUS_uncachedSystemPromptSection`
 
-The source code uses an explicitly named variable for the suffix:
-
-```typescript
-// The suffix is intentionally named to draw attention to its cache implications
-const DANGEROUS_uncachedSystemPromptSection = buildSuffix(config);
-
-// This naming convention serves as a warning to developers:
-// "Anything added here is reprocessed on EVERY API call"
-// "Adding content here breaks cache efficiency"
-// "Think carefully before putting anything in the suffix"
-```
-
-The `DANGEROUS_` prefix is a deliberate naming choice. It warns developers that adding content to the suffix has a direct performance and cost impact, since everything in the suffix bypasses prompt caching.
+The suffix section is explicitly named to signal its cache implications to developers. The `DANGEROUS_` prefix is a deliberate naming choice that warns: anything added to the suffix is reprocessed on every API call, adding content here breaks cache efficiency, and developers should think carefully before putting anything in the suffix. This naming convention serves as a constant reminder that the suffix has a direct performance and cost impact, since everything in the suffix bypasses prompt caching.
 
 ## Conditional Blocks
 
-Many instruction blocks are conditionally included based on configuration:
-
-```typescript
-// Examples of conditional inclusion
-const planModeBlock: InstructionBlock = {
-  id: 'plan-mode',
-  section: 'prefix',
-  content: (config) => {
-    if (!config.planMode) return '';  // Skip entirely if not in plan mode
-    return `## Plan Mode\nYou are currently in plan mode...`;
-  },
-};
-
-const agentBlock: InstructionBlock = {
-  id: 'agent-system',
-  section: 'prefix',
-  content: (config) => {
-    // Include agent instructions only if agents are available
-    if (config.disableAgents) return '';
-    return `## Using the Agent tool\n...`;
-  },
-};
-
-const undercoverBlock: InstructionBlock = {
-  id: 'undercover',
-  section: 'prefix',
-  content: (config) => {
-    if (!config.undercoverMode) return '';
-    return `You are operating UNDERCOVER in a PUBLIC/OPEN-SOURCE repository.
-Do not mention: ${INTERNAL_CODENAMES.join(', ')}...`;
-  },
-};
-```
+Many instruction blocks are conditionally included based on configuration. For example, the git protocol block only renders if the user is in a git repository. The agent system block only includes agent guidance if agents are enabled in the session. The undercover mode block only appears when the system is operating in an open-source repository context. Each block's conditional logic is self-contained—blocks evaluate their own conditions rather than requiring the assembler to manage complex inclusion/exclusion rules.
 
 ## Cache Boundary Design Principles
 

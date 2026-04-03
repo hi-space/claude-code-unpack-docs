@@ -18,13 +18,11 @@ The **client-side portion** of fake tool injection is limited to setting a reque
 
 ### Implementation Detail
 
-The anti-distillation logic operates through a gated mechanism that verifies multiple conditions before modifying API requests. The system implements a two-layer authorization pattern: a compile-time flag (`COMPILE_FLAGS.ANTI_DISTILLATION_CC`) ensures the feature is completely absent from third-party builds through dead code elimination, while a runtime GrowthBook flag (`tengu_anti_distill_fake_tool_injection`) provides Anthropic with an emergency killswitch to disable the mechanism remotely without requiring a new client release. When enabled, the manager performs first-party session detection by leveraging the client attestation system's Zig-computed HTTP hash to verify the request originates from a genuine Claude Code binary.
+The anti-distillation mechanism uses a multi-gate authorization system. The fake tool injection works through three independent gates that must all be satisfied: a compile-time flag ensures the feature is completely absent from third-party builds (dead code elimination), a runtime GrowthBook flag provides an emergency killswitch Anthropic can trigger remotely, and a first-party session check verifies the request comes from a genuine Claude Code binary.
 
-The actual implementation uses this verification chain to conditionally modify API request payloads by adding an `anti_distillation: ['fake_tools']` parameter that signals to the server to include fake tool definitions in the response. This approach ensures that the feature only activates under all three conditions simultaneously: compile-time gate present, runtime flag enabled, and authenticated first-party binary. This makes it impossible to bypass through simple runtime patching.
+When enabled, the fake tool injection mechanism signals the server to include deceptive tool definitions in the response. This approach ensures that the feature only activates under all three conditions simultaneously, making it impossible to bypass through simple runtime patching.
 
-**Key point:** No fake tool definitions exist in the client source code. The client only sends a parameter (`anti_distillation: ['fake_tools']`) to notify the server. The server, when it receives this parameter, decides to inject fake tools into the system prompt of the response.
-
-> 📁 Source reference: `src/utils/` - utility modules handling request interception and attestation integration
+**Key point:** No fake tool definitions exist in the client source code. The client only sends a parameter to notify the server. The server decides whether to inject fake tools into the response when it receives this signal.
 
 ### Request/Response Flow
 
@@ -55,16 +53,9 @@ sequenceDiagram
     Note over Spy: If recording traffic, captured data<br/>contains fake tool schemas that<br/>don't correspond to real tools.<br/>Training on this → model learns<br/>to call nonexistent tools.
 ```
 
-### What Fake Tools Look Like
+### Why Fake Tools Work
 
-The server injects tool definitions that look plausible but don't correspond to real functionality. Based on analysis, these fake tools:
-
-- Have realistic-sounding names (e.g., tools that sound like internal Anthropic tooling)
-- Include complete JSON Schema parameter definitions
-- Have detailed descriptions and usage instructions
-- Are indistinguishable from real tools without access to the actual source code
-
-A model trained on captured traffic would learn to call these fake tools, producing broken tool calls in production. This is effectively **a canary trap** for API traffic theft.
+The fake tool injection is a poisoning defense: fake tools are inserted into responses to ruin any training data captured by traffic recording. A model trained on recorded traffic would learn to call these nonexistent tools, producing broken tool calls in production. This is **a canary trap for API theft** — the cost to inject fake tools is negligible at inference time, but the value they destroy in stolen training data is enormous.
 
 ### Two-Gate Authorization
 
@@ -89,13 +80,9 @@ The `isFirstPartyCLISession()` check verifies the request originates from an off
 
 Reasoning summarization is **implemented entirely on Anthropic's servers**. The Claude Code client contains no summarization logic or code. The client's only involvement is setting a request parameter (`anti_distillation: ['fake_tools']` or similar) to signal the server that anti-distillation protections should be applied. The server then applies summarization to the assistant's reasoning chains before returning the response to the client.
 
-### Implementation Detail
+### Design Philosophy
 
-The second mechanism operates entirely **server-side**. It cannot be observed in the client source code directly, but its existence is revealed by:
-
-1. Configuration references in the client code (feature flags for enabling/disabling)
-2. The `anti_distillation` parameter being passed in API requests
-3. Server-side components referenced in documentation comments
+The reasoning summarization mechanism destroys the most valuable training signal: the detailed thought process behind tool selection and code analysis. By summarizing connector text between tool calls to essential points only, this defense reduces distillation value at zero inference cost. A model trained on only summaries loses the nuanced reasoning that makes Claude Code effective.
 
 ### Processing Pipeline
 
@@ -197,5 +184,3 @@ graph TB
 The anti-distillation system is integrated with GrowthBook, a feature management platform that allows Anthropic to remotely control the behavior without pushing client updates. The feature flag `tengu_anti_distill_fake_tool_injection` can be configured with conditional rules based on client version, deployment environment, or user cohorts. By default, the flag is disabled, but Anthropic can enable it selectively. For example, only for client versions >= 2.1.0 to ensure baseline capability before activating the defense.
 
 This architecture provides Anthropic with fine-grained control over fake tool injection: the team can enable or disable the feature globally across all installations in seconds, target specific client versions to manage rollout risks, conduct A/B testing to measure the impact on user experience and system performance, and trigger an emergency disable if the mechanism causes unexpected side effects or performance degradation. The separation of compile-time and runtime gates means that even if a runtime flag is compromised, the feature remains completely absent from non-first-party builds.
-
-> 📁 Source reference: `src/services/` - service implementations for GrowthBook integration and feature flag evaluation

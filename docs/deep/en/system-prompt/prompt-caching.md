@@ -66,11 +66,11 @@ Consider this scenario:
 
 Tool definitions are assembled into the cached prefix by sorting them **alphabetically by name** using Unicode-aware string comparison. This ensures that the order is deterministic regardless of how tools are registered internally or in what order they're stored in memory.
 
-The source implementation processes the tool collection by:
-1. Retrieving all tools from the internal registry
-2. Filtering out deferred tools (which load on-demand via ToolSearch)
-3. Sorting by tool name using locale-aware comparison (`localeCompare()`)
-4. Transforming each tool into its schema representation with name, description, parameters, and custom fields
+The tool assembly process follows this sequence:
+1. Retrieve all tools from the system registry
+2. Filter out deferred tools (which load on-demand when needed)
+3. Sort by tool name using locale-aware comparison for consistency across systems
+4. Transform each tool into its schema representation with name, description, parameters, and custom fields
 
 This alphabetical ordering is critical because the Anthropic API's prompt caching mechanism validates the entire cached prefix by content hash. If two requests present the same tools in different orders, the hash will differ and the cache miss will force full reprocessing. By always sorting alphabetically, the system guarantees that the cache key is invariant regardless of tool registration order, internal collection iteration order, or any other runtime variation.
 
@@ -341,13 +341,6 @@ The exact assembly order of the cached prefix is critical. Changes to this order
     MEMORY.md, .omc/notepad.md contents
     500-1,000 tokens
 ```
-
-### Source References
-
-- **Prefix assembly**: `buildPrefix()`
-- **Cache boundary insertion**: `markCacheBoundary()`
-- **Tool ordering**: `getSchemas().sort()`
-- **Suffix assembly**: `buildSuffix()`
 
 ## Architectural Impact
 

@@ -131,182 +131,55 @@ The `BashSandbox` class manages command execution with four security concerns: p
 
 #### Path Restrictions
 
-Bash operates under a whitelist security model: only explicitly allowed paths can be accessed. The sandbox parses each command to extract file paths and validates them against two lists:
+Bash operates under a **whitelist security model**: only explicitly allowed paths can be accessed. A sandbox validates every command before execution to ensure file access stays within boundaries.
 
 **Allowed Paths (positive allowlist)**
 - Workspace root directory (project directory, usually inherited from environment)
 - `/tmp` and `/var/tmp` (temporary file storage)
 
-**Protected Paths (negative list, defense-in-depth)**
+**Protected Paths (defense-in-depth blocklist)**
 - System directories: `/etc` (config), `/sys`, `/proc`
 - Credentials: `~/.ssh` (SSH keys), `.env` files, `credentials.json`
 - Root home directory and sensitive locations
 
-The validation process occurs before command execution:
+**Validation Pipeline:**
 
-1. **Parse command**: Extract path arguments from common Bash operations (`cd`, `cat`, `ls`, `rm`, `cp`, etc.)
-2. **Resolve paths**: Convert relative paths to absolute paths using current working directory as base
-3. **Check denied first**: If resolved path matches any protected pattern, deny immediately
-4. **Check allowed list**: If resolved path doesn't start with an allowed prefix, deny
-5. **Proceed or error**: Only continue execution if path passes both checks
+1. **Path extraction:** The sandbox scans each command for file operations (`cd`, `cat`, `ls`, `rm`, `cp`, etc.) and extracts path arguments.
+2. **Path resolution:** Relative paths are converted to absolute paths using the current working directory as context.
+3. **Protected check first:** Any path matching a protected pattern is immediately denied, preventing access to system/credential files.
+4. **Allowed list check:** Paths must start with at least one allowed prefix to proceed.
+5. **Execute or error:** Only commands passing both checks execute.
 
-This defense-in-depth approach means:
-- A path must NOT match any protected pattern, AND
-- A path MUST match at least one allowed pattern
-
-Relative paths like `../../../etc/passwd` are resolved to absolute paths before checking, preventing directory traversal attacks. Symlinks are followed to their targets, blocking attempts to bypass restrictions via symbolic links.
+**Why this matters:** Directory traversal attacks like `../../../etc/passwd` are resolved to absolute paths and then checked, blocking the bypass. Symlinks are followed to their targets, preventing symlink-based escapes. A sandbox failure **must prevent execution, not allow it** – any doubt results in denial to maintain safety by default.
 
 
 #### Network Isolation
 
-Network access is controlled via environment variables and firewall policies:
+Network access is controlled by building a sandboxed environment that filters sensitive variables and enforces proxy policies:
 
-```typescript
-private buildSandboxedEnv(): Record<string, string> {
-  return {
-    ...process.env,
-    
-    // Filesystem isolation
-    HOME: this.workspaceRoot,
-    TMPDIR: path.join(this.workspaceRoot, '.tmp'),
-    
-    // Network: Allow specific domains only
-    HTTP_PROXY: 'http://proxy:8080',         // Route through inspection proxy
-    HTTPS_PROXY: 'https://proxy:8443',
-    NO_PROXY: 'localhost,127.0.0.1',         // Never proxy local
-    
-    // Remove sensitive variables
-    AWS_ACCESS_KEY_ID: undefined,
-    AWS_SECRET_ACCESS_KEY: undefined,
-    GITHUB_TOKEN: undefined,
-  };
-}
-```
+- **Filesystem isolation:** The HOME and TMPDIR variables are redirected to workspace-specific paths, preventing access to user home directories.
+- **Network routing:** HTTP/HTTPS requests are routed through an inspection proxy, allowing network monitoring and control. Local requests bypass the proxy.
+- **Credential removal:** Sensitive environment variables (AWS keys, GitHub tokens) are stripped before command execution, preventing accidental credential leakage through environment access.
 
 #### Working Directory Persistence
 
-The working directory is stored in session state and restored across Bash calls:
+The working directory is stored in session state and restored across Bash calls within the same session. When a `cd` command is executed, the session state is updated to reflect the new working directory. Subsequent Bash calls start from this persisted directory. However, the shell environment itself (variables, aliases, functions) resets between calls—each command runs in a fresh shell process.
 
-```typescript
-private workingDirectory: string;  // Session state
+#### Timeout Enforcement
 
-async execute(command: string, options: BashOptions): Promise<BashResult> {
-  // Working directory persists from session state
-  // But shell environment resets (bash -c starts fresh shell)
-  
-  const proc = Bun.spawn({
-    cmd: ['bash', '-c', command],
-    cwd: this.workingDirectory,  // Restored from session
-    env: this.buildSandboxedEnv(),
-    timeout: options.timeout ?? 120_000,
-  });
-
-  // ... execute and return
-}
-
-// When cd is executed, update session state
-if (command.includes('cd ')) {
-  const newDir = extractCdTarget(command);
-  this.workingDirectory = path.resolve(this.workingDirectory, newDir);
-  // Persist to session.state.bashWorkingDir
-}
-```
-
-#### Timeout Escalation
-
-Timeouts start at 120 seconds (default) and can be increased up to 600 seconds (10 minutes):
-
-```typescript
-async execute(command: string, options: BashOptions): Promise<BashResult> {
-  const timeout = Math.min(
-    options.timeout ?? 120_000,  // Default 2 minutes
-    600_000                       // Max 10 minutes
-  );
-
-  try {
-    const proc = Bun.spawn({
-      cmd: ['bash', '-c', command],
-      cwd: this.workingDirectory,
-      env: this.buildSandboxedEnv(),
-      timeout,
-    });
-
-    // Wait for process with timeout
-    const result = await Promise.race([
-      proc.exited,
-      sleep(timeout).then(() => {
-        proc.kill();
-        throw new TimeoutError(`Command exceeded ${timeout}ms`);
-      }),
-    ]);
-
-    return { exitCode: result, output };
-  } catch (e) {
-    if (e instanceof TimeoutError) {
-      return { exitCode: 124, output: `Command timed out after ${timeout}ms` };
-    }
-    throw e;
-  }
-}
-```
+Timeouts start at a sensible default of 120 seconds and can be escalated up to 600 seconds (10 minutes) if explicitly requested. The timeout logic races the process completion against a timer. If the timer fires first, the process is killed and a timeout error is returned. This prevents runaway commands from consuming resources indefinitely while still allowing long-running operations when needed.
 
 #### Background Execution
 
-When `run_in_background: true`, the process detaches and the tool returns immediately:
-
-```typescript
-async execute(command: string, options: BashOptions): Promise<BashResult> {
-  const proc = Bun.spawn({
-    cmd: ['bash', '-c', command],
-    cwd: this.workingDirectory,
-    env: this.buildSandboxedEnv(),
-    timeout: options.timeout ?? 120_000,
-  });
-
-  if (options.run_in_background) {
-    // Detach process: it continues running even if parent exits
-    proc.unref?.();  // In Node.js; Bun has similar behavior
-
-    // Return immediately with process ID
-    return {
-      status: 'background',
-      pid: proc.pid,
-      message: 'Process started in background. You will be notified on completion.',
-    };
-  }
-
-  // Synchronous: wait for result
-  const result = await proc.exited;
-  const output = await collectOutput(proc);
-  return { exitCode: result, output };
-}
-```
-
-The process runs independently. When it completes, a notification is sent to the user (system reminder or conversation message).
+When `run_in_background: true`, the process detaches from the parent and the tool returns immediately with a process ID. The process continues running independently. When it completes, a notification is sent to the user via system reminder or conversation message. This enables long-running operations without blocking user interaction.
 
 #### Shell Environment Initialization
 
-Bash reads from the user's shell profile (`.bashrc` or `.zshrc`) to initialize environment:
+When spawning Bash, the shell reads from the user's profile (`.bashrc` or `.zshrc`) to initialize the environment. This means:
 
-```typescript
-// When spawning bash, source user profile
-const initScript = `
-  source ~/.bashrc 2>/dev/null || source ~/.zshrc 2>/dev/null
-  ${command}
-`;
-
-const proc = Bun.spawn({
-  cmd: ['bash', '-c', initScript],
-  cwd: this.workingDirectory,
-  env: this.buildSandboxedEnv(),
-  // ...
-});
-```
-
-This means:
-- **Aliases persist** (e.g., `ll` → `ls -la`). Only for this call.
-- **PATH is initialized** from profile
-- **Shell state resets**. No variables carry over between calls.
+- **Aliases are available** (e.g., `ll` → `ls -la`) during this specific call, but don't persist to the next call.
+- **PATH is initialized** from the profile, ensuring standard commands are accessible.
+- **Shell state resets** between calls—environment variables, functions, and aliases defined in one call don't carry over to the next, only the working directory persists.
 
 ### Key Behaviors
 
@@ -473,66 +346,6 @@ The tool preserves:
 - Cell metadata (tags, custom properties)
 - Output cells (even though they're not editable)
 - `nbformat` version
-
----
-
-## PowerShell Tool
-
-Windows-equivalent execution tool. Executes PowerShell scripts in a sandboxed environment with the same security model as Bash.
-
-### Properties
-
-| Property | Value |
-|----------|-------|
-| Default timeout | 120,000ms (2 minutes) |
-| Max timeout | 600,000ms (10 minutes) |
-| Working directory | Persists between calls |
-| Environment | Does **not** persist (variables reset) |
-| Background mode | `run_in_background: true` for long tasks |
-| Concurrency safe | No (`isConcurrencySafe: false`) |
-| Platform | Windows only |
-
-### Sandbox Architecture (Windows Equivalent)
-
-PowerShellSandbox mirrors BashSandbox conceptually but is adapted for Windows filesystem conventions and PowerShell semantics:
-
-**Allowed Paths (Windows)**
-- Workspace root directory (project folder)
-- `C:\Users\{username}\AppData\Local\Temp` (temporary storage)
-
-**Protected Paths (Windows)**
-- System directories: `C:\Windows\System32`, `C:\Program Files`
-- User SSH keys: `C:\Users\*\.ssh`
-- Credential storage: `C:\Users\*\AppData\Roaming`, `C:\Users\*\.aws`
-
-**Execution Flow**
-
-The PowerShell sandbox follows the same three-step process as Bash:
-
-1. **Path validation**: Scan the script for file operations and validate each path reference against the whitelist
-2. **Environment preparation**: Build a sandboxed environment map that:
-   - Isolates temporary files to workspace `.tmp` directory
-   - Removes sensitive variables (AWS keys, OAuth tokens)
-   - Preserves essential PATH and shell variables
-3. **Process spawn**: Launch PowerShell with `-NoProfile` flag (skips profile scripts to avoid auto-execution) and timeout enforcement
-
-**Key Differences from Bash**
-
-- PowerShell scripts use `.ps1` extension; Bash uses shell syntax
-- Windows paths use backslash separators; Bash uses forward slash
-- Environment variables like `TEMP` and `TMP` control temporary file location on Windows
-- No profile sourcing (clean environment every time)
-- Same working directory persistence and timeout enforcement as Bash
-
-
-### Key Behaviors
-
-- Same working directory persistence as Bash
-- Same timeout enforcement (120s default, 600s max)
-- Same background mode notification
-- Path isolation to workspace directories
-- No PowerShell profile executed (clean environment)
-- Output truncated at 4,000 tokens
 
 ---
 

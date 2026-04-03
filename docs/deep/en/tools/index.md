@@ -1,6 +1,6 @@
 # Tool System Overview
 
-Claude Code's tool system is the backbone of its coding capabilities. The leaked source reveals **23+ built-in tools**, each defined with a JSON Schema. Tool definitions consume **14-17K tokens** per API request. This is the single largest component of the system prompt.
+Claude Code's tool system is the backbone of its coding capabilities. The leaked source reveals **43+ built-in tools**, each defined with a JSON Schema. Tool definitions consume **14-17K tokens** per API request. This is the single largest component of the system prompt.
 
 ## Tool Registration Architecture
 
@@ -105,13 +105,13 @@ sequenceDiagram
 
 ### File Tools
 
-| Tool | File | Key Implementation Detail |
-|------|------|---------------------------|
-| **Read** | `read.ts` | Uses `cat -n` format internally. Reads images as base64 for multimodal input. PDF reading uses a PDF parser library limited to 20 pages per call. Has `offset`/`limit` params for large files. |
-| **Write** | `write.ts` | **Requires prior Read**: maintains a `readFileTracker` map. If `file_path` not in tracker and file exists, returns error. This prevents accidental overwrites. |
-| **Edit** | `edit.ts` | Uses exact string matching (not regex). If `old_string` has multiple matches, returns error listing all match positions. `replace_all` flag bypasses uniqueness check. |
-| **Glob** | `glob.ts` | Wraps native glob library. Results sorted by `mtime` (most recently modified first). No file content reading. Pure path matching. |
-| **Grep** | `grep.ts` | Wraps ripgrep (`rg`) binary. Three output modes: `files_with_matches` (default, just paths), `content` (matching lines + context), `count` (match counts). Default limit: 250 results. |
+| Tool | Key Implementation Detail |
+|------|---------------------------|
+| **Read** | Returns output in `cat -n` format with line numbers. Supports reading images as base64 for multimodal input. PDF reading limited to 20 pages per call. Large files support `offset`/`limit` parameters for partial reads. |
+| **Write** | **Requires prior Read**: tracks files to prevent accidental overwrites. If a file hasn't been read first and already exists, an error is returned. |
+| **Edit** | Uses exact string matching (not regex). If multiple matches exist for `old_string`, returns error listing all positions. `replace_all` flag allows replacing all occurrences at once. |
+| **Glob** | Pure path matching without file content reading. Results sorted by modification time (most recently modified first). |
+| **Grep** | Content search using ripgrep. Three output modes: `files_with_matches` (default, paths only), `content` (matching lines with context), `count` (match counts per file). Default limit: 250 results. |
 
 ### Code Intelligence Tools
 
@@ -121,16 +121,16 @@ sequenceDiagram
 
 ### Execution Tools
 
-| Tool | File | Key Implementation Detail |
-|------|------|---------------------------|
-| **Bash** | `bash.ts` | Spawns via `BashSandbox`. Working directory persists between calls (stored in session state), but shell environment resets. Timeout: 120s default, 600s max. `run_in_background` flag spawns a detached process and returns immediately. |
-| **PowerShell** | `powershell.ts` | Windows equivalent of Bash. Spawns via `PowerShellSandbox` with same security model. Edition-aware: detects Windows PowerShell 5.1 vs PowerShell 7+ and provides syntax guidance accordingly. |
-| **Sleep** (Feature-flagged: PROACTIVE/KAIROS) | `sleep.ts` | Wait for specified duration. Preferred over Bash sleep as it doesn't hold shell process. Can run concurrently with other tools. User-interruptible. |
-| **NotebookEdit** | `notebookEdit.ts` | Parses `.ipynb` JSON structure. Operations: insert cell, replace cell content, delete cell. Preserves notebook metadata and output cells. |
+| Tool | Key Implementation Detail |
+|------|---------------------------|
+| **Bash** | Executes in an isolated sandbox. Working directory persists between calls (stored in session state), but shell environment resets. Timeout: 120s default, 600s max. `run_in_background` flag spawns a detached process and returns immediately. |
+| **PowerShell** | Windows-equivalent execution tool with the same security model as Bash. Detects PowerShell version (5.1 vs 7+) and provides appropriate syntax guidance. |
+| **Sleep** (Feature-flagged: PROACTIVE/KAIROS) | Waits for specified duration. Preferred over Bash sleep as it doesn't hold a shell process. Can run concurrently with other tools and is user-interruptible. |
+| **NotebookEdit** | Edits Jupyter notebooks at the cell level. Operations: insert, replace, or delete cells. Preserves notebook metadata and output cells. |
 
 ### Bash Sandbox Implementation
 
-The Bash tool executes shell commands in an isolated sandbox environment using the Bun runtime. This sandbox provides multiple layers of protection: filesystem restrictions keep commands confined to the project workspace, environment variables are carefully controlled, and command execution is monitored for security violations.
+The Bash tool executes shell commands in an isolated sandbox environment. This sandbox provides multiple layers of protection: filesystem restrictions keep commands confined to the project workspace, environment variables are carefully controlled, and command execution is monitored for security violations.
 
 **Working directory persistence** is a key feature. Each session maintains a persistent working directory that is preserved across multiple bash calls. When you run `cd /home/project` in one bash call, subsequent calls in the same session start in that directory. However, the shell environment itself resets between calls. Environment variables don't automatically persist (though commands can export them if needed).
 
@@ -140,7 +140,7 @@ The Bash tool executes shell commands in an isolated sandbox environment using t
 
 ```mermaid
 flowchart LR
-    A["Command<br/>with options"] --> B["Spawn process<br/>via Bun"]
+    A["Command<br/>with options"] --> B["Spawn process<br/>via runtime"]
     B --> C{"run_in_background?"}
     
     C -->|"Yes"| D["Return immediately<br/>with process ID"]
@@ -158,38 +158,38 @@ flowchart LR
     style K fill:#c8e6c9
 ```
 
-**Security validation** occurs before execution. The `bashSecurity.ts` and `bashPermissions.ts` modules analyze commands for dangerous patterns (rm -rf, format operations, etc.) and check against permission rules. Commands that attempt to escape the workspace or access restricted paths are blocked. Permission modes can escalate this: "auto" mode allows whitelisted commands, "plan" mode requires explicit user approval, and "bypass" mode disables checks entirely for trusted contexts.
+**Security validation** occurs before execution. The sandbox analyzes commands for dangerous patterns (like `rm -rf`, formatting operations) and checks against permission rules. Commands that attempt to escape the workspace or access restricted paths are blocked. Permission modes can escalate this: "auto" mode allows whitelisted commands, "plan" mode requires explicit user approval, and "bypass" mode disables checks entirely for trusted contexts.
 
 ### Web Tools
 
-| Tool | File | Key Implementation Detail |
-|------|------|---------------------------|
-| **WebSearch** | `webSearch.ts` | Returns search results with title, URL, snippet. Prompt injection guard: results flagged if suspicious content detected. |
-| **WebFetch** | `webFetch.ts` | Fetches URL, extracts readable content (HTML → text). Results checked for prompt injection before inclusion in conversation. |
+| Tool | Key Implementation Detail |
+|------|---------------------------|
+| **WebSearch** | Returns search results with title, URL, and snippet. Includes prompt injection detection: results are flagged if suspicious content patterns are identified. |
+| **WebFetch** | Fetches URL and extracts readable content (HTML converted to text). Results checked for prompt injection before inclusion in conversation. Supports truncation for large pages. |
 
 ### Task & Coordination Tools
 
-| Tool | File | Key Implementation Detail |
-|------|------|---------------------------|
-| **TaskOutput** | `taskOutput.ts` | Reads output from running/completed tasks. Supports blocking (wait for completion) or non-blocking (poll status). Returns task output with status flags. Deprecated in favor of Read tool on output file. |
-| **CronCreate** (Feature-flagged: AGENT_TRIGGERS) | `cronCreate.ts` | Schedule prompts to run at future times (recurring or one-shot). Uses 5-field cron syntax in local timezone. Supports durable (persistent) or session-only scheduling. |
-| **CronDelete** (Feature-flagged: AGENT_TRIGGERS) | `cronDelete.ts` | Cancel scheduled cron jobs by ID. Removes from persistent storage or session store. |
-| **CronList** (Feature-flagged: AGENT_TRIGGERS) | `cronList.ts` | List all scheduled cron jobs with execution details. |
-| **AskUserQuestion** | `askUserQuestion.ts` | Ask users multiple choice questions with optional visual previews. Supports multiselect and custom text input ("Other" option). |
-| **SendMessage** | `sendMessage.ts` | Send messages to teammates or broadcast to all. Supports legacy protocol responses (shutdown, plan approval). Messages auto-delivered; you don't check inbox. |
+| Tool | Key Implementation Detail |
+|------|---------------------------|
+| **TaskOutput** | Reads output from running or completed tasks. Supports blocking (wait for completion) or non-blocking (poll status). Deprecated in favor of directly reading the task output file. |
+| **CronCreate** (Feature-flagged: AGENT_TRIGGERS) | Schedule prompts to run at future times. Uses 5-field cron syntax in local timezone. Supports durable (persistent across sessions) or session-only scheduling. |
+| **CronDelete** (Feature-flagged: AGENT_TRIGGERS) | Cancel scheduled cron jobs by ID. Removes from persistent storage or session store. |
+| **CronList** (Feature-flagged: AGENT_TRIGGERS) | List all scheduled cron jobs with execution and next-run details. |
+| **AskUserQuestion** | Gather information from users via multiple choice questions. Supports multiselect, custom text input ("Other" option), and optional visual previews for comparisons. |
+| **SendMessage** | Send messages to teammates or broadcast to all. Messages auto-deliver on receiver's next tool round. Supports legacy protocol responses for plan approval workflows. |
 
 ### Agent & Worktree Tools
 
-| Tool | File | Key Implementation Detail |
-|------|------|---------------------------|
-| **Agent** | `agent.ts` | Complex tool. Spawns new process with its own `QueryEngine`. `subagent_type` param selects tool restrictions. `isolation: "worktree"` creates git worktree for filesystem isolation. `run_in_background` enables async execution. |
-| **EnterWorktree** | `enterWorktree.ts` | Create isolated git worktree for experimental work. Creates worktree in `.claude/worktrees/` with new branch. Only use when user explicitly requests worktree. |
-| **ExitWorktree** | `exitWorktree.ts` | Exit worktree and return to original directory. Actions: `"keep"` (preserve) or `"remove"` (delete). Requires confirmation if uncommitted changes. |
-| **TeamCreate** (Feature-flagged: Agent Swarms) | `teamCreate.ts` | Create team for coordinating multiple agents. Creates team config + task list. Teams have 1:1 correspondence with task lists. |
-| **TeamDelete** (Feature-flagged: Agent Swarms) | `teamDelete.ts` | Remove team and task resources when collaboration complete. Fails if active teammates remain. |
-| **EnterPlanMode** | `enterPlanMode.ts` | Enter plan mode to explore codebase and design implementation approach for user approval. |
-| **ExitPlanMode** | `exitPlanMode.ts` | Exit plan mode after finalizing implementation plan. Reads plan from file and requests user approval. |
-| **ToolSearch** | `toolSearch.ts` | Fetches deferred tool schemas. Query modes: `"select:Name"` for exact match, keywords for fuzzy search. Returns complete JSON Schema definitions. |
+| Tool | Key Implementation Detail |
+|------|---------------------------|
+| **Agent** | Spawns specialized subagent with tool restrictions based on `subagent_type`. `isolation: "worktree"` creates an isolated git worktree for filesystem isolation. `run_in_background` enables async execution with notifications on completion. |
+| **EnterWorktree** | Create isolated git worktree for experimental work. Creates worktree in `.claude/worktrees/` with new branch. Only use when user explicitly requests worktree mode. |
+| **ExitWorktree** | Exit worktree and return to original directory. Actions: `"keep"` (preserve worktree and branch) or `"remove"` (delete). Requires confirmation if uncommitted changes exist. |
+| **TeamCreate** (Feature-flagged: Agent Swarms) | Create team for coordinating multiple agents working together. Creates team config and associated task list (1:1 correspondence). |
+| **TeamDelete** (Feature-flagged: Agent Swarms) | Remove team and task resources when collaboration is complete. Fails if active teammates remain. |
+| **EnterPlanMode** | Transition to planning phase to explore codebase and design implementation approach for user approval before proceeding. |
+| **ExitPlanMode** | Exit plan mode after finalizing implementation plan. Requests user review and approval before execution continues. |
+| **ToolSearch** | Fetch deferred tool schemas on-demand. Supports exact lookup (`select:Name`) and fuzzy keyword search. Returns complete JSON Schema definitions. |
 
 ### Agent Spawning Internals
 
@@ -234,16 +234,16 @@ graph TB
 
 ### Task Tools
 
-| Tool | File | Key Implementation Detail |
-|------|------|---------------------------|
-| **TodoWrite** | `todoWrite.ts` | Manages task array with states: `pending`, `in_progress`, `completed`. Enforces invariant: exactly one task `in_progress` at a time. Tasks have `content` (imperative) and `activeForm` (present continuous) fields. |
-| **Skill** | `skill.ts` | Loads skill definitions. Skills are pre-built workflows (e.g., `commit.ts` implements the full git commit protocol). Triggered by `/skill-name` or contextual patterns. |
+| Tool | Key Implementation Detail |
+|------|---------------------------|
+| **TodoWrite** | Manages user-visible task list with states: `pending`, `in_progress`, `completed`. Enforces invariant: exactly one task in progress at a time. Each task has two forms: `content` (imperative action) and `activeForm` (present continuous description). |
+| **Skill** | Executes pre-built workflows stored in the skill registry. Each skill is a complete implementation of a complex procedure (e.g., git commit protocol with all validation and hooks). Triggered via `/skill-name` or contextual pattern detection. |
 
 ### MCP Tools
 
-| Tool | File | Key Implementation Detail |
-|------|------|---------------------------|
-| **MCP Bridge** | `mcp/mcpToolBridge.ts` | Forwards tool calls to connected MCP servers via the Model Context Protocol. Tool schemas loaded dynamically on server connect. Placed in **session suffix** (not cached) because they change with server connections. |
+| Tool | Key Implementation Detail |
+|------|---------------------------|
+| **MCP Bridge** | Forwards tool calls to connected MCP servers via the Model Context Protocol. Tool schemas loaded dynamically when servers connect. Placed in **session suffix** (not cached prefix) because tool lists change with server connections, which would break prompt caching. |
 
 ## Tool Schema Size Analysis
 

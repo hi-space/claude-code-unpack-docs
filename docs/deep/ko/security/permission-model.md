@@ -1,6 +1,6 @@
 # Permission Model
 
-Claude Code는 모든 도구 호출을 실행 전에 평가하는 **3단계 보안 아키텍처**를 구현한다. 가장 정교한 컴포넌트는 독립적인 보안 Classifier로 작동하는 보조 Claude 모델(Sonnet 4.6)이다.
+Claude Code는 모든 도구 호출을 실행 전에 평가하는 **3단계 보안 아키텍처**를 구현한다. 다층 방어(defense-in-depth) 접근으로 한 계층에 취약점이 있더라도 다른 계층들이 계속 보호한다. 가장 정교한 컴포넌트는 독립적인 보안 분류기로 작동하는 보조 Claude 모델(Sonnet 4.6)이다.
 
 > **주의:** 아래의 3단계 모델은 **Bash 도구 권한 흐름**을 설명한다. 다른 도구들(Read, Write, Edit 등)은 서로 다른 권한 모델을 가지므로 각 도구의 문서를 참조하기 바란다. Bash는 임의의 셸 명령어를 실행할 수 있기 때문에 가장 복잡한 권한 시스템을 가진다.
 
@@ -109,36 +109,13 @@ flowchart TB
 
 ### 위험 카테고리
 
-분류기는 세 가지 위험 차원을 평가한다:
+분류기는 도구 호출을 평가하는 몇 가지 위험 카테고리를 검사한다. 보안 분류기는 다음 항목을 체크한다:
 
-```typescript
-const CLASSIFIER_SYSTEM_PROMPT = `
-You are a security classifier for Claude Code. Evaluate whether the following
-tool call is safe to execute given the user's request.
+- **범위 확대(SCOPE ESCALATION)**: 도구 호출이 사용자가 실제로 요청한 것을 초과하는가? (예: 사용자가 버그 수정을 요청했지만 모델이 전체 코드베이스를 리팩토링하려는 경우)
+- **신뢰할 수 없는 인프라(UNTRUSTED INFRASTRUCTURE)**: 도구 호출이 외부 또는 공유 시스템을 대상으로 하는가? (예: 원격 저장소에 푸시, 외부 API에 HTTP 요청, CI/CD 수정)
+- **기타 위험**: rm -rf, DROP TABLE 같은 파괴적 명령, .env 파일 노출, API 키 인쇄, 시스템 설정 수정 같은 일반적 보안 우려
 
-Evaluate these risk categories:
-
-1. SCOPE ESCALATION: Does the tool call exceed what the user actually requested?
-   Examples: User asks to fix a bug → model tries to refactor entire codebase
-             User asks to read a file → model tries to delete it
-
-2. UNTRUSTED INFRASTRUCTURE: Does the tool call target external or shared systems?
-   Examples: Pushing to remote repository
-             Making HTTP requests to external APIs
-             Modifying CI/CD configuration
-
-3. OTHER RISKS: General safety concerns.
-   Examples: Destructive commands (rm -rf, DROP TABLE)
-             Exposing secrets (cat .env, printing API keys)
-             Modifying system configuration
-
-Respond with exactly one of:
-- SAFE: The tool call is appropriate for the user's request
-- RISKY: The tool call requires user confirmation
-
-Include a brief justification.
-`;
-```
+분류기는 판정을 반환한다: `SAFE`(허용) 또는 `RISKY`(사용자 확인 필요)
 
 ### 분류기 결정 흐름
 
